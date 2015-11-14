@@ -633,14 +633,13 @@ void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info)
 void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			      struct fb_monspecs *specs,
 			      bool (*mode_filter)(const struct tegra_dc *dc,
-						  struct fb_videomode *mode),
-			      void (*vrr_mode)(const struct tegra_dc *dc,
 						  struct fb_videomode *mode))
 
 {
 	struct fb_event event;
 	int i;
 	int blank = FB_BLANK_UNBLANK;
+	struct tegra_dc *dc = fb_info->win.dc;
 
 	mutex_lock(&fb_info->info->lock);
 	fb_destroy_modedb(fb_info->info->monspecs.modedb);
@@ -681,7 +680,7 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 		memset(&fb_info->info->var, 0x0, sizeof(fb_info->info->var));
 #endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
-		tegra_dc_set_mode(fb_info->win.dc, &mode);
+		tegra_dc_set_mode(dc, &mode);
 		mutex_unlock(&fb_info->info->lock);
 		return;
 	}
@@ -691,11 +690,8 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	fb_info->info->mode = specs->modedb;
 
 	for (i = 0; i < specs->modedb_len; i++) {
-		if (vrr_mode)
-			vrr_mode(fb_info->win.dc, &specs->modedb[i]);
-
 		if (mode_filter) {
-			if (mode_filter(fb_info->win.dc, &specs->modedb[i]))
+			if (mode_filter(dc, &specs->modedb[i]))
 				fb_add_videomode(&specs->modedb[i],
 						 &fb_info->info->modelist);
 		} else {
@@ -704,6 +700,11 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 		}
 	}
 
+	if (dc->out_ops->vrr_update_monspecs)
+		dc->out_ops->vrr_update_monspecs(dc,
+			&fb_info->info->modelist);
+
+	event.info = fb_info->info;
 	/* Restoring to state running. */
 	fb_info->info->state =  FBINFO_STATE_RUNNING;
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
@@ -1012,6 +1013,9 @@ struct tegra_fb_info *tegra_fb_register(struct platform_device *ndev,
 			fb_add_videomode(&vmode, &info->modelist);
 		}
 	}
+
+	if (dc->out_ops->vrr_update_monspecs)
+		dc->out_ops->vrr_update_monspecs(dc, &info->modelist);
 
 	if (fb_mem)
 		tegra_fb_set_par(info);

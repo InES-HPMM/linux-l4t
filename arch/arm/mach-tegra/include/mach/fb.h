@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@google.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -39,8 +39,6 @@ void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info);
 void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 			      struct fb_monspecs *specs,
 			      bool (*mode_filter)(const struct tegra_dc *dc,
-						  struct fb_videomode *mode),
-			      void (*vrr_mode)(const struct tegra_dc *dc,
 						  struct fb_videomode *mode));
 void tegra_fb_update_fix(struct tegra_fb_info *fb_info,
 				struct fb_monspecs *specs);
@@ -68,8 +66,7 @@ static inline void tegra_fb_pan_display_reset(struct tegra_fb_info *fb_info)
 
 static inline void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 					    struct fb_monspecs *specs,
-				bool (*mode_filter)(struct fb_videomode *mode),
-				void (*vrr_mode)(struct fb_videomode *mode))
+				bool (*mode_filter)(struct fb_videomode *mode))
 {
 }
 

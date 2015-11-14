@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dsi.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -5387,6 +5387,43 @@ static void tegra_dc_dsi_vrr_enable(struct tegra_dc *dc, bool enable)
 		vrr->enable = enable;
 }
 
+void tegra_dsi_vrr_update_monspecs(struct tegra_dc *dc,
+	struct list_head *head)
+{
+	struct tegra_vrr *vrr;
+	struct list_head *pos;
+	struct fb_modelist *modelist;
+	struct fb_videomode *m;
+	struct fb_videomode m_vrr;
+
+	if (!head || !head->next)
+		return;
+
+	vrr = dc->out->vrr;
+
+	if (!vrr || !vrr->capability)
+		return;
+
+	/* Check whether VRR modes were already added */
+	list_for_each(pos, head) {
+		modelist = list_entry(pos, struct fb_modelist, list);
+		m = &modelist->mode;
+
+		if (m->vmode & FB_VMODE_VRR)
+			return;
+	}
+
+	/* For DSI VRR, the runtime mode (as opposed to initialization
+	 * mode) is the first mode in the list. We mark that first mode
+	 * as VRR-compatible by adding FB_VMODE_VRR to a duplicated instance
+	 * of this mode. */
+	modelist = list_entry(head->next, struct fb_modelist, list);
+	m = &modelist->mode;
+	m_vrr = *m;
+	m_vrr.vmode |= FB_VMODE_VRR;
+	fb_add_videomode(&m_vrr, head);
+}
+
 static void tegra_dc_dsi_modeset_notifier(struct tegra_dc *dc)
 {
 	struct tegra_dc_dsi_data *dsi = tegra_dc_get_outdata(dc);
@@ -5412,5 +5449,6 @@ struct tegra_dc_out_ops tegra_dc_dsi_ops = {
 	.setup_clk = tegra_dc_dsi_setup_clk,
 	.osidle = tegra_dc_dsi_osidle,
 	.vrr_enable = tegra_dc_dsi_vrr_enable,
+	.vrr_update_monspecs = tegra_dsi_vrr_update_monspecs,
 	.modeset_notifier = tegra_dc_dsi_modeset_notifier,
 };
