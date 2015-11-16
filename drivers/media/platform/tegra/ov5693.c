@@ -3257,6 +3257,21 @@ ov5693_write_eeprom(struct ov5693_info *info, u16 addr, u8 val)
 	return regmap_write(info->eeprom[addr >> 8].regmap, addr & 0xFF, val);
 }
 
+static int
+ov5693_hw_detect(struct ov5693_info *info)
+{
+	if (ov5693_power_on(info, false))
+		return -1;
+
+	if (ov5693_get_fuse_id(info))
+		return -1;
+
+	if (ov5693_power_off(info))
+		return -1;
+
+	return 0;
+}
+
 static long ov5693_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct ov5693_info *info = file->private_data;
@@ -3655,7 +3670,6 @@ static int ov5693_probe(
 		.val_bits = 8,
 	};
 
-
 	dev_dbg(&client->dev, "%s\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (info == NULL) {
@@ -3741,6 +3755,9 @@ static int ov5693_probe(
 	if (info->pdata->num)
 		snprintf(info->devname, sizeof(info->devname), "%s.%u",
 			 info->devname, info->pdata->num);
+
+	if (ov5693_hw_detect(info))
+		return -ENODEV;
 
 	info->miscdev.name = info->devname;
 	info->miscdev.fops = &ov5693_fileops;
