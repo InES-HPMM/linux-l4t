@@ -20,6 +20,10 @@
 
 	i2c@7000d000 {
 		max77620@3c {
+			low-battery-monitor {
+				maxim,low-battery-shutdown-enable;
+			};
+
 			fps {
 				fps@0 {
 					maxim,fps-time-period = <1280>;
@@ -33,6 +37,9 @@
 			regulators {
 				ldo2 {
 					regulator-name = "vddio-sdmmc1";
+				};
+				ldo4 {
+					regulator-disable-active-discharge;
 				};
 				ldo6 {
 					/delete-property/ regulator-always-on;
