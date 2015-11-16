@@ -2934,6 +2934,9 @@ static const struct snd_soc_dapm_widget rt5659_dapm_widgets[] = {
 	/* SPDIF */
 	SND_SOC_DAPM_MUX("SPDIF Mux", SND_SOC_NOPM, 0, 0, &rt5659_spdif_mux),
 
+	SND_SOC_DAPM_SUPPLY("SYS CLK DET", RT5659_CLK_DET, 3, 0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("CLKDET", RT5659_CLK_DET, 0, 0, NULL, 0),
+
 	/* Output Lines */
 	SND_SOC_DAPM_OUTPUT("HPOL"),
 	SND_SOC_DAPM_OUTPUT("HPOR"),
@@ -2964,6 +2967,8 @@ static const struct snd_soc_dapm_route rt5659_dapm_routes[] = {
 	{ "DAC Mono Left Filter", NULL, "DAC Mono L ASRC", is_using_asrc },
 	{ "DAC Mono Right Filter", NULL, "DAC Mono R ASRC", is_using_asrc },
 	{ "DAC Stereo1 Filter", NULL, "DAC STO ASRC", is_using_asrc },
+
+	{ "SYS CLK DET", NULL, "CLKDET" },
 
 	{ "I2S1", NULL, "I2S1 ASRC" },
 	{ "I2S2", NULL, "I2S2 ASRC" },
@@ -3297,6 +3302,7 @@ static const struct snd_soc_dapm_route rt5659_dapm_routes[] = {
 	{ "SPO R MIX", "SPKVOL R Switch", "SPKVOL R" },
 	{ "SPK Amp", NULL, "SPO L MIX" },
 	{ "SPK Amp", NULL, "SPO R MIX" },
+	{ "SPK Amp", NULL, "SYS CLK DET" },
 	{ "SPO Playback", "Switch", "SPK Amp" },
 	{ "SPOL", NULL, "SPO Playback" },
 	{ "SPOR", NULL, "SPO Playback" },
@@ -3306,12 +3312,14 @@ static const struct snd_soc_dapm_route rt5659_dapm_routes[] = {
 	{ "Mono MIX", "MONOVOL Switch", "MONOVOL" },
 	{ "Mono Amp", NULL, "Mono MIX" },
 	{ "Mono Amp", NULL, "Mono Vref" },
+	{ "Mono Amp", NULL, "SYS CLK DET" },
 	{ "Mono Playback", "Switch", "Mono Amp" },
 	{ "MONOOUT", NULL, "Mono Playback" },
 
 	{ "HP Amp", NULL, "DAC L1" },
 	{ "HP Amp", NULL, "DAC R1" },
 	{ "HP Amp", NULL, "Charge Pump" },
+	{ "HP Amp", NULL, "SYS CLK DET" },
 	{ "HPO L Playback", "Switch", "HP Amp"},
 	{ "HPO R Playback", "Switch", "HP Amp"},
 	{ "HPOL", NULL, "HPO L Playback" },
@@ -3325,6 +3333,7 @@ static const struct snd_soc_dapm_route rt5659_dapm_routes[] = {
 	{ "LOUT R MIX", "OUTVOL R Switch", "OUTVOL R" },
 	{ "LOUT Amp", NULL, "LOUT L MIX" },
 	{ "LOUT Amp", NULL, "LOUT R MIX" },
+	{ "LOUT Amp", NULL, "SYS CLK DET" },
 	{ "LOUT L Playback", "Switch", "LOUT Amp" },
 	{ "LOUT R Playback", "Switch", "LOUT Amp" },
 	{ "LOUTL", NULL, "LOUT L Playback" },
