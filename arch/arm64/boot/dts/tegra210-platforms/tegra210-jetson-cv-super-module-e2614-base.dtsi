@@ -28,6 +28,11 @@
 			interrupts = <TEGRA_GPIO(X, 0) 0x0>;
 			#interrupt-cells = <2>;
 			interrupt-controller;
+			gpio-init-names = "default";
+			gpio-init-0 = <&tca6416_20_default>;
+			tca6416_20_default: default {
+				gpio-output-low = <1>;
+			};
 		};
 
 		icm20628@68 {
