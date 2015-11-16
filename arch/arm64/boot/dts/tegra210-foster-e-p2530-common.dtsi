@@ -146,6 +146,11 @@
 		dt-override-status-odm-data = <0x01000000 0x00000000>;
 	};
 
+	psy_extcon {
+		status = "okay";
+		power-supply,default-ac-cable-connected;
+	};
+
 	/* Put common control config here */
 	xusb_pad_ctl: xusb_padctl {
 		nvidia,ss_portmap = <0x0321>;
