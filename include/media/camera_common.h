@@ -66,6 +66,7 @@ struct camera_common_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
 	struct regulator *iovdd;
+	struct regulator *vcmvdd;
 	struct clk *mclk;
 	unsigned int pwdn_gpio;
 	unsigned int reset_gpio;
@@ -77,6 +78,7 @@ struct camera_common_regulators {
 	const char *avdd;
 	const char *dvdd;
 	const char *iovdd;
+	const char *vcmvdd;
 };
 
 struct camera_common_pdata {
