@@ -2106,9 +2106,9 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 	}
 	sdhci_writel(sdhci, val, SDMMC_AUTO_CAL_CONFIG);
 
-	/* Wait for 1us after auto calibration is enabled*/
+	/* Wait for 2us after auto calibration is enabled*/
 	if (soc_data->nvquirks2 & NVQUIRK2_ADD_DELAY_AUTO_CALIBRATION)
-		udelay(1);
+		udelay(2);
 
 	/* Wait until the calibration is done */
 	do {
