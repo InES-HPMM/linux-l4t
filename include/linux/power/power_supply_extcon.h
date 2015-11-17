@@ -25,6 +25,7 @@
 struct power_supply_extcon_plat_data {
 	const char *extcon_name;
 	const char *y_cable_extcon_name;
+	bool default_ac_connected;
 };
 
 #endif

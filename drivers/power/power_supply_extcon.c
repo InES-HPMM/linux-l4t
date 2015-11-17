@@ -42,6 +42,7 @@ struct power_supply_extcon {
 	struct power_supply			usb;
 	uint8_t					ac_online;
 	uint8_t					usb_online;
+	bool					default_ac_connected;
 	struct power_supply_extcon_plat_data	*pdata;
 	spinlock_t				lock;
 	struct power_supply_cables		*psy_cables;
@@ -199,6 +200,8 @@ static int power_supply_extcon_get_property(struct power_supply *psy,
 	if (psy->type == POWER_SUPPLY_TYPE_MAINS) {
 		psy_extcon = container_of(psy, struct power_supply_extcon, ac);
 		online = psy_extcon->ac_online;
+		if(!online && psy_extcon->default_ac_connected)
+			online = true;
 	} else if (psy->type == POWER_SUPPLY_TYPE_USB) {
 		psy_extcon = container_of(psy, struct power_supply_extcon, usb);
 		online = psy_extcon->usb_online;
@@ -310,6 +313,10 @@ static struct power_supply_extcon_plat_data *psy_extcon_get_dt_pdata(
 	if (!ret)
 		pdata->y_cable_extcon_name = pstr;
 
+	pdata->default_ac_connected = false;
+	pdata->default_ac_connected = of_property_read_bool(np,
+				"power-supply,default-ac-cable-connected");
+
 	return pdata;
 }
 
@@ -364,6 +371,7 @@ static int psy_extcon_probe(struct platform_device *pdev)
 		dev_err(psy_extcon->dev, "failed: power supply register\n");
 		goto pwr_sply_error;
 	}
+	psy_extcon->default_ac_connected = pdata->default_ac_connected;
 
 	psy_extcon->psy_cables = psy_cables;
 	psy_extcon->max_psy_cables = ARRAY_SIZE(psy_cables);

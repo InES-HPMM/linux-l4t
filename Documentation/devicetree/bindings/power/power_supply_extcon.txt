@@ -17,6 +17,7 @@ Optional properties:
 -------------------
 - power-supply,extcon-dev: Extcon device name for the charger cables.
 - power-supply,y-cable-extcon-dev: extcon device name for the y-cable.
+- power-supply,default-ac-cable-connected: to set ac cable state true by default.
 
 Example:
 	psy_extcon {
