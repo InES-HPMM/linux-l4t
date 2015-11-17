@@ -12,6 +12,7 @@ Recommended properties:
                      Documentation/devicetree/bindings/spi/spi-bus.txt
 Optional properties:
 - nvidia,clock-always-on: Enable clock of spi always.
+- nvidia,polling-mode: Use polling method instead of interrupts
 - nvidia,boost-reg-access: In T210 and earlier chips SPI register access
 	is dependant on SPI clock frequency. Setting this option would
 	allow SPI clock frequency to be boosted. Benefitial when running
