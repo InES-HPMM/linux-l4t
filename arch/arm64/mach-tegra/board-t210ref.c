@@ -222,8 +222,6 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("foster_e");
 	else if (of_machine_is_compatible("nvidia,jetson-e"))
 		tegra_soc_device_init("jetson_e");
-	else if (of_machine_is_compatible("nvidia,odin"))
-		tegra_soc_device_init("odin");
 	else if (of_machine_is_compatible("nvidia,jetson-cv"))
 		tegra_soc_device_init("jetson_cv");
 	else if (of_machine_is_compatible("nvidia,he2290"))
@@ -419,7 +417,6 @@ static const char * const t210ref_dt_board_compat[] = {
 	"nvidia,loki-e",
 	"nvidia,foster-e",
 	"nvidia,jetson-e",
-	"nvidia,odin",
 	"nvidia,jetson-cv",
 	"nvidia,he2290",
 	"nvidia,t18x-interposer",
