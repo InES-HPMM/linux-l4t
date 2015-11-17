@@ -91,7 +91,7 @@ u8 nvtouch_data[20000];
 #define K7_CMD_DATA_OFFSET (0x030400)
 #define K7_CMD_DATA_SIZE (251 + K7_RD_HEADER_SIZE)
 #define K7_Q_SIZE (8)
-#define K7_DRIVER_VERSION (17)
+#define K7_DRIVER_VERSION (18)
 #define K7_INT_STATUS_MASK_DATA (0x01)
 #define K7_INT_STATUS_MASK_BOOT (0x02)
 #define K7_INT_STATUS_MASK_CMD  (0x04)
@@ -780,22 +780,6 @@ static void lr388k7_work_handler(struct work_struct *work)
 	mutex_unlock(&ts->mutex);
 }
 
-static void lr388k7_enable_irq(struct lr388k7 *ts)
-{
-	if (g_st_dbg.wakeup.enable == 1)
-		disable_irq_wake(ts->irq);
-	else
-		enable_irq(ts->irq);
-}
-
-static void lr388k7_disable_irq(struct lr388k7 *ts)
-{
-	if (g_st_dbg.wakeup.enable == 1)
-		enable_irq_wake(ts->irq);
-	else
-		disable_irq(ts->irq);
-}
-
 static irqreturn_t lr388k7_wakeup_thread(int irq, void *_ts)
 {
 	struct lr388k7 *ts = (struct lr388k7 *)_ts;
@@ -844,26 +828,16 @@ static irqreturn_t lr388k7_irq_thread(int irq, void *_ts)
 	return IRQ_HANDLED;
 }
 
-static void lr388k7_start_scan(struct lr388k7 *ts)
-{
-	lr388k7_enable_irq(ts);
-}
-
-static void lr388k7_stop_scan(struct lr388k7 *ts)
-{
-	lr388k7_disable_irq(ts);
-}
-
 /* must be called with ts->mutex held */
 static void __lr388k7_disable(struct lr388k7 *ts)
 {
-	lr388k7_stop_scan(ts);
+	disable_irq(ts->irq);
 }
 
 /* must be called with ts->mutex held */
 static void __lr388k7_enable(struct lr388k7 *ts)
 {
-	lr388k7_start_scan(ts);
+	enable_irq(ts->irq);
 }
 
 static ssize_t lr388k7_ts_force_cap_show(struct device *dev,
@@ -1419,6 +1393,8 @@ static int lr388k7_open(struct input_dev *input)
 static void lr388k7_close(struct input_dev *input)
 {
 	struct lr388k7 *ts = input_get_drvdata(input);
+
+	dev_info(&ts->spi->dev, "[ENTER] close\n");
 	mutex_lock(&ts->mutex);
 
 	__lr388k7_disable(ts);
@@ -1426,6 +1402,7 @@ static void lr388k7_close(struct input_dev *input)
 	ts->opened = false;
 
 	mutex_unlock(&ts->mutex);
+	dev_info(&ts->spi->dev, "[EXIT] close\n");
 }
 
 
@@ -2715,7 +2692,7 @@ static int lr388k7_probe(struct spi_device *spi)
 		goto err_free_mem;
 	}
 
-	lr388k7_disable_irq(ts);
+	disable_irq(ts->irq);
 
 	spi_set_drvdata(spi, ts);
 
@@ -2956,7 +2933,6 @@ static void lr388k7_stop(struct lr388k7 *ts)
 
 static int lr388k7_suspend(struct lr388k7 *ts)
 {
-	lr388k7_disable_irq(ts);
 
 	lr388k7_stop(ts);
 
@@ -2976,7 +2952,6 @@ static int lr388k7_resume(struct lr388k7 *ts)
 
 	lr388k7_send_signal(g_st_state.u32_pid, LR388K7_SIGNAL_WAKE);
 
-	lr388k7_enable_irq(ts);
 
 	if (g_st_dbg.wakeup.enable == 2)
 		g_st_dbg.wakeup.enable = g_u16_wakeup_enable;
@@ -3018,10 +2993,18 @@ static int lr388k7_dev_pm_suspend(struct device *dev)
 {
 	struct lr388k7 *ts = dev_get_drvdata(dev);
 
-	if (g_st_state.b_is_suspended || g_st_state.b_is_disabled)
-		return 0;
-
-	lr388k7_suspend(ts);
+	if (!g_st_state.b_is_suspended && !g_st_state.b_is_disabled) {
+		/* only called when input device is not disabled/enabled via
+		 * /sys/class/input/input0/enabled interface.
+		 * Android uses sysfs by default and will not run into here
+		 */
+		lr388k7_suspend(ts);
+#if defined(CONFIG_ANDROID)
+		dev_info(ts->dev, "disabled without input powerhal support.\n");
+#endif
+	}
+	if (g_st_dbg.wakeup.enable == 1)
+		enable_irq_wake(ts->irq);
 
 	return 0;
 }
@@ -3030,10 +3013,18 @@ static int lr388k7_dev_pm_resume(struct device *dev)
 {
 	struct lr388k7 *ts = dev_get_drvdata(dev);
 
-	if (g_st_state.b_is_disabled)
-		return 0;
-	else
+	if (!g_st_state.b_is_disabled) {
+		/* only called when input device is not disabled/enabled via
+		 * /sys/class/input/input0/enabled interface.
+		 * Android uses sysfs by default and will not run into here
+		 */
 		lr388k7_resume(ts);
+#if defined(CONFIG_ANDROID)
+		dev_info(ts->dev, "enabled without input powerhal support.\n");
+#endif
+	}
+	if (g_st_dbg.wakeup.enable == 1)
+		disable_irq_wake(ts->irq);
 
 	return 0;
 }
