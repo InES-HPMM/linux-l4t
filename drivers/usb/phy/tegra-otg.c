@@ -151,6 +151,7 @@ static u64 tegra_ehci_dmamask = DMA_BIT_MASK(64);
 static struct tegra_otg *tegra_clone;
 static struct notifier_block otg_vbus_nb;
 static struct notifier_block otg_id_nb;
+static struct wakeup_source *otg_work_wl;
 
 enum tegra_connect_type {
 	CONNECT_TYPE_Y_CABLE,
@@ -625,6 +626,7 @@ static void irq_work(struct work_struct *work)
 	unsigned long flags;
 	unsigned long status;
 
+	__pm_stay_awake(otg_work_wl);
 	msleep(50);
 
 	mutex_lock(&tegra->irq_work_mutex);
@@ -655,6 +657,7 @@ static void irq_work(struct work_struct *work)
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	tegra_change_otg_state(tegra, to);
 	mutex_unlock(&tegra->irq_work_mutex);
+	__pm_relax(otg_work_wl);
 }
 
 static irqreturn_t tegra_otg_irq(int irq, void *data)
@@ -1612,6 +1615,8 @@ static struct platform_driver tegra_otg_driver = {
 
 static int __init tegra_otg_init(void)
 {
+	otg_work_wl = wakeup_source_register("otg_work_wakelock");
+
 	return platform_driver_register(&tegra_otg_driver);
 }
 fs_initcall(tegra_otg_init);
