@@ -29,7 +29,7 @@
 	model = "darcy";
 	compatible = "nvidia,foster-e", "nvidia,tegra210", "nvidia,darcy";
 	nvidia,dtsfilename = __FILE__;
-	nvidia,fastboot-usb-pid = <0xb421>;
+	nvidia,fastboot-usb-pid = <0xb442>;
 
 	firmware {
 		android {
