@@ -74,10 +74,16 @@
 				};
 
 				ldo3 {
+					regulator-name = "vdd-3v3-eth";
+					regulator-min-microvolt = <3300000>;
+					regulator-max-microvolt = <3300000>;
+					regulator-always-on;
+					regulator-boot-on;
 					regulator-enable-ramp-delay = <50>;
 					regulator-disable-ramp-delay = <1110>;
 					regulator-ramp-delay = <100000>;
 					regulator-ramp-delay-scale = <200>;
+					maxim,fps-source = <FPS_SRC_NONE>;
 				};
 
 				ldo4 {
