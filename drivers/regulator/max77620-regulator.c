@@ -1,7 +1,7 @@
 /*
  * Maxim MAX77620 Regulator driver
  *
- * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Mallikarjun Kasoju <mkasoju@nvidia.com>
  * 	   Laxman Dewangan <ldewangan@nvidia.com>
@@ -641,13 +641,14 @@ static int max77620_regulator_preinit(struct max77620_regulator *reg, int id)
 
 	if (ridata->constraints.enable_active_discharge ||
 		ridata->constraints.disable_active_discharge) {
-		val = 0;
 		if (rinfo->type == MAX77620_REGULATOR_TYPE_SD) {
 			mask = MAX77620_SD_CFG1_ADE_MASK;
+			val = MAX77620_SD_CFG1_ADE_DISABLE;
 			if (ridata->constraints.enable_active_discharge)
 				val = MAX77620_SD_CFG1_ADE_ENABLE;
 		} else {
 			mask = MAX77620_LDO_CFG2_ADE_MASK;
+			val = MAX77620_LDO_CFG2_ADE_DISABLE;
 			if (ridata->constraints.enable_active_discharge)
 				val = MAX77620_LDO_CFG2_ADE_ENABLE;
 		}

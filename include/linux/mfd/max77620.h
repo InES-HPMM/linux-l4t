@@ -1,7 +1,7 @@
 /*
  * Maxim MAX77620
  *
- * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2014-2015 NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -193,8 +193,8 @@
 #define MAX77620_SD_POWER_MODE_MASK	0x30
 #define MAX77620_SD_POWER_MODE_SHIFT	4
 #define MAX77620_SD_CFG1_ADE_MASK	BIT(3)
-#define MAX77620_SD_CFG1_ADE_DISABLE	0
-#define MAX77620_SD_CFG1_ADE_ENABLE	BIT(3)
+#define MAX77620_SD_CFG1_ADE_DISABLE	BIT(3)
+#define MAX77620_SD_CFG1_ADE_ENABLE	0
 #define MAX77620_SD_FPWM_MASK		0x04
 #define MAX77620_SD_FPWM_SHIFT		2
 #define MAX77620_SD_FSRADE_MASK		0x01
