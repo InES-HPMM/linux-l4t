@@ -177,6 +177,16 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 			break;
 		}
 		/* fall thru for a01 part */
+	case 0x8F:
+		if (a02) {
+			cpu_speedo_id = 1;
+			soc_speedo_id = 0;
+			gpu_speedo_id = 2;
+			threshold_index = 0;
+			core_min_mv = 800;
+			break;
+		}
+		/* fall thru for a01 part */
 	default:
 		pr_warn("Tegra21: Unknown SKU %d\n", sku);
 		cpu_speedo_id = 0;
