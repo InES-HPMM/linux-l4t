@@ -245,8 +245,8 @@ module_param(tpg_mode, int, 0644);
 #define TEGRA_IMAGE_FORMAT_T_Y8_U8__Y8_V8		200
 #define TEGRA_IMAGE_FORMAT_T_Y8_V8__Y8_U8		201
 #define TEGRA_IMAGE_FORMAT_T_U8_Y8__V8_Y8		202
-#define TEGRA_IMAGE_FORMAT_T_T_V8_Y8__U8_Y8		203
-#define TEGRA_IMAGE_FORMAT_T_T_Y8__U8__V8_N444		224
+#define TEGRA_IMAGE_FORMAT_T_V8_Y8__U8_Y8		203
+#define TEGRA_IMAGE_FORMAT_T_Y8__U8__V8_N444		224
 #define TEGRA_IMAGE_FORMAT_T_Y8__U8V8_N444		225
 #define TEGRA_IMAGE_FORMAT_T_Y8__V8U8_N444		226
 #define TEGRA_IMAGE_FORMAT_T_Y8__U8__V8_N422		227
@@ -1105,6 +1105,7 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 	int height = chan->height;
 	struct chan_regs_config *regs = &chan->regs;
 	int format = 0, data_type = 0, image_size = 0;
+	int bypass_pixel_transform = 0;
 
 	/* Skip VI2/CSI2 setup for second and later frame capture */
 	if (!chan->sof)
@@ -1200,29 +1201,49 @@ static int vi2_capture_setup(struct vi2_channel *chan)
 		format = TEGRA_IMAGE_FORMAT_T_A8B8G8R8;
 		data_type = TEGRA_IMAGE_DT_RGB888;
 		image_size = width * 3;
+		bypass_pixel_transform = 0;
 	} else if ((chan->code == V4L2_MBUS_FMT_UYVY8_2X8) ||
 		   (chan->code == V4L2_MBUS_FMT_VYUY8_2X8) ||
 		   (chan->code == V4L2_MBUS_FMT_YUYV8_2X8) ||
 		   (chan->code == V4L2_MBUS_FMT_YVYU8_2X8)) {
-		/* TBD */
+		switch (chan->code) {
+		case V4L2_MBUS_FMT_UYVY8_2X8:
+			format = TEGRA_IMAGE_FORMAT_T_U8_Y8__V8_Y8;
+			break;
+		case V4L2_MBUS_FMT_VYUY8_2X8:
+			format = TEGRA_IMAGE_FORMAT_T_V8_Y8__U8_Y8;
+			break;
+		case V4L2_MBUS_FMT_YUYV8_2X8:
+			format = TEGRA_IMAGE_FORMAT_T_Y8_U8__Y8_V8;
+			break;
+		case V4L2_MBUS_FMT_YVYU8_2X8:
+			format = TEGRA_IMAGE_FORMAT_T_Y8_V8__Y8_U8;
+			break;
+		}
+		data_type = TEGRA_IMAGE_DT_YUV422_8;
+		image_size = width * 2;
+		bypass_pixel_transform = 0;
 	} else if ((chan->code == V4L2_MBUS_FMT_SBGGR8_1X8) ||
 		   (chan->code == V4L2_MBUS_FMT_SGBRG8_1X8)) {
 		format = TEGRA_IMAGE_FORMAT_T_L8;
 		data_type = TEGRA_IMAGE_DT_RAW8;
 		image_size = width;
+		bypass_pixel_transform = 1;
 	} else if ((chan->code == V4L2_MBUS_FMT_SBGGR10_1X10) ||
 		   (chan->code == V4L2_MBUS_FMT_SRGGB10_1X10)) {
 		format = TEGRA_IMAGE_FORMAT_T_R16_I;
 		data_type = TEGRA_IMAGE_DT_RAW10;
 		image_size = width * 10 / 8;
+		bypass_pixel_transform = 1;
 	} else if (chan->code == V4L2_MBUS_FMT_SRGGB12_1X12) {
 		format = TEGRA_IMAGE_FORMAT_T_R16_I;
 		data_type = TEGRA_IMAGE_DT_RAW12;
 		image_size = width * 12 / 8;
+		bypass_pixel_transform = 1;
 	}
 
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_IMAGE_DEF,
-			(vi2_cam->tpg_mode ? 0 : 1 << 24) | (format << 16) |
+			(bypass_pixel_transform << 24) | (format << 16) |
 			0x1);
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_IMAGE_DT, data_type);
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_IMAGE_SIZE_WC, image_size);
