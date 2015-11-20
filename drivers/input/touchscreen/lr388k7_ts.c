@@ -146,8 +146,8 @@ struct lr388k7 {
 #if defined(ACTIVE_ENABLE)
 	struct input_dev	*idev_active;
 	int                     tool;
-	unsigned int            gpio_clk_sel;
 #endif
+	unsigned int            gpio_clk_sel;
 	char			phys[32];
 	struct mutex		mutex;
 	unsigned int		irq;
@@ -278,6 +278,9 @@ static int lr388k7_set_clk_sel(unsigned int sel)
 	struct lr388k7 *ts = spi_get_drvdata(g_spi);
 
 	if (!ts)
+		return false;
+
+	if (!gpio_is_valid(ts->gpio_clk_sel))
 		return false;
 
 	if (!sel)
@@ -2324,21 +2327,18 @@ static struct lr388k7_platform_data *lr388k7_parse_dt(struct device *dev,
 		goto exit_release_all_gpio;
 	pdata->name_of_clock_con = (char *)str;
 
+#endif
 	pdata->gpio_clk_sel = of_get_named_gpio_flags(np,
 						      "clock-sel-gpio",
 						      0,
 						      NULL);
-	if (!gpio_is_valid(pdata->gpio_clk_sel)) {
-		dev_err(dev, "Invalid clock-sel-gpio\n");
-		return ERR_PTR(-EINVAL);
+	if (gpio_is_valid(pdata->gpio_clk_sel)) {
+		ret = gpio_request(pdata->gpio_clk_sel, "clock-sel-gpio");
+		if (ret)
+			dev_err(dev, "gpio_request(clk_sel) failed\n");
+		else
+			gpio_direction_output(pdata->gpio_clk_sel, 0);
 	}
-	ret = gpio_request(pdata->gpio_clk_sel, "clock-sel-gpio");
-	if (ret < 0) {
-		dev_err(dev, "gpio_request failed\n");
-		return ERR_PTR(-EINVAL);
-	}
-	gpio_direction_output(pdata->gpio_clk_sel, 0);
-#endif
 
 	ret = of_property_read_u32(np, "platform-id", &val);
 	if (ret < 0)
@@ -2469,8 +2469,8 @@ static int lr388k7_probe(struct spi_device *spi)
 	ts->b_eraser_active = false;
 #if defined(ACTIVE_ENABLE)
 	ts->tool        = 0;
-	ts->gpio_clk_sel = pdata->gpio_clk_sel;
 #endif
+	ts->gpio_clk_sel = pdata->gpio_clk_sel;
 	ts->platform_id = pdata->platform_id;
 
 	mutex_init(&ts->mutex);
@@ -2499,10 +2499,15 @@ static int lr388k7_probe(struct spi_device *spi)
 		goto err_free_mem;
 	}
 
+	if (gpio_is_valid(ts->gpio_clk_sel)) {
 #if defined(ACTIVE_ENABLE)
-	/* Select external clock */
-	gpio_set_value(ts->gpio_clk_sel, 0);
+		/* Select external clock */
+		gpio_set_value(ts->gpio_clk_sel, 1);
+#else
+		/* Select internal clock */
+		gpio_set_value(ts->gpio_clk_sel, 0);
 #endif
+	}
 	/* Reset assert */
 	gpio_set_value(ts->gpio_reset, 0);
 	g_st_state.b_is_reset = true;
@@ -2771,9 +2776,9 @@ static int lr388k7_remove(struct spi_device *spi)
 
 	gpio_free(ts->gpio_reset);
 	gpio_free(ts->gpio_irq);
-#if defined(ACTIVE_ENABLE)
-	gpio_free(ts->gpio_clk_sel);
-#endif
+	if (gpio_is_valid(ts->gpio_clk_sel))
+		gpio_free(ts->gpio_clk_sel);
+
 	input_unregister_device(ts->idev);
 
 	kfree(ts);
