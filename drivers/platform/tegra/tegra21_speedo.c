@@ -119,29 +119,28 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 #endif
 	switch (sku) {
 	case 0x13:
-		if (a02) {
-			cpu_speedo_id = shield_sku ? 2 : 5;
+		if (a02 && !shield_sku) {
+			cpu_speedo_id = 5;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 2;
 			threshold_index = 0;
 			core_min_mv = 800;
 			break;
 		}
-		/* fall thru for a01 */
+		/* fall thru for a01 or shild sku */
 	case 0x00: /* Engg sku */
 	case 0x01: /* Engg sku */
 	case 0x07:
 	case 0x17:
 		if (!vcm31_sku || (sku != 0x17)) {
-			if (a02) {
-				cpu_speedo_id = shield_sku ? 2 : 1;
+			if (a02 && !shield_sku) {
+				cpu_speedo_id = 1;
 				soc_speedo_id = 0;
 				gpu_speedo_id = 2;
 				threshold_index = 0;
 				core_min_mv = 800;
 			} else {
-				cpu_speedo_id =
-					(shield_sku && (sku != 0x87)) ? 2 : 0;
+				cpu_speedo_id = shield_sku ? 2 : 0;
 				soc_speedo_id = 0;
 				gpu_speedo_id = 1;
 				threshold_index = 0;
@@ -171,9 +170,9 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		if (a02) {
 			cpu_speedo_id = 6;
 			soc_speedo_id = 0;
-			gpu_speedo_id = 2;
+			gpu_speedo_id = 1;
 			threshold_index = 0;
-			core_min_mv = 800;
+			core_min_mv = 825;
 			break;
 		}
 		/* fall thru for a01 part */
