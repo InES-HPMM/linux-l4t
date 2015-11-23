@@ -2259,8 +2259,9 @@ static struct lr388k7_platform_data *lr388k7_parse_dt(struct device *dev,
 	struct lr388k7_platform_data *pdata;
 	struct device_node *np = dev->of_node;
 	int ret, val, irq_gpio;
+#if defined(ACTIVE_ENABLE)
 	const char *str;
-
+#endif
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
 		return ERR_PTR(-ENOMEM);
@@ -2312,6 +2313,7 @@ static struct lr388k7_platform_data *lr388k7_parse_dt(struct device *dev,
 		goto exit_release_all_gpio;
 	pdata->ts_touch_num_max = val;
 
+#if defined(ACTIVE_ENABLE)
 	ret = of_property_read_string(np, "name-of-clock", &str);
 	if (ret < 0)
 		goto exit_release_all_gpio;
@@ -2322,7 +2324,6 @@ static struct lr388k7_platform_data *lr388k7_parse_dt(struct device *dev,
 		goto exit_release_all_gpio;
 	pdata->name_of_clock_con = (char *)str;
 
-#if defined(ACTIVE_ENABLE)
 	pdata->gpio_clk_sel = of_get_named_gpio_flags(np,
 						      "clock-sel-gpio",
 						      0,
