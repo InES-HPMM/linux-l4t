@@ -9,6 +9,7 @@ Required properties:
 
 Optional properties:
 - nvidia,has-hostpc: Specifies if the controller supports hostpc property.
+- nvidia,turn-off-vbus-on-lp0: Specify whether vbus should be powered off during LP0.
 - nvidia,unaligned-dma-buf-supported: Specify if unaligned dma buffer are supported by controller.
 - nvidia,power-off-on-suspend: Specifies the phy to turnoff on bus_suspend.
 - nvidia,is-intf-utmi: Specify the phy type is UTMI.

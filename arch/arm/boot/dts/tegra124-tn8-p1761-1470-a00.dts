@@ -1,7 +1,7 @@
 /*
  * arch/arm/boot/dts/tegra124-tn8-p1761-1470-a00.dts
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -150,7 +150,7 @@
 	ehci@7d000000 {
 		nvidia,port-otg;
 		nvidia,has-hostpc;
-		nvidia,turn_off_vbus_on_lp0;
+		nvidia,turn-off-vbus-on-lp0;
 		nvidia,id-detection-type = <2>;
 		nvidia,hssync-start-delay = <0>;
 		nvidia,idle-wait-delay = <17>;

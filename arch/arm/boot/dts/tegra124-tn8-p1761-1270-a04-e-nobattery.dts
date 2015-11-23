@@ -284,7 +284,7 @@
 	ehci@7d000000 {
 		nvidia,port-otg;
 		nvidia,has-hostpc;
-		nvidia,turn_off_vbus_on_lp0;
+		nvidia,turn-off-vbus-on-lp0;
 		nvidia,id-detection-type = <2>;
 		nvidia,hssync-start-delay = <0>;
 		nvidia,idle-wait-delay = <17>;
