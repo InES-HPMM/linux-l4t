@@ -1307,6 +1307,9 @@ static int utmi_phy_resume(struct tegra_usb_phy *phy)
 		port_connected = val & USB_PORTSC_CCS;
 		is_lp0 = !(readl(base + USB_ASYNCLISTADDR));
 
+		if (phy->pdata->u_data.host.turn_off_vbus_on_lp0 && is_lp0)
+			phy->port_speed = USB_PHY_PORT_SPEED_UNKNOWN;
+
 		if ((phy->port_speed < USB_PHY_PORT_SPEED_UNKNOWN) &&
 			(port_connected ^ is_lp0)) {
 			utmi_phy_restore_start(phy);
