@@ -22,6 +22,15 @@ Optional subnode properties:
 - ti,current-warning-limit-ma: Cureent warning limit for the given channel.
 - ti,current-critical-limit-ma: Current critical limit for the given channel.
 - ti,shunt-resistor-mohm: Shunt register in milli ohm.
+- shunt-volt-offset-uv: reference to shunt-volt-offset node
+
+shunt-volt-offset node properties:
+- offset: value to be subtracted from shunt voltage reading
+
+conditional_offset subnode properties:
+	- shunt_volt_start: conditional offset start voltage
+	- shunt_volt_end: conditional offset end voltage
+	- offset: value to be subtracted from <shunt_volt_start to shunt_volt_end> range
 
 IIO channel properties:
 It follows same mechanism for iio properties detailed on ../iio-bindings.txt
@@ -55,6 +64,15 @@ The INA3221_CHAN_INDEX defined as:
 #define INA3221_CHAN_INDEX(chan, type, add) (chan * 5 + INA3221_##type + INA3221_##add)
 
 Example:
+	p2180_shuntv_offset: shuntv-offset {
+		offset = <40>;
+		conditional_offset@0 {
+			shunt_volt_start = <100>;
+			shunt_volt_end = <1800>;
+			offset = <80>;
+		};
+	};
+
 	ina3221x@40 {
 		compatible = "ti,ina3221x";
 		reg = <0x40>;
@@ -70,6 +88,7 @@ Example:
 			ti,current-warning-limit-ma = <8000>;
 			ti,current-critical-limit-ma = <9000>;
 			ti,shunt-resistor-mohm = <1>;
+			shunt-volt-offset-uv = <&p2180_shuntv_offset>;
 		};
 
 		channel@1 {

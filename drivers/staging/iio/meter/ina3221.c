@@ -102,11 +102,24 @@ enum mode {
 #define IS_TRIGGERED(x) (!((x) & 2))
 #define IS_CONTINUOUS(x) ((x) & 2)
 
+struct shuntv_conditional_offset {
+	s32 shuntv_start;
+	s32 shuntv_end;
+	s32 offset;
+};
+
+struct shunt_volt_offset {
+	s32 offset;
+	struct shuntv_conditional_offset *cond_offset;
+	s32 cond_offset_size;
+};
+
 struct ina3221_chan_pdata {
 	const char *rail_name;
 	u32 warn_conf_limits;
 	u32 crit_conf_limits;
 	u32 shunt_resistor;
+	struct shunt_volt_offset *shuntv_offset;
 };
 
 struct ina3221_platform_data {
@@ -159,12 +172,41 @@ static inline int busv_register_to_mv(u16 reg)
 }
 
 /* convert shunt voltage register value to current (in mA) */
-static int shuntv_register_to_ma(u16 reg, int resistance)
+static int shuntv_register_to_ma(u16 reg, int resistance,
+	struct shunt_volt_offset *shuntv_offset)
 {
 	int uv, ma;
+	int offset = 0;
+	struct shuntv_conditional_offset *cond_offset;
+	int i;
 
 	uv = (s16)reg;
-	uv = ((uv >> 3) * 40); /* LSB (4th bit) is 40uV */
+
+	if (uv < 0)
+		uv = ((((uv * -1) >> 3) * 40) * -1);
+	else
+		uv = ((uv >> 3) * 40); /* LSB (4th bit) is 40uV */
+
+	if (shuntv_offset != NULL) {
+		offset = shuntv_offset->offset;
+		cond_offset = shuntv_offset->cond_offset;
+
+		for (i = 0; i < shuntv_offset->cond_offset_size; i++) {
+			if (uv >= cond_offset->shuntv_start &&
+					uv <= cond_offset->shuntv_end) {
+				offset = cond_offset->offset;
+				break;
+			}
+
+			cond_offset++;
+		}
+
+		/* apply shunt volt offset */
+		if (uv < 0)
+			uv += offset;
+		else
+			uv -= offset;
+	}
 	/*
 	 * calculate uv/resistance with rounding knowing that C99 truncates
 	 * towards zero
@@ -385,7 +427,8 @@ static int ina3221_get_channel_current(struct ina3221_chip *chip,
 		goto exit;
 	}
 	*current_ma = shuntv_register_to_ma(vsh,
-			 chip->pdata->cpdata[channel].shunt_resistor);
+			 chip->pdata->cpdata[channel].shunt_resistor,
+				chip->pdata->cpdata[channel].shuntv_offset);
 exit:
 	mutex_unlock(&chip->mutex);
 	return ret;
@@ -418,7 +461,8 @@ static int ina3221_get_channel_power(struct ina3221_chip *chip,
 	}
 
 	current_ma = shuntv_register_to_ma(vsh,
-			chip->pdata->cpdata[channel].shunt_resistor);
+			chip->pdata->cpdata[channel].shunt_resistor,
+				chip->pdata->cpdata[channel].shuntv_offset);
 	voltage_mv = busv_register_to_mv(vbus);
 	*power_mw = (voltage_mv * current_ma) / 1000;
 exit:
@@ -447,7 +491,8 @@ static int ina3221_get_channel_vbus_voltage_current(struct ina3221_chip *chip,
 	}
 
 	*current_ma = shuntv_register_to_ma(vsh,
-			chip->pdata->cpdata[channel].shunt_resistor);
+			chip->pdata->cpdata[channel].shunt_resistor,
+				chip->pdata->cpdata[channel].shuntv_offset);
 	*voltage_mv = busv_register_to_mv(vbus);
 exit:
 	mutex_unlock(&chip->mutex);
@@ -547,7 +592,7 @@ static int ina3221_get_channel_critical(struct ina3221_chip *chip,
 	}
 
 	*curr_limit = shuntv_register_to_ma(be16_to_cpu(ret),
-			cpdata->shunt_resistor);
+			cpdata->shunt_resistor, cpdata->shuntv_offset);
 	ret = 0;
 exit:
 	mutex_unlock(&chip->mutex);
@@ -597,7 +642,7 @@ static int ina3221_get_channel_warning(struct ina3221_chip *chip,
 
 	/* convert shunt voltage to current in mA */
 	*curr_limit = shuntv_register_to_ma(be16_to_cpu(ret),
-			cpdata->shunt_resistor);
+			cpdata->shunt_resistor, cpdata->shuntv_offset);
 	ret = 0;
 exit:
 	mutex_unlock(&chip->mutex);
@@ -947,6 +992,76 @@ static const struct iio_info ina3221_info = {
 	.read_raw = &ina3221_read_raw,
 };
 
+
+static struct shunt_volt_offset *ina3221_get_shuntv_offset
+	(struct i2c_client *client, struct device_node *channel_np)
+{
+
+	const __be32 *prop;
+	struct device_node *shuntv_np;
+	struct device_node *shuntv_cond_np;
+	struct shunt_volt_offset *shuntv_offset = NULL;
+	struct shuntv_conditional_offset *shuntv_cond_offset;
+	s32 shuntv_start, shuntv_end, offset;
+	int ret;
+
+	prop = of_get_property(channel_np, "shunt-volt-offset-uv", NULL);
+	if (prop != NULL) {
+		shuntv_np = of_find_node_by_phandle(be32_to_cpup(prop));
+		if (shuntv_np == NULL) {
+			dev_err(&client->dev, "could not find shunt volt offset node\n");
+			return NULL;
+		}
+
+	shuntv_offset = devm_kzalloc(&client->dev, sizeof(*shuntv_offset),
+						GFP_KERNEL);
+
+	ret = of_property_read_s32(shuntv_np, "offset", &offset);
+	if (!ret)
+		shuntv_offset->offset = offset;
+
+	shuntv_offset->cond_offset_size = of_get_child_count(shuntv_np);
+	if (shuntv_offset->cond_offset_size) {
+		shuntv_cond_offset = (struct shuntv_conditional_offset *)
+			devm_kzalloc(&client->dev,
+			sizeof(struct shuntv_conditional_offset)
+			* shuntv_offset->cond_offset_size, GFP_KERNEL);
+		shuntv_offset->cond_offset = shuntv_cond_offset;
+
+		for_each_child_of_node(shuntv_np, shuntv_cond_np) {
+			ret = of_property_read_s32(shuntv_cond_np,
+					"shunt_volt_start", &shuntv_start);
+			if (ret) {
+				dev_err(&client->dev, "property shunt_volt_start not found!\n");
+				goto skip_node;
+			}
+
+			ret = of_property_read_s32(shuntv_cond_np,
+					"shunt_volt_end", &shuntv_end);
+			if (ret) {
+				dev_err(&client->dev, "property shunt_volt_end not found!\n");
+				goto skip_node;
+			}
+
+			ret = of_property_read_s32(shuntv_cond_np,
+					"offset", &offset);
+			if (ret) {
+				dev_err(&client->dev, "property offset not found!\n");
+				goto skip_node;
+			}
+
+			shuntv_cond_offset->shuntv_start = shuntv_start;
+			shuntv_cond_offset->shuntv_end = shuntv_end;
+			shuntv_cond_offset->offset = offset;
+skip_node:
+			shuntv_cond_offset++;
+			}
+		}
+	}
+
+	return shuntv_offset;
+}
+
 static struct ina3221_platform_data *ina3221_get_platform_data_dt(
 	struct i2c_client *client)
 {
@@ -1015,6 +1130,9 @@ static struct ina3221_platform_data *ina3221_get_platform_data_dt(
 				&pval);
 		if (!ret)
 			pdata->cpdata[reg].shunt_resistor = pval;
+
+		pdata->cpdata[reg].shuntv_offset =
+			ina3221_get_shuntv_offset(client, child);
 
 		valid_channel++;
 	}
