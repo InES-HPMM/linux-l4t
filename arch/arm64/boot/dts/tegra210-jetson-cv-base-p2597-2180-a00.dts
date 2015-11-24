@@ -319,6 +319,7 @@
 			bclk_ratio = <0>;
 			srate = <48000>;
 			num-channel = <2>;
+			ignore_suspend;
 			name-prefix = "x";
 		};
 
@@ -337,6 +338,7 @@
 			bclk_ratio = <4>;
 			srate = <8000>;
 			num-channel = <1>;
+			ignore_suspend;
 			name-prefix = "y";
 		};
 
@@ -350,6 +352,7 @@
 			bit-format = "s16_le";
 			srate = <48000>;
 			num-channel = <2>;
+			ignore_suspend;
 			name-prefix = "z";
 		};
 
@@ -368,6 +371,7 @@
 			bclk_ratio = <0>;
 			srate = <48000>;
 			num-channel = <2>;
+			ignore_suspend;
 			name-prefix = "l";
 		};
 	};

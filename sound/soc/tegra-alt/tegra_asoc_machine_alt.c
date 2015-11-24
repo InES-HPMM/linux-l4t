@@ -1999,6 +1999,8 @@ struct snd_soc_dai_link *tegra_machine_new_codec_links(
 
 			tegra_codec_links[i].stream_name = "Playback";
 			tegra_codec_links[i].cpu_dai_name = "DAP";
+			tegra_codec_links[i].ignore_suspend =
+				of_property_read_bool(subnp, "ignore_suspend");
 			if (of_property_read_string(subnp, "codec-dai-name",
 				&tegra_codec_links[i].codec_dai_name)) {
 				dev_err(&pdev->dev,
