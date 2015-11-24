@@ -843,6 +843,9 @@ static void tegra_pcie_enable_aer(struct tegra_pcie_port *port, bool enable)
 	unsigned int data;
 
 	PR_FUNC_LINE;
+	if (!port->status)
+		return;
+
 	data = rp_readl(port, NV_PCIE2_RP_VEND_CTL1);
 	if (enable)
 		data |= PCIE2_RP_VEND_CTL1_ERPT;
@@ -3777,6 +3780,9 @@ static int tegra_pcie_ports_seq_show(struct seq_file *s, void *v)
 
 	port = list_entry(v, struct tegra_pcie_port, list);
 
+	if (!port->status)
+		return 0;
+
 	value = readl(port->base + RP_VEND_XP);
 
 	if (value & RP_VEND_XP_DL_UP)
@@ -3935,8 +3941,9 @@ static int tegra_pcie_debugfs_init(struct tegra_pcie *pcie)
 		goto remove;
 
 	list_for_each_entry(port, &pcie->ports, list) {
-		if (tegra_pcie_port_debugfs_init(port))
-			goto remove;
+		if (port->status)
+			if (tegra_pcie_port_debugfs_init(port))
+				goto remove;
 	}
 
 	return 0;
@@ -3957,11 +3964,12 @@ static int tegra_pcie_probe_complete(struct tegra_pcie *pcie)
 	if (ret)
 		return ret;
 
-	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
-		int ret = tegra_pcie_debugfs_init(pcie);
-		if (ret < 0)
-			dev_err(&pdev->dev, "failed to setup debugfs: %d\n",
-				ret);
+	if (IS_ENABLED(CONFIG_DEBUG_FS))
+		if (pcie->num_ports) {
+			int ret = tegra_pcie_debugfs_init(pcie);
+			if (ret < 0)
+				dev_err(&pdev->dev, "failed to setup debugfs: %d\n",
+					ret);
 	}
 
 	return 0;
