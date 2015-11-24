@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -192,7 +192,7 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 		return swgids;
 
 	if (swgids_is_error(swgids)) {
-		dev_notice(dev,
+		dev_dbg(dev,
 			"No iommus property found in DT node, got swgids from fixup(%llx)\n",
 			fixup);
 		return fixup;
