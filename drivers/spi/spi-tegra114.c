@@ -1014,10 +1014,10 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 
 		if (tspi->prod_list) {
 			sprintf(prod_name, "prod_c_cs%d", spi->chip_select);
-			if (tegra_prod_set_by_name(&tspi->base, prod_name,
-					tspi->prod_list))
-				tegra_prod_set_by_name(&tspi->base, "prod",
-					tspi->prod_list);
+			tegra_prod_set_by_name(&tspi->base, prod_name,
+				tspi->prod_list);
+			tegra_prod_set_by_name(&tspi->base, "prod",
+				tspi->prod_list);
 		} else {
 			u32 command2_reg;
 			command2_reg = tspi->def_command2_reg;
