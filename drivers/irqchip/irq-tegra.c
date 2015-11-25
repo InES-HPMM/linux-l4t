@@ -35,6 +35,7 @@
 #include <linux/cpu_pm.h>
 #include <linux/tegra-soc.h>
 #include <asm/fiq.h>
+#include <asm/mach/irq.h>
 
 /* HACK: will be removed once cpuidle is moved to drivers */
 #include "../../arch/arm/mach-tegra/pm.h"
@@ -140,6 +141,7 @@ void tegra_fiq_enable(int irq)
 	/* For T12x, use generic GIC API since legacy FIQ
 	 * is not connected to GIC in T12x SOC.
 	 */
+	init_FIQ(FIQ_START);
 	enable_fiq(irq);
 #endif
 	/* For T13x which uses T12x SOC, FIQ configuration
