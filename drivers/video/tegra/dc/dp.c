@@ -1056,6 +1056,9 @@ static ssize_t bits_per_pixel_set(struct file *file, const char __user *buf,
 	struct tegra_dc_dp_link_config *cfg = NULL;
 	u32 bits_per_pixel = 0, previous_bpp = 0;
 	int ret = 0;
+#ifdef CONFIG_SWITCH
+	bool audio_support;
+#endif
 
 	if (WARN_ON(!dp || !dp->dc || !dp->dc->out))
 		return -EINVAL;
@@ -1100,6 +1103,17 @@ static ssize_t bits_per_pixel_set(struct file *file, const char __user *buf,
 	/* enable the dc and output controllers */
 	if (!dp->dc->enabled)
 		tegra_dc_enable(dp->dc);
+
+#ifdef CONFIG_SWITCH
+	audio_support = tegra_edid_audio_supported(dp->hpd_data.edid);
+	if (audio_support) {
+		switch_set_state(&dp->hpd_data.audio_switch, 0);
+		msleep(1);
+		pr_info("audio_switch toggle 0\n");
+		switch_set_state(&dp->hpd_data.audio_switch, 1);
+		pr_info("audio_switch toggle 1\n");
+	}
+#endif
 
 	return count;
 }
