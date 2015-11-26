@@ -488,7 +488,6 @@ static void shrink_page_pools(int *total_pages, int *available_pages)
 static int shrink_pp;
 static int shrink_set(const char *arg, const struct kernel_param *kp)
 {
-	int cpu = smp_processor_id();
 	unsigned long long t1, t2;
 	int total_pages, available_pages;
 
@@ -496,9 +495,9 @@ static int shrink_set(const char *arg, const struct kernel_param *kp)
 
 	if (shrink_pp) {
 		total_pages = shrink_pp;
-		t1 = cpu_clock(cpu);
+		t1 = local_clock();
 		shrink_page_pools(&total_pages, &available_pages);
-		t2 = cpu_clock(cpu);
+		t2 = local_clock();
 		pr_debug("shrink page pools: time=%lldns, "
 			"total_pages_released=%d, free_pages_available=%d",
 			t2-t1, total_pages, available_pages);
