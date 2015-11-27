@@ -33,10 +33,10 @@
 	};
 
 	otg@7d000000 {
-		nvidia,enable-pmu-vbus-detection;
+		/delete-property/ nvidia,enable-pmu-vbus-detection;
 		nvidia,id-detection-type = <2>;
-		extcon-cables = <&vbus_gpio_extcon 0>;
-		extcon-cable-names = "vbus";
+		/delete-property/ extcon-cables;
+		/delete-property/ extcon-cable-names;
 	};
 
 	xudc@700d0000 {
