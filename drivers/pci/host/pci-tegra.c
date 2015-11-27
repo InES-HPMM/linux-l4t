@@ -3142,43 +3142,53 @@ static int apply_link_speed(struct seq_file *s, void *data)
 
 static int check_d3hot(struct seq_file *s, void *data)
 {
-	bool pass = false;
 	u16 val;
-	struct tegra_pcie_port *port = NULL;
 	struct pci_dev *pdev = NULL;
-	struct tegra_pcie *pcie = (struct tegra_pcie *)(s->private);
 
 	/* Force all the devices (including RPs) in d3 hot state */
 	for_each_pci_dev(pdev) {
-		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, &val);
-		val |= PCI_PM_CTRL_STATE_MASK;
-		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, val);
-	}
-	mdelay(10);
-	list_for_each_entry(port, &pcie->ports, list) {
-		val = rp_readl(port, NV_PCIE2_RP_LTSSM_DBGREG);
-		if (val & PCIE2_RP_LTSSM_DBGREG_LINKFSM15) {
-			pass = true;
-			continue;
-		} else {
-			pass = false;
-			break;
-		}
-	}
-	/* Force all the devices (including RPs) back to D0 state */
-	/* NOTE: Devices go to D0-Uninitialized state */
-	/* Hence it may not work as expected */
-	/* Ideally, this should be the last test to be verified */
-	for_each_pci_dev(pdev) {
-		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, &val);
+		if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT ||
+			pci_pcie_type(pdev) == PCI_EXP_TYPE_DOWNSTREAM)
+				continue;
+		/* First, keep Downstream component in D3_Hot */
+		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL,
+			&val);
+		if ((val & PCI_PM_CTRL_STATE_MASK) == PCI_D3hot)
+			seq_printf(s, "device[%x:%x] is already in D3_hot]\n",
+				pdev->vendor, pdev->device);
 		val &= ~PCI_PM_CTRL_STATE_MASK;
-		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL, val);
+		val |= PCI_D3hot;
+		pci_write_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL,
+			val);
+		/* Keep corresponding upstream component in D3_Hot */
+		pci_read_config_word(pdev->bus->self,
+			pdev->bus->self->pm_cap + PCI_PM_CTRL, &val);
+		val &= ~PCI_PM_CTRL_STATE_MASK;
+		val |= PCI_D3hot;
+		pci_write_config_word(pdev->bus->self,
+			pdev->bus->self->pm_cap + PCI_PM_CTRL, val);
+		mdelay(100);
+		/* check if they have changed their state */
+		pci_read_config_word(pdev, pdev->pm_cap + PCI_PM_CTRL,
+			&val);
+		if ((val & PCI_PM_CTRL_STATE_MASK) == PCI_D3hot)
+			seq_printf(s, "device[%x:%x] transitioned to D3_hot]\n",
+				pdev->vendor, pdev->device);
+		else
+			seq_printf(s, "device[%x:%x] couldn't transition]\n",
+				pdev->vendor, pdev->device);
+		pci_read_config_word(pdev->bus->self,
+			pdev->bus->self->pm_cap + PCI_PM_CTRL, &val);
+		if ((val & PCI_PM_CTRL_STATE_MASK) == PCI_D3hot)
+			seq_printf(s, "device[%x:%x] transitioned to D3_hot]\n",
+				pdev->bus->self->vendor,
+				pdev->bus->self->device);
+		else
+			seq_printf(s, "device[%x:%x] couldn't transition]\n",
+				pdev->bus->self->vendor,
+				pdev->bus->self->device);
 	}
 
-	if (pass)
-		seq_printf(s, "[pass: transitioned to D3_hot]\n");
-	else
-		seq_printf(s, "[fail: couldn't transition to D3_hot]\n");
 	return 0;
 }
 
