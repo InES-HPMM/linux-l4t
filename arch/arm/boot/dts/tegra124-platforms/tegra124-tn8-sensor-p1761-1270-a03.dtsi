@@ -51,6 +51,7 @@
 		};
 
 		ltr659@23 {
+			status = "disabled";
 			compatible = "liteon,ltrX5X";
 			reg = <0x23>;
 			vdd-supply = <&palmas_smps9>;
