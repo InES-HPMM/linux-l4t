@@ -1392,6 +1392,7 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 		 */
 		tegra_host->tuning_status = TUNING_STATUS_RETUNE;
 		tegra_host->force_retune = true;
+		sdhost->is_calibration_done = false;
 	}
 
 	tasklet_schedule(&sdhost->card_tasklet);
@@ -2166,7 +2167,7 @@ static void tegra_sdhci_do_calibration(struct sdhci_host *sdhci,
 		}
 	}
 
-	if (tegra_host->plat->en_periodic_calib) {
+	if (tegra_host->plat->en_periodic_calib && tegra_host->card_present) {
 		tegra_host->timestamp = ktime_get();
 		sdhci->timestamp = ktime_get();
 		sdhci->is_calibration_done = true;
@@ -4095,6 +4096,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci)
 		if (err)
 			dev_err(mmc_dev(sdhci->mmc),
 			"Regulators disable in suspend failed %d\n", err);
+		sdhci->is_calibration_done = false;
 	}
 	if (plat && gpio_is_valid(plat->cd_gpio)) {
 		if (!plat->cd_wakeup_incapable) {
