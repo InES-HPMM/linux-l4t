@@ -2391,6 +2391,13 @@ void wake_all_kswapd(unsigned int order, struct zonelist *zonelist,
 	struct zoneref *z;
 	struct zone *zone;
 
+	/* Have this condition only on tegra and when ZRAM is disabled. */
+	if (config_enabled(CONFIG_ARCH_TEGRA) && !total_swap_pages)
+		/* Avoid kswapd for all higher zones */
+		for_each_zone_zonelist(zone, z, zonelist, high_zoneidx)
+			if (high_zoneidx > zone_idx(zone) + 1)
+				high_zoneidx = zone_idx(zone) + 1;
+
 	for_each_zone_zonelist(zone, z, zonelist, high_zoneidx)
 		wakeup_kswapd(zone, order, classzone_idx);
 }
