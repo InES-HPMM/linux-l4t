@@ -3739,7 +3739,7 @@ static irqreturn_t tegra_xhci_smi_irq(int irq, void *ptrdev)
 	if (temp & SMI_INTR_STATUS_FW_REINIT)
 		xhci_err(tegra->xhci, "Firmware reinit.\n");
 	if (temp & SMI_INTR_STATUS_MBOX)
-		schedule_work(&tegra->mbox_work);
+		queue_work(tegra->mbox_wq, &tegra->mbox_work);
 
 	spin_unlock(&tegra->lock);
 	return IRQ_HANDLED;
@@ -5613,6 +5613,12 @@ static int tegra_xhci_probe2(struct tegra_xhci_hcd *tegra)
 	/* do mailbox related initializations */
 	tegra->mbox_owner = 0xffff;
 	INIT_WORK(&tegra->mbox_work, tegra_xhci_process_mbox_message);
+	tegra->mbox_wq = alloc_ordered_workqueue("mbox_wq", 0);
+	if (IS_ERR_OR_NULL(tegra->mbox_wq)) {
+		dev_err(&pdev->dev, "failed to alloc workqueue\n");
+		ret = -ENOMEM;
+		goto err_remove_usb3_hcd;
+	}
 
 	/* do ss partition elpg exit related initialization */
 	INIT_WORK(&tegra->ss_elpg_exit_work, ss_partition_elpg_exit_work);
@@ -5760,6 +5766,9 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 		usb_remove_hcd(hcd);
 		usb_put_hcd(hcd);
 		kfree(xhci);
+
+		flush_workqueue(tegra->mbox_wq);
+		destroy_workqueue(tegra->mbox_wq);
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
 		/* By default disable the BATTERY_CHRG_OTGPAD for all ports */

@@ -392,6 +392,7 @@ struct tegra_xhci_hcd {
 	int vddio_hsic_refcnt;
 
 	struct work_struct mbox_work;
+	struct workqueue_struct *mbox_wq;
 	struct work_struct ss_elpg_exit_work;
 	struct work_struct host_elpg_exit_work;
 	struct work_struct xotg_vbus_work;
