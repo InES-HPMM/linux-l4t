@@ -15,7 +15,6 @@
  */
 
 / {
-
 	i2c@7000c000 {
 		nvidia,clock-always-on;
 
@@ -30,32 +29,36 @@
 			interrupt-controller;
 			gpio-init-names = "default";
 			gpio-init-0 = <&tca6416_20_default>;
+			status = "disabled";
 			tca6416_20_default: default {
 				gpio-output-low = <1>;
 			};
 		};
 
-		icm20628@68 {
+		icm20628_68: icm20628@68 {
 			compatible = "invensense,mpu6xxx";
 			reg = <0x68>;
 			interrupt-parent = <&gpio>;
 			interrupts = <TEGRA_GPIO(X, 2) 0x01>;
 			accelerometer_matrix = [00 ff 00 01 00 00 00 00 01];
 			gyroscope_matrix = [00 ff 00 01 00 00 00 00 01];
+			status = "disabled";
 		};
 
-		ak8963@0d {
+		ak8963_0d: ak8963@0d {
 			compatible = "ak,ak89xx";
 			reg = <0x0d>;
 			magnetic_field_matrix = [00 ff 00 01 00 00 00 00 01];
+			status = "disabled";
 		};
 
-		bmp280@77 {
+		bmp280_77: bmp280@77 {
 			compatible = "bmp,bmpX80";
 			reg = <0x77>;
+			status = "disabled";
 		};
 
-		cm32180@48 {
+		cm32180_48: cm32180@48 {
 			compatible = "capella,cm32180";
 			reg = <0x48>;
 			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
@@ -63,9 +66,54 @@
 			light_calibrated_lo = <150>;
 			light_uncalibrated_hi = <95000>;
 			light_calibrated_hi = <1750000>;
+			status = "disabled";
 		};
 
 		iqs263@44 {
+			status = "disabled";
+		};
+
+		i2cmux_70: i2cmux@70 {
+			compatible = "nxp,pca9546";
+			reg = <0x70>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			vcc-supply = <&vdd_3v3>;
+			status = "disabled";
+			i2c@0 {
+				reg = <0>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@1 {
+				reg = <1>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@2 {
+				reg = <2>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+			i2c@3 {
+				reg = <3>;
+				i2c-mux,deselect-on-exit;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				rt5658_b00: rt5659.10-001a@1a {
+					compatible = "realtek,rt5658";
+					reg = <0x1a>;
+					status = "disabled";
+				};
+			};
+		};
+
+		rt5658_a00: rt5659.0-001a@1a {
+			compatible = "realtek,rt5658";
+			reg = <0x1a>;
 			status = "disabled";
 		};
 	};

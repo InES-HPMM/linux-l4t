@@ -44,8 +44,9 @@
 #include "tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-powermon-p2180-1000-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cpufreq.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-super-module-e2614.dtsi"
 #include "tegra210-plugin-manager/tegra210-jetson-cv-eeprom-manager.dtsi"
-#include "tegra210-plugin-manager/tegra210-jetson-cv-base-p2597-2180-a00-plugin-manager.dtsi"
+#include "tegra210-plugin-manager/tegra210-jetson-cv-plugin-manager.dtsi"
 
 / {
 	model = "jetson_cv";
@@ -259,13 +260,13 @@
 					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE>;
 				};
 			};
-                        panel-s-wqxga-10-1 {
-                                status = "disabled";
-                                nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
-                                nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
+			panel-s-wqxga-10-1 {
+				status = "disabled";
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
+				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
-                                nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(Y, 2) 0>;
-                        };
+				nvidia,dsi-te-gpio = <&gpio TEGRA_GPIO(Y, 2) 0>;
+			};
 		};
 
 		sor {
@@ -289,7 +290,7 @@
 		status = "okay";
 	};
 
-	sound {
+	sound_card: sound {
 		compatible = "nvidia,tegra-audio-t210ref-mobile-rt565x";
 		nvidia,model = "tegra-snd-t210ref-mobile-rt565x";
 		nvidia,hp-det-gpios = <&gpio TEGRA_GPIO(E, 6) GPIO_ACTIVE_HIGH>;
