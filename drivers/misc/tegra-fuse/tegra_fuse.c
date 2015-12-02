@@ -69,7 +69,7 @@ static DEVICE_ATTR(sw_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
 static DEVICE_ATTR(ignore_dev_sel_straps, 0440, tegra_fuse_show,
 		tegra_fuse_store);
 static DEVICE_ATTR(odm_reserved, 0440, tegra_fuse_show, tegra_fuse_store);
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 static DEVICE_ATTR(aid, 0444, tegra_fuse_show, NULL);
 #endif
 
@@ -284,7 +284,7 @@ static struct param_info fuse_info_tbl[] = {
 		.data_offset = 15,
 		.sysfs_name = "odm_lock",
 	},
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 	[AID] = {
 		.addr = &fuse_info.aid,
 		.sz = sizeof(fuse_info.aid),
@@ -1566,7 +1566,7 @@ static int tegra_fuse_probe(struct platform_device *pdev)
 				&dev_attr_ignore_dev_sel_straps.attr));
 	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 					&dev_attr_odm_reserved.attr));
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 	CHK_ERR(&pdev->dev, sysfs_create_file(&pdev->dev.kobj,
 					&dev_attr_aid.attr));
 #endif
@@ -1594,7 +1594,7 @@ static int tegra_fuse_remove(struct platform_device *pdev)
 	sysfs_remove_file(&pdev->dev.kobj,
 				&dev_attr_ignore_dev_sel_straps.attr);
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_sw_reserved.attr);
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 	sysfs_remove_file(&pdev->dev.kobj, &dev_attr_aid.attr);
 #endif
 	tegra_fuse_rm_sysfs_variables(pdev);

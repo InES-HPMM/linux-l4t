@@ -794,14 +794,6 @@ config TEGRA_USE_SIMON
 	help
 	  Enable Tegra silicon state monitoring, grading, and notification.
 
-config AID_FUSE
-	bool "Support AID fuse reads"
-	default n if (ARCH_TEGRA_12x_SOC && !ARCH_TEGRA_13x_SOC)
-	default y
-	help
-	  When enabled, allows sysfs reads of the AID fuse, which contains
-	  the chip family ID and a chip-unique Tegra ID. Supported on t132.
-
 config BOARD_HAS_PWR_INT_WAKE_SOURCE
 	bool "Enable PMC PWR INT wake source(WAKE18)"
 	default n

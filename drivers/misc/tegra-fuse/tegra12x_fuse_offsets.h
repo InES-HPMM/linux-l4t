@@ -74,7 +74,7 @@
 #define ODM_RESERVED_START_BIT			5
 
 /* AID */
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 #define AID_START_OFFSET			0x72
 #define AID_START_BIT				0
 #endif

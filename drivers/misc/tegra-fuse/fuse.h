@@ -98,7 +98,7 @@ enum fuse_io_param {
 	VP8_ENABLE, /* 1 bit long */
 	ODM_LOCK, /* 4 bits long */
 	SBK_DEVKEY_STATUS,
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 	AID,
 #endif
 	_PARAMS_U32 = 0x7FFFFFFF
@@ -159,7 +159,7 @@ struct fuse_data {
 	u32 vp8_enable;
 #endif
 	u32 odm_lock;
-#ifdef CONFIG_AID_FUSE
+#ifdef CONFIG_ARM64
 	u32 aid;
 #endif
 };
