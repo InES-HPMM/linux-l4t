@@ -2497,7 +2497,7 @@ static void soctherm_tsense_program(enum soctherm_sense sensor,
 		return;
 
 	therm = &pp->therm[tz_id];
-	if (!therm->tz) {
+	if (!(therm->tz || therm->zone_enable)) {
 		pr_info("soctherm: skipping sensor %d programming\n", sensor);
 		return;
 	}
