@@ -93,7 +93,7 @@
 				cap-sensor_nvc_interface = <5>;
 				cap-pixel_types = <0x101>;
 				cap-orientation = <1>;
-				cap-direction = <1>;
+				cap-direction = <0>;
 				cap-initial_clock_rate_khz = <6000>;
 				cap-h_sync_edge = <0>;
 				cap-v_sync_edge = <0>;
