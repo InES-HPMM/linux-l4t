@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra-timer.h
  *
- * Copyright (c) 2012-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -43,8 +43,6 @@ void __init tegra20_init_timer(void);
 #else
 void __init tegra30_init_timer(void);
 #endif
-
-void tegra_rtc_set_trigger(unsigned long cycles);
 
 struct tegra_twd_context {
 	u32 twd_ctrl;
@@ -97,7 +95,6 @@ static inline void tegra_tsc_wait_for_suspend(void) {};
 static inline void tegra_tsc_wait_for_resume(void) {};
 #endif
 
-u64 tegra_rtc_read_ms(void);
 u32 notrace tegra_read_usec_raw(void);
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
