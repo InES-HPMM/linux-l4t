@@ -1396,6 +1396,9 @@ static void bq27441_shutdown(struct i2c_client *client)
 {
 	struct bq27441_chip *chip = i2c_get_clientdata(client);
 
+	if (chip->client->irq)
+		disable_irq(chip->client->irq);
+
 	mutex_lock(&chip->mutex);
 	chip->shutdown_complete = 1;
 	mutex_unlock(&chip->mutex);
