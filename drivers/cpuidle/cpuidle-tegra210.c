@@ -1,7 +1,7 @@
 /*
  * drivers/cpuidle/cpuidle-t210.c
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,7 @@
 #include <linux/tegra-pmc.h>
 #include <linux/tegra_smmu.h>
 #include <linux/tegra-timer.h>
+#include <linux/rtc-tegra.h>
 #include <linux/syscore_ops.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>

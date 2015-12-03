@@ -37,7 +37,6 @@ obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-nvtimers.o
 obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-wakeup-nvtimers.o
 obj-$(CONFIG_CLK_SRC_TEGRA_TIMER)       += tegra-rtc.o
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC)	+= tegra210_timer.o
-obj-$(CONFIG_ARCH_TEGRA_21x_SOC)	+= tegra-rtc.o
 ifneq ($(CONFIG_ARM64),y)
 obj-$(CONFIG_ARM_ARCH_TIMER)            += tegra-tsc-timer.o
 endif
