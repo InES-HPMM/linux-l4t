@@ -6458,8 +6458,17 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 						   to 5, 10, 20 ,40 ,80, 160, 80+80 MHz
 						   respectively. In below case, 0x1000 = 2
 						   which is for 20 MHz */
-						if((chanspec & 0x3800) == 0x1000)
+						if ((chanspec & 0x3800) == WL_CHANSPEC_BW_20) {
 							bw = WL_CHANSPEC_BW_20;
+						} else if ((chanspec & 0x3800) == WL_CHANSPEC_BW_40) {
+							bw = WL_CHANSPEC_BW_40;
+						} else if ((chanspec & 0x3800) == WL_CHANSPEC_BW_80) {
+							bw = WL_CHANSPEC_BW_80;
+						} else if ((chanspec & 0x3800) == WL_CHANSPEC_BW_160) {
+							bw = WL_CHANSPEC_BW_160;
+						} else if ((chanspec & 0x3800) == WL_CHANSPEC_BW_8080) {
+							bw = WL_CHANSPEC_BW_8080;
+						}
 					}
 				} else {
 					/* In 2.4 GHz supported bw is 20 MHz */
