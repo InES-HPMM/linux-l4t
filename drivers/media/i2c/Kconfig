@@ -443,6 +443,15 @@ config VIDEO_IMX214
 	  To compile this driver as a module, choose M here: the module
 	  will be called imx214.
 
+config VIDEO_LC898212
+	tristate "LC898212 focuser support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This driver supports LC898212 camera focuser
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called lc898212.
+
 config VIDEO_I2C_OV5693
         tristate "OV5693 camera sensor support"
 	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
