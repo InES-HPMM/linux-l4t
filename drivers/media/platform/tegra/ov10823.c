@@ -56,8 +56,9 @@
 		OV10823_NUM_BYTES_GAIN + \
 		OV10823_NUM_FSYNC)
 
-#define OV10823_HAS_SENSOR_ID	(0)
+#define OV10823_HAS_SENSOR_ID	(1)
 #define OV10823_SUPPORT_EEPROM	(0)
+#define OV10823_FUSE_ID_SIZE	16
 
 struct ov10823_info {
 	struct miscdevice		miscdev_info;
@@ -731,26 +732,30 @@ static int ov10823_set_group_hold(struct ov10823_info *info,
 	return 0;
 }
 
-static int ov10823_get_sensor_id(struct ov10823_info *info)
+static int ov10823_get_fuse_id(struct ov10823_info *info)
 {
 	int ret = 0;
 #if OV10823_HAS_SENSOR_ID
 	int i;
 	u8 bak = 0;
 
-	pr_info("%s\n", __func__);
 	if (info->sensor_data.fuse_id_size)
 		return 0;
 
-	/* select bank 31 */
-	ov10823_write_reg(info, 0x3d84, 31);
-	for (i = 0; i < 8; i++) {
-		ret |= ov10823_read_reg(info, 0x300A + i, &bak);
+	/* select bank 0 */
+	ov10823_write_reg(info, 0x5002, 0);
+	ov10823_write_reg(info, 0x3d84, 0);
+	ov10823_write_reg(info, 0x100, 1);
+	msleep(20);
+	for (i = 0; i < OV10823_FUSE_ID_SIZE; i++) {
+		ret |= ov10823_read_reg(info, 0x6000 + i, &bak);
 		info->sensor_data.fuse_id[i] = bak;
+		dev_dbg(&info->i2c_client->dev, "%s fuse_id[%d] = %x\n",
+			__func__, i, bak);
 	}
 
 	if (!ret)
-		info->sensor_data.fuse_id_size = 2;
+		info->sensor_data.fuse_id_size = OV10823_FUSE_ID_SIZE;
 
 #endif
 	return ret;
@@ -898,7 +903,7 @@ static long OV10823_IOCTL(struct file *file,
 	}
 	case _IOC_NR(OV10823_IOCTL_GET_SENSORDATA):
 	{
-		err = ov10823_get_sensor_id(info);
+		err = ov10823_get_fuse_id(info);
 
 		if (err) {
 			pr_err("%s:Failed to get fuse id info.\n", __func__);
@@ -1315,7 +1320,6 @@ static int ov10823_probe(struct i2c_client *client,
 		return err;
 	}
 #endif
-
 	/* create debugfs interface */
 	ov10823_create_debugfs(info);
 	return 0;
