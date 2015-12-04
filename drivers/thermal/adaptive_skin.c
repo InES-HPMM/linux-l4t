@@ -1,7 +1,7 @@
 /*
  * drivers/thermal/adaptive_skin.c
  *
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -458,6 +458,7 @@ static int astg_start(struct thermal_zone_device *tz)
 	struct adaptive_skin_thermal_gov_params *params;
 	int ret, max_poll, target_state_tdp;
 
+	pr_debug("ASTG: Starting ASTG\n");
 	gov = kzalloc(sizeof(*gov), GFP_KERNEL);
 	if (!gov) {
 		dev_err(&tz->device, "%s: Can't alloc governor data\n",
@@ -513,7 +514,7 @@ static int astg_start(struct thermal_zone_device *tz)
 static void astg_stop(struct thermal_zone_device *tz)
 {
 	struct astg_ctx *gov = tz_to_gov(tz);
-
+	pr_debug("ASTG: Stopping ASTG\n");
 	if (!gov)
 		return;
 
@@ -539,7 +540,8 @@ static void astg_update_target_state(struct thermal_instance *instance,
 		cur_state = cur_state > instance->lower ?
 					(cur_state - 1) : lower;
 
-	pr_debug("astg state : %lu -> %lu\n", instance->target, cur_state);
+	pr_debug("ASTG: astg state : %lu -> %lu\n", instance->target,
+		cur_state);
 	instance->target = cur_state;
 }
 
@@ -555,16 +557,22 @@ static void astg_update_non_passive_instance(struct thermal_zone_device *tz,
 
 static int get_target_poll_raise(struct astg_ctx *gov,
 				long cur_state,
-				int is_steady)
+				int is_steady,
+				int over_trip)
 {
 	unsigned target;
 
 	cur_state++;
 	target = (unsigned)(cur_state * gov->poll_raise_gain) >>
 							POLL_PER_STATE_SHIFT;
-
+	/*
+	target defines the aggressivenes of ASTG. Higher target
+	value means less aggressive.
+	*/
 	if (is_steady)
 		target += 1 + ((unsigned)cur_state >> 3);
+	else if (over_trip > gov->tskin_tran_threshold)
+		target = 0;
 
 	return (int)min(target, MAX_ALLOWED_POLL);
 }
@@ -577,7 +585,6 @@ static int get_target_poll_drop(struct astg_ctx *gov,
 
 	target = MAX_ALLOWED_POLL - ((unsigned)(cur_state *
 				gov->poll_drop_gain) >> POLL_PER_STATE_SHIFT);
-
 	if (is_steady)
 		return (int)MAX_ALLOWED_POLL;
 
@@ -597,7 +604,7 @@ static int check_steady(struct astg_ctx *gov, long tz_temp, long trip_temp)
 	delta = tz_temp - trip_temp;
 	delta = abs(delta);
 
-	pr_debug(">> delta : %d\n", delta);
+	pr_debug("ASTG: Tskin delta : %d\n", delta);
 
 	if (gov->std_offset > delta) {
 		gov->std_cnt++;
@@ -671,16 +678,21 @@ static enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
 	is_steady = check_steady(gov, tz_temp, trip_temp);
 
 	/* when to decide new target is differ from current throttling index */
-	raise_period = get_target_poll_raise(gov, cur_state, is_steady);
+	raise_period = get_target_poll_raise(gov, cur_state, is_steady,
+		over_trip);
 	drop_period = get_target_poll_drop(gov, cur_state, is_steady);
 
-	pr_debug(">> tcur:%ld, tlast:%ld, tr:%d\n", tz_temp, temp_last, trend);
-	pr_debug(">> c_last : %ld, c_cur : %ld\n", tcpu_last, tcpu);
-	pr_debug(">> g_last : %ld, g_cur : %ld\n", tgpu_last, tgpu);
-	pr_debug(">> ucp : %d, udp : %d, fru : %d, fdu : %d\n", raise_period,
-		drop_period, fup_raise_cnt, fup_drop_cnt);
-	pr_debug(">> is_steady : %d, uc:%d, udc:%d, lt:%ld, pa : %d\n",
-		is_steady, raise_cnt, drop_cnt, temp_last, prev_action);
+	pr_debug("ASTG: tz_cur:%ld, tz_last_action:%ld, trend:%d\n", tz_temp,
+		temp_last, trend);
+	pr_debug("ASTG: tc_last : %ld, tc_cur : %ld\n", tcpu_last, tcpu);
+	pr_debug("ASTG: tg_last : %ld, tg_cur : %ld\n", tgpu_last, tgpu);
+	pr_debug("ASTG: normal_raise : %d/%d , normal_drop : %d/%d\n",
+		raise_cnt, raise_period, drop_cnt, drop_period);
+	pr_debug("ASTG: fup_raise : %d/%d , fup_drop : %d/%d\n",
+		fup_raise_cnt, gov->fup_period, fup_drop_cnt, gov->fup_period);
+	pr_debug("ASTG:>> is_steady : %d, previous_action : %d\n",
+		is_steady,  prev_action);
+	pr_debug("ASTG:>> Throttling index : %d\n", cur_state);
 
 	if (is_action_transient_raise(prev_action) && tcpu > tcpu_last) {
 		gov->tcpu_last = tcpu;
@@ -700,7 +712,7 @@ static enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
 			  trip temp longer than the time allowed with
 			  the current throttling index.
 			*/
-			if (raise_cnt > raise_period) {
+			if (raise_cnt >= raise_period) {
 				action = AST_ACT_TRAN_RAISE;
 
 			/*
@@ -832,7 +844,7 @@ static enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
 		gov->tcpu_last = tcpu;
 		gov->tgpu_last = tgpu;
 	}
-
+	pr_debug("ASTG: New action  : %d\n", action);
 	return action;
 }
 
@@ -968,7 +980,7 @@ static enum thermal_trend get_trend(struct thermal_zone_device *thz,
 		else
 			new_trend = THERMAL_TREND_STABLE;
 	}
-
+	pr_debug("ASTG: New trend %d\n", new_trend);
 	return new_trend;
 }
 
