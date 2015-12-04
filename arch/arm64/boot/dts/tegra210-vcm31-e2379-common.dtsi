@@ -717,7 +717,6 @@
 		nvidia,ss_portmap = <0x0277>;
 		nvidia,lane_owner = <0x43FF>; /* Use 0xF to disable lane assign */
 		nvidia,otg_portmap = <0x0100>;
-		nvidia,lane-map = <0x12>;
 		status = "okay";
 	};
 

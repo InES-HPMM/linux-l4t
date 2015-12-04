@@ -382,9 +382,9 @@
 
 	/* Put common control config here */
 	xusb_pad_ctl: xusb_padctl {
+		status = "disabled";
 		nvidia,ss_portmap = <0x7770>;
 		nvidia,lane_owner = <0xFFFF>; /* Use 0xF to disable lane assign */
-		status = "okay";
 	};
 
 	xusb@70090000 {

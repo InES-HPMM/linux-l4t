@@ -28,6 +28,10 @@
 	nvidia,dtsfilename = __FILE__;
 	nvidia,fastboot-usb-pid = <0xb422>;
 
+	xusb_padctl {
+		nvidia,enable-sata-port;
+	};
+
 	sata@70020000 {
 		status = "okay";
 		nvidia,enable-sata-port;

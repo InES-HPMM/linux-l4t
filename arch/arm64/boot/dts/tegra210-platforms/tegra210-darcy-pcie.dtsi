@@ -18,6 +18,10 @@
  *
  */
 / {
+	xusb_padctl {
+		nvidia,lane-map = <0x14>;
+	};
+
 	pcie-controller {
 		nvidia,wake-gpio = <&gpio TEGRA_GPIO(A, 2) 0>;
 		nvidia,lane-map = <0x14>;
