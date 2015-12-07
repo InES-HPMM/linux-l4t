@@ -322,7 +322,7 @@ imx132_set_mode(struct imx132_info *info, struct imx132_mode *mode)
 		__func__, mode->xres, mode->yres, info->pdata->cap->data_lanes,
 		mode->frame_length, mode->coarse_time, mode->gain);
 
-	if ((mode->xres == 1920) && (mode->yres == 12080) && (info->pdata->cap->data_lanes == 1)) {
+	if ((mode->xres == 1920) && (mode->yres == 1080) && (info->pdata->cap->data_lanes == 1)) {
 		sensor_mode = IMX132_MODE_1920X1080_ONE_LANE;
 	} else if ((mode->xres == 1920) && (mode->yres == 1080) && (info->pdata->cap->data_lanes == 2)) {
 		sensor_mode = IMX132_MODE_1920X1080_TWO_LANE;
