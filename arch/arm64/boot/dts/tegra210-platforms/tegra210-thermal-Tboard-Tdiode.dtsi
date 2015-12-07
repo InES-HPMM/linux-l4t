@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-platforms/tegra210-thermal-Tboard-Tdiode.dtsi
  *
- * Copyright (c) 2014 - 2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2014 - 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -61,6 +61,27 @@
 
 			thermal-zone-params {
 				governor-name = "pid_thermal_gov";
+			};
+
+			tdiode_shutdown_warn_cool_dev: shutdown-warn-cool-dev {
+				#cooling-cells = <2>; /* min followed by max */
+			};
+
+			trips {
+				tdiode_shutdown_warn: shutdown-warn-throttle {
+					temperature = <104000>;
+					hysteresis = <1000>;
+					type = "passive";
+				};
+			};
+
+			cooling-maps {
+				map-shutdown-warn {
+					trip = <&tdiode_shutdown_warn>;
+					cooling-device = <&tdiode_shutdown_warn_cool_dev
+							THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
+					cdev-type = "shutdown_warning";
+				};
 			};
 		};
 	};
