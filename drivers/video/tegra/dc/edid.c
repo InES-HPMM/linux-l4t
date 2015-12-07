@@ -38,6 +38,8 @@ struct tegra_edid_pvt {
 	bool				scdc_present;
 	bool				db420_present;
 	bool				hfvsdb_present;
+	bool				support_yuv422;
+	bool				support_yuv444;
 	int			        hdmi_vic_len;
 	u8			        hdmi_vic[7];
 	u16			color_depth_flag;
@@ -301,25 +303,33 @@ static int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 	ptr = &raw[0];
 
 	/* If CEA 861 block get info for eld struct */
-	if (ptr) {
-		if (*ptr <= 3)
-			edid->eld.eld_ver = 0x02;
-		edid->eld.cea_edid_ver = ptr[1];
+	if (*ptr <= 3)
+		edid->eld.eld_ver = 0x02;
+	edid->eld.cea_edid_ver = ptr[1];
 
-		/* check for basic audio support in CEA 861 block */
-		if(raw[3] & (1<<6)) {
-			/* For basic audio, set spk_alloc to Left+Right.
-			 * If there is a Speaker Alloc block this will
-			 * get over written with that value */
-			basic_audio = true;
-			edid->support_audio = 1;
-		}
+	/* check for basic audio support in CEA 861 block */
+	if (raw[3] & (1<<6)) {
+		/* For basic audio, set spk_alloc to Left+Right.
+		 * If there is a Speaker Alloc block this will
+		 * get over written with that value */
+		basic_audio = true;
+		edid->support_audio = 1;
 	}
 
-	if (raw[3] & 0x80)
+	if (raw[3] & (1<<7))
 		edid->support_underscan = 1;
 	else
 		edid->support_underscan = 0;
+
+	if (raw[3] & (1<<5))
+		edid->support_yuv444 = 1;
+	else
+		edid->support_yuv444 = 0;
+
+	if (raw[3] & (1<<4))
+		edid->support_yuv422 = 1;
+	else
+		edid->support_yuv422 = 0;
 
 	ptr = &raw[4];
 
@@ -357,14 +367,22 @@ static int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 		case CEA_DATA_BLOCK_VENDOR:
 		{
 			int j = 0;
-
+			u16 temp = 0;
 			/* OUI for hdmi licensing, LLC */
 			if ((ptr[1] == 0x03) &&
 				(ptr[2] == 0x0c) &&
 				(ptr[3] == 0)) {
 				edid->eld.port_id[0] = ptr[4];
 				edid->eld.port_id[1] = ptr[5];
-
+				temp = ptr[6];
+				edid->color_depth_flag = (temp << 5) &
+							TEGRA_DC_RGB_MASK;
+				if (edid->support_yuv422 && (temp & 0x08))
+					edid->color_depth_flag |= (temp >> 1) &
+							TEGRA_DC_Y422_MASK;
+				if (edid->support_yuv444 && (temp & 0x08))
+					edid->color_depth_flag |= (temp << 2) &
+							TEGRA_DC_Y444_MASK;
 				if (len >= 7)
 					edid->max_tmds_char_rate_hllc_mhz =
 								ptr[7] * 5;
@@ -378,7 +396,7 @@ static int tegra_edid_parse_ext_block(const u8 *raw, int idx,
 				(ptr[2] == 0x5d) &&
 				(ptr[3] == 0xc4)) {
 				edid->hfvsdb_present = true;
-				edid->color_depth_flag = ptr[7] &
+				edid->color_depth_flag |= ptr[7] &
 							TEGRA_DC_Y420_MASK;
 				edid->max_tmds_char_rate_hf_mhz = ptr[5] * 5;
 				edid->scdc_present = (ptr[6] >> 7) & 0x1;
@@ -603,6 +621,26 @@ u16 tegra_edid_get_ex_colorimetry(struct tegra_edid *edid)
 	}
 
 	return edid->data->colorimetry;
+}
+
+bool tegra_edid_support_yuv422(struct tegra_edid *edid)
+{
+	if (!edid || !edid->data) {
+		pr_warn("edid invalid\n");
+		return 0;
+	}
+
+	return edid->data->support_yuv422;
+}
+
+bool tegra_edid_support_yuv444(struct tegra_edid *edid)
+{
+	if (!edid || !edid->data) {
+		pr_warn("edid invalid\n");
+		return 0;
+	}
+
+	return edid->data->support_yuv444;
 }
 
 int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
