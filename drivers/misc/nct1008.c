@@ -3,7 +3,7 @@
  *
  * Driver for NCT1008, temperature monitoring device from ON Semiconductors
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -393,8 +393,7 @@ static ssize_t nct1008_set_temp_overheat(struct device *dev,
 		goto error;
 
 	data->plat_data.sensors[EXT].shutdown_limit = num;
-	if (!client->dev.of_node)
-		nct1008_setup_shutdown_warning(data);
+	nct1008_setup_shutdown_warning(data);
 
 	return count;
 error:
@@ -1441,8 +1440,7 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	data->sensors[LOC].current_hi_limit =
 		value_to_temperature(pdata->extended_range, value);
 
-	if (!client->dev.of_node)
-		nct1008_setup_shutdown_warning(data);
+	nct1008_setup_shutdown_warning(data);
 
 	return 0;
 error:
