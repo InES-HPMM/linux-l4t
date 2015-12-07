@@ -392,6 +392,7 @@
 			bclk_ratio = <0>;
 			srate = <48000>;
 			num-channel = <2>;
+			ignore_suspend;
 			name-prefix = "s";
 		};
 	};
