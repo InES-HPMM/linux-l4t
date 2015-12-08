@@ -18,6 +18,7 @@
 
 #include <linux/system-wakeup.h>
 #include "dhd_custom_sysfs_tegra.h"
+#include "dhd_custom_sysfs_tegra_scan.h"
 
 
 int lp0_logs_enable = 1;
@@ -143,6 +144,10 @@ tegra_sysfs_on(void)
 	pr_info("%s\n", __func__);
 
 	tegra_sysfs_wifi_on = 1;
+
+	/* init scan work(s) in case prior shutdown did not clean up properly
+	 */
+	wifi_scan_request_init();
 
 	/* resume (start) sysfs work */
 	tegra_sysfs_histogram_ping_work_start();

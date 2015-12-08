@@ -761,6 +761,35 @@ wifi_scan_work_check_channel_list_size(int scan_work_index,
 
 }
 
+void
+wifi_scan_request_init(void)
+{
+	struct wifi_scan_work *scan_work;
+
+	WIFI_SCAN_DEBUG("%s {\n", __func__);
+
+	/* init scan work(s) in case prior shutdown did not clean up properly
+	 */
+	for (scan_work = wifi_scan_work_list;
+		scan_work - wifi_scan_work_list
+			< sizeof(wifi_scan_work_list)
+			/ sizeof(wifi_scan_work_list[0]);
+		scan_work++) {
+		if (scan_work->original_scan_request != NULL) {
+			WIFI_SCAN_DEBUG("%s: TEGRA_SCAN_INIT:"
+				" scan_work #%d (%p)"
+				" - initializing...\n",
+				__func__,
+				(int) (scan_work - wifi_scan_work_list),
+				scan_work);
+			scan_work->original_scan_request = NULL;
+			atomic_set(&wifi_scan_work_rules_active, 0);
+		}
+	}
+
+	WIFI_SCAN_DEBUG("%s }\n", __func__);
+}
+
 int
 wifi_scan_request(wl_cfg80211_scan_funcptr_t scan_func,
 	struct wiphy *wiphy,

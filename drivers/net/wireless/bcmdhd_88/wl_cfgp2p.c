@@ -2533,7 +2533,13 @@ static int wl_cfgp2p_if_stop(struct net_device *net)
 		return -EINVAL;
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
 	if (wl->scan_request && wl->scan_request->dev == net) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(wl->scan_request, true)
+#endif
 		cfg80211_scan_done(wl->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		wl->scan_request = NULL;
 		clear_flag = 1;
 	}
@@ -2647,7 +2653,13 @@ wl_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev *wdev)
 
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
 	if (wl->scan_request && wl->scan_request->wdev == wdev) {
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+		TEGRA_SCAN_DONE(wl->scan_request, true)
+#endif
 		cfg80211_scan_done(wl->scan_request, true);
+#ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
+skip_cfg80211_scan_done:
+#endif
 		wl->scan_request = NULL;
 		clear_flag = 1;
 	}

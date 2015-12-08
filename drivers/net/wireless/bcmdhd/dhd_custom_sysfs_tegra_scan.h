@@ -209,6 +209,9 @@ struct wifi_scan_work {
 extern struct workqueue_struct *wifi_scan_work_queue;
 extern struct wifi_scan_work wifi_scan_work_list[WIFI_SCAN_WORK_MAX];
 
+void
+wifi_scan_request_init(void);
+
 int
 wifi_scan_request(wl_cfg80211_scan_funcptr_t scan_func,
 	struct wiphy *wiphy,
