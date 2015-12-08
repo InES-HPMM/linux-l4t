@@ -404,10 +404,10 @@ void gk20a_channel_abort(struct channel_gk20a *ch)
 
 	ch->g->ops.fifo.disable_channel(ch);
 
-	if (released_job_semaphore) {
+	if (released_job_semaphore)
 		wake_up_interruptible_all(&ch->semaphore_wq);
-		gk20a_channel_update(ch, 0);
-	}
+
+	gk20a_channel_update(ch, 0);
 }
 
 int gk20a_wait_channel_idle(struct channel_gk20a *ch)
