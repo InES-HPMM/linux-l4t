@@ -1819,9 +1819,7 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 
 	tegra_hdmi_config_clk(hdmi, TEGRA_HDMI_BRICK_CLK);
 	tegra_dc_sor_attach(sor);
-
-	if (!hdmi->dvi)
-		tegra_nvhdcp_set_plug(hdmi->nvhdcp, true);
+	tegra_nvhdcp_set_plug(hdmi->nvhdcp, tegra_dc_hpd(dc));
 
 	tegra_dc_setup_clk(dc, dc->clk);
 	tegra_dc_hdmi_setup_clk(dc, hdmi->sor->sor_clk);
