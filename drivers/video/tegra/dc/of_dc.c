@@ -1575,7 +1575,7 @@ static struct device_node *parse_dsi_settings(struct platform_device *ndev,
 			dsi->phy_timing.t_tago_ns);
 	}
 
-	if (!of_find_property(np_dsi_panel,
+	if (of_find_property(np_dsi_panel,
 		"nvidia,dsi-boardinfo", NULL)) {
 		of_property_read_u32_index(np_dsi_panel,
 			"nvidia,dsi-boardinfo", 0,
