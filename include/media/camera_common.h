@@ -81,6 +81,7 @@ struct camera_common_regulators {
 
 struct camera_common_pdata {
 	const char *mclk_name; /* NULL for default default_mclk */
+	const char *parentclk_name; /* NULL for no parent clock*/
 	unsigned int pwdn_gpio;
 	unsigned int reset_gpio;
 	unsigned int af_gpio;
@@ -89,6 +90,8 @@ struct camera_common_pdata {
 	int (*power_on)(struct camera_common_power_rail *pw);
 	int (*power_off)(struct camera_common_power_rail *pw);
 	struct camera_common_regulators regulators;
+	bool use_cam_gpio;
+	bool has_eeprom;
 };
 
 struct camera_common_eeprom_data {
@@ -153,9 +156,13 @@ struct camera_common_data {
 	struct camera_common_power_rail		*power;
 
 	struct v4l2_subdev			subdev;
+	struct v4l2_ctrl			**ctrls;
 
 	void	*priv;
 	int	ident;
+	int	numctrls;
+	int	csi_port;
+	int	numlanes;
 	int	mode;
 	int	numfmts;
 	int	def_mode, def_width, def_height;
@@ -175,9 +182,15 @@ static inline struct camera_common_data *to_camera_common_data(
 			    struct camera_common_data, subdev);
 }
 
-int camera_common_to_gain(u32 rep, int shift);
+int camera_common_g_ctrl(struct camera_common_data *s_data,
+			 struct v4l2_control *control);
+
 int camera_common_regulator_get(struct i2c_client *client,
 		       struct regulator **vreg, const char *vreg_name);
+int camera_common_parse_clocks(struct i2c_client *client,
+			struct camera_common_pdata *pdata);
+int camera_common_parse_ports(struct i2c_client *client,
+			      struct camera_common_data *s_data);
 
 int camera_common_debugfs_show(struct seq_file *s, void *unused);
 ssize_t camera_common_debugfs_write(

@@ -1,5 +1,5 @@
 /*
- * imx214.c - imx214 sensor driver
+ * imx214_mode_tbls.h - imx214 sensor mode tables
  *
  * Copyright (c) 2015, NVIDIA CORPORATION, All Rights Reserved.
  *
@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/camera_common.h>
-
 #ifndef __IMX214_I2C_TABLES__
 #define __IMX214_I2C_TABLES__
+
+#include <media/camera_common.h>
 
 #define IMX214_TABLE_WAIT_MS	0
 #define IMX214_TABLE_END	1
