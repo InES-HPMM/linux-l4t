@@ -86,6 +86,9 @@ void nvmap_vma_open(struct vm_area_struct *vma)
 	}
 	mutex_unlock(&h->lock);
 
+	if (vma_open_count > 1)
+		return;
+
 	vma_list = kmalloc(sizeof(*vma_list), GFP_KERNEL);
 	if (vma_list) {
 		mutex_lock(&h->lock);
@@ -133,18 +136,19 @@ static void nvmap_vma_close(struct vm_area_struct *vma)
 	nr_page = PAGE_ALIGN(h->size) >> PAGE_SHIFT;
 
 	mutex_lock(&h->lock);
-	list_for_each_entry(vma_list, &h->vmas, list) {
-		if (vma_list->vma != vma)
-			continue;
-		list_del(&vma_list->list);
-		kfree(vma_list);
-		vma_found = true;
-		break;
-	}
-	BUG_ON(!vma_found);
 	nvmap_umaps_dec(h);
 
 	if (__atomic_add_unless(&priv->count, -1, 0) == 1) {
+		list_for_each_entry(vma_list, &h->vmas, list) {
+			if (vma_list->vma != vma)
+				continue;
+			list_del(&vma_list->list);
+			kfree(vma_list);
+			vma_found = true;
+			break;
+		}
+		BUG_ON(!vma_found);
+
 		if (h->heap_pgalloc) {
 			for (i = 0; i < nr_page; i++) {
 				struct page *page;
