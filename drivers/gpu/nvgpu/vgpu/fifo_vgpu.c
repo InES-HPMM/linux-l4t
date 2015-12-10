@@ -555,7 +555,7 @@ int vgpu_fifo_isr(struct gk20a *g, struct tegra_vgpu_fifo_intr_info *info)
 					NVGPU_CHANNEL_FIFO_ERROR_IDLE_TIMEOUT);
 		break;
 	case TEGRA_VGPU_FIFO_INTR_MMU_FAULT:
-		gk20a_channel_abort(ch);
+		gk20a_channel_abort(ch, false);
 		vgpu_fifo_set_ctx_mmu_error(g, ch);
 		break;
 	default:

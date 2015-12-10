@@ -375,7 +375,7 @@ void channel_gk20a_disable(struct channel_gk20a *ch)
 			ccsr_channel_enable_clr_true_f());
 }
 
-void gk20a_channel_abort(struct channel_gk20a *ch)
+void gk20a_channel_abort(struct channel_gk20a *ch, bool channel_preempt)
 {
 	struct channel_gk20a_job *job, *n;
 	bool released_job_semaphore = false;
@@ -384,6 +384,11 @@ void gk20a_channel_abort(struct channel_gk20a *ch)
 
 	/* make sure new kickoffs are prevented */
 	ch->has_timedout = true;
+
+	ch->g->ops.fifo.disable_channel(ch);
+
+	if (channel_preempt)
+		gk20a_fifo_preempt(ch->g, ch);
 
 	/* ensure no fences are pending */
 	mutex_lock(&ch->submit_lock);
@@ -401,8 +406,6 @@ void gk20a_channel_abort(struct channel_gk20a *ch)
 		}
 	}
 	mutex_unlock(&ch->jobs_lock);
-
-	ch->g->ops.fifo.disable_channel(ch);
 
 	if (released_job_semaphore)
 		wake_up_interruptible_all(&ch->semaphore_wq);
@@ -438,8 +441,7 @@ int gk20a_wait_channel_idle(struct channel_gk20a *ch)
 
 void gk20a_disable_channel(struct channel_gk20a *ch)
 {
-	gk20a_channel_abort(ch);
-	gk20a_fifo_preempt(ch->g, ch);
+	gk20a_channel_abort(ch, true);
 	channel_gk20a_update_runlist(ch, false);
 }
 
