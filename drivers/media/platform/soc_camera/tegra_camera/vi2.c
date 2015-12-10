@@ -1364,6 +1364,12 @@ static int vi2_channel_capture_frame(struct vi2_channel *chan,
 
 	csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_SINGLE_SHOT, 0x1);
 
+	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
+			chan->syncpt_id, chan->syncpt_thresh,
+			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
+			NULL,
+			NULL);
+
 	/* Move buffer to capture done queue */
 	spin_lock(&chan->done_lock);
 	list_add_tail(&buf->queue, &chan->done);
@@ -1371,12 +1377,6 @@ static int vi2_channel_capture_frame(struct vi2_channel *chan,
 
 	/* Wait up kthread for capture done */
 	wake_up_interruptible(&chan->done_wait);
-
-	err = nvhost_syncpt_wait_timeout_ext(cam->pdev,
-			chan->syncpt_id, chan->syncpt_thresh,
-			TEGRA_SYNCPT_CSI_WAIT_TIMEOUT,
-			NULL,
-			NULL);
 
 	/* Mark SOF flag to Zero after we captured the FIRST frame */
 	if (chan->sof)
@@ -1388,7 +1388,6 @@ static int vi2_channel_capture_frame(struct vi2_channel *chan,
 
 	return err;
 }
-
 
 static int vi2_channel_capture_done(struct vi2_channel *chan,
 				    struct tegra_camera_buffer *buf)
@@ -1422,9 +1421,6 @@ static int vi2_channel_capture_done(struct vi2_channel *chan,
 	if (err)
 		dev_err(&vi2_cam->cam.pdev->dev,
 			"MW_ACK_DONE syncpoint time out!\n");
-
-	csi_pp_regs_write(vi2_cam, chan, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
-			  0xf002);
 
 	/* Captured one frame */
 	do_gettimeofday(&vb->v4l2_buf.timestamp);
