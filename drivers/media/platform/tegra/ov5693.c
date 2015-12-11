@@ -2961,6 +2961,7 @@ static void ov5693_regulator_get(struct ov5693_info *info,
 		dev_err(&info->i2c_client->dev, "%s %s ERR: %p\n",
 			__func__, vreg_name, reg);
 		err = PTR_ERR(reg);
+		reg = NULL;
 	} else {
 		dev_dbg(&info->i2c_client->dev, "%s: %s\n",
 			__func__, vreg_name);
