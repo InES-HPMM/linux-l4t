@@ -306,6 +306,10 @@ static int imx230_power_on(struct camera_common_data *s_data)
 		gpio_set_value(pw->reset_gpio, 0);
 	usleep_range(10, 20);
 
+	/* It's used to switch on 2V5_CAM_H and 1V1_CAM_H */
+	if (pw->pwdn_gpio)
+		gpio_set_value(pw->pwdn_gpio, 1);
+
 	if (pw->avdd)
 		err = regulator_enable(pw->avdd);
 	if (err)
@@ -358,6 +362,9 @@ static int imx230_power_off(struct camera_common_data *s_data)
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 0);
 	usleep_range(1, 2);
+
+	if (pw->pwdn_gpio)
+		gpio_set_value(pw->pwdn_gpio, 0);
 
 	if (pw->iovdd)
 		regulator_disable(pw->iovdd);
@@ -414,8 +421,10 @@ static int imx230_power_get(struct imx230 *priv)
 	err |= camera_common_regulator_get(priv->i2c_client,
 			&pw->iovdd, pdata->regulators.iovdd);
 
-	if (!err)
+	if (!err) {
 		pw->reset_gpio = pdata->reset_gpio;
+		pw->pwdn_gpio = pdata->pwdn_gpio;
+	}
 
 	pw->state = SWITCH_OFF;
 	return err;
@@ -1096,7 +1105,12 @@ static struct camera_common_pdata *imx230_parse_dt(struct i2c_client *client)
 	sts = of_property_read_string(np, "mclk", &board_priv_pdata->mclk_name);
 	if (sts)
 		dev_err(&client->dev, "mclk not found %d\n", sts);
-	board_priv_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
+	sts = of_get_named_gpio(np, "reset-gpios", 0);
+	if (sts >= 0)
+		board_priv_pdata->reset_gpio = sts;
+	sts = of_get_named_gpio(np, "pwdn-gpios", 0);
+	if (sts >= 0)
+		board_priv_pdata->pwdn_gpio = sts;
 
 	sts = of_property_read_string(np, "avdd-reg",
 			&board_priv_pdata->regulators.avdd);
