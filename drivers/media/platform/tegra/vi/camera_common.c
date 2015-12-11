@@ -85,6 +85,7 @@ int camera_common_g_ctrl(struct camera_common_data *s_data,
 
 	return -EINVAL;
 }
+EXPORT_SYMBOL(camera_common_g_ctrl);
 
 int camera_common_regulator_get(struct i2c_client *client,
 		       struct regulator **vreg, const char *vreg_name)
@@ -105,6 +106,7 @@ int camera_common_regulator_get(struct i2c_client *client,
 	*vreg = reg;
 	return err;
 }
+EXPORT_SYMBOL(camera_common_regulator_get);
 
 int camera_common_parse_clocks(struct i2c_client *client,
 			struct camera_common_pdata *pdata)
@@ -311,6 +313,7 @@ void camera_common_remove_debugfs(
 	debugfs_remove_recursive(s_data->debugdir);
 	s_data->debugdir = NULL;
 }
+EXPORT_SYMBOL(camera_common_remove_debugfs);
 
 void camera_common_create_debugfs(
 		struct camera_common_data *s_data,
@@ -338,6 +341,7 @@ remove_debugfs:
 	dev_err(&client->dev, "couldn't create debugfs\n");
 	camera_common_remove_debugfs(s_data);
 }
+EXPORT_SYMBOL(camera_common_create_debugfs);
 
 /* Find a data format by a pixel code in an array */
 const struct camera_common_colorfmt *camera_common_find_datafmt(
@@ -351,6 +355,7 @@ const struct camera_common_colorfmt *camera_common_find_datafmt(
 
 	return NULL;
 }
+EXPORT_SYMBOL(camera_common_find_datafmt);
 
 int camera_common_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 			 enum v4l2_mbus_pixelcode *code)
@@ -361,6 +366,7 @@ int camera_common_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 	*code = camera_common_color_fmts[index].code;
 	return 0;
 }
+EXPORT_SYMBOL(camera_common_enum_fmt);
 
 int camera_common_try_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 {
@@ -415,6 +421,7 @@ int camera_common_try_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 
 	return 0;
 }
+EXPORT_SYMBOL(camera_common_try_fmt);
 
 int camera_common_s_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 {
@@ -434,6 +441,7 @@ int camera_common_s_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 
 	return 0;
 }
+EXPORT_SYMBOL(camera_common_s_fmt);
 
 int camera_common_g_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 {
@@ -451,6 +459,7 @@ int camera_common_g_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 
 	return 0;
 }
+EXPORT_SYMBOL(camera_common_g_fmt);
 
 static void camera_common_mclk_disable(struct camera_common_data *s_data)
 {
@@ -546,6 +555,7 @@ int camera_common_s_power(struct v4l2_subdev *sd, int on)
 
 	return err;
 }
+EXPORT_SYMBOL(camera_common_s_power);
 
 int camera_common_g_mbus_config(struct v4l2_subdev *sd,
 				struct v4l2_mbus_config *cfg)
@@ -557,6 +567,7 @@ int camera_common_g_mbus_config(struct v4l2_subdev *sd,
 
 	return 0;
 }
+EXPORT_SYMBOL(camera_common_g_mbus_config);
 
 int camera_common_focuser_s_power(struct v4l2_subdev *sd, int on)
 {
