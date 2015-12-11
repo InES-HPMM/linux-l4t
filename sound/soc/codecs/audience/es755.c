@@ -868,7 +868,8 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 
 	escore->pcm_format = params_format(params);
 	/* ######## HACK : Set PCM format as 32bit ####### */
-	escore->pcm_format = SNDRV_PCM_FORMAT_S32_LE;
+	if (escore->algo_type == DHWPT || escore->dhwpt_enabled)
+		escore->pcm_format = SNDRV_PCM_FORMAT_S32_LE;
 
 	switch (escore->pcm_format) {
 	case SNDRV_PCM_FORMAT_A_LAW:
@@ -1032,7 +1033,7 @@ static int es755_hw_params(struct snd_pcm_substream *substream,
 	/* BAS-3205, if frame size is 64 bits and word length is 16 bits, set
 	 * TDM Timeslots Per Frame of PortA to 3  */
 	if (escore->algo_type != DHWPT && !escore->dhwpt_enabled) {
-		if (64 == (bps + 1)*channels && 0x1F == bps) {
+		if (32 == (bps + 1)*channels && 0xF == bps) {
 			api_access =
 			     &escore->api_access[ES_PORT_TDM_SLOTS_PER_FRAME];
 			api_access->write_msg[0] |=

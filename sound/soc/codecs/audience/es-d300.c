@@ -232,6 +232,7 @@ static int _es_set_switch(int id)
 
 	switch_value = es_d300_switch[id].value;
 	cmd = es_d300_switch[id].value_cmd[switch_value];
+	cmd = cmd | (1 << ES_SC_BIT);
 
 	/*
 	 * The delay is required to make sure the route is active.
@@ -289,6 +290,7 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 					!escore->dhwpt_mode &&
 					escore->dhwpt_cmd) {
 
+			usleep_range(2000, 2005);
 			u32 cmd = escore->dhwpt_cmd & 0xFFFF0000;
 			ret = escore_cmd(escore, cmd, &resp);
 			if (ret) {
@@ -299,7 +301,7 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 
 			/* Require 1ms delay between stop route
 			   and DHWPT to avoid noise */
-			usleep_range(5000, 5005);
+			usleep_range(2000, 2005);
 		}
 
 
@@ -353,12 +355,15 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 					return ret;
 				}
 
+				usleep_range(2000, 2005);
 				ret = escore_cmd(escore, cmd, &resp);
 				if (ret) {
 					pr_err("%s: Disabling DHWPT failed = %d\n",
 							__func__, ret);
 					return ret;
 				}
+				usleep_range(2000, 2005);
+
 			} else {
 				pr_debug("%s(): %s\n",
 					"DHWPT capture is on.Skip disabling DHWPT",
@@ -454,8 +459,8 @@ static int convert_input_mux_to_cmd(struct escore_priv *escore, int reg)
 	/* For BAS-3205, in case of PT_VP route and PCM0 port and 16bits,
 	 * set channel number to 0 for PassIN1 and 2 for PassIN2 */
 	if (PCM0 == port && PASSTHRU_VP == algo_type &&
-	    (SNDRV_PCM_FORMAT_S32_LE == escore->pcm_format ||
-	     SNDRV_PCM_FORMAT_S32_BE == escore->pcm_format)) {
+	    (SNDRV_PCM_FORMAT_S16_LE == escore->pcm_format ||
+	     SNDRV_PCM_FORMAT_S16_BE == escore->pcm_format)) {
 
 		if (ES_PASSIN1_MUX == reg)
 			channel_ids[algo_type][port].rx_chan_id = 0;
