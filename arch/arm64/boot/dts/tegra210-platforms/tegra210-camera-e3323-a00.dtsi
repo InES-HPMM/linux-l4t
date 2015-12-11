@@ -21,47 +21,32 @@
 / {
 	host1x {
 		vi {
+			num-channels = <4>;
 			ports {
-				port@6 {
-					reg = <6>;
-					vi_in6: endpoint {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					e3323_vi_in0: endpoint {
+						remote-endpoint = <&ov23850_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					e3323_vi_in1: endpoint {
+						remote-endpoint = <&ov23850_out1>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					e3323_vi_in2: endpoint {
 						remote-endpoint = <&lc898212_out0>;
 					};
 				};
-				port@7 {
-					reg = <7>;
-					vi_in7: endpoint {
+				port@3 {
+					reg = <3>;
+					e3323_vi_in3: endpoint {
 						remote-endpoint = <&lc898212_out1>;
-					};
-				};
-			};
-
-			csia@54080838 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						e3323_cam0_csia_in0: endpoint@0 {
-							bus-width = <4>;
-							remote-endpoint = <&ov23850_out0>;
-						};
-					};
-				};
-			};
-
-			csic@54081038 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						e3323_cam1_csic_in0: endpoint@0 {
-							bus-width = <4>;
-							remote-endpoint = <&ov23850_out2>;
-						};
 					};
 				};
 			};
@@ -239,8 +224,9 @@
 					port@0 {
 						reg = <0>;
 						ov23850_out0: endpoint {
+							csi-port = <0>;
 							bus-width = <4>;
-							remote-endpoint = <&e3323_cam0_csia_in0>;
+							remote-endpoint = <&e3323_vi_in0>;
 						};
 					};
 				};
@@ -250,7 +236,7 @@
 				reg = <0x72>;
 
 				/* physical camera layer interface tags */
-				devnode = "video6";
+				devnode = "video2";
 				/**
 				* Type specifies the control features supported by
 				* the focuser driver.
@@ -265,7 +251,7 @@
 					port@0 {
 						reg = <0>;
 						lc898212_out0: endpoint {
-							remote-endpoint = <&vi_in6>;
+							remote-endpoint = <&e3323_vi_in2>;
 						};
 					};
 				};
@@ -288,7 +274,7 @@
 			dvdd-reg = "vdig";
 			iovdd-reg = "vif";
 			vcmvdd-reg = "vvcm";
-			devnode = "video2";
+			devnode = "video1";
 
 			mode0 { // OV23850_MODE_5632X4224
 				mclk_khz = "24000";
@@ -349,9 +335,10 @@
 
 				port@0 {
 					reg = <0>;
-					ov23850_out2: endpoint {
+					ov23850_out1: endpoint {
+						csi-port = <2>;
 						bus-width = <4>;
-						remote-endpoint = <&e3323_cam1_csic_in0>;
+						remote-endpoint = <&e3323_vi_in1>;
 					};
 				};
 			};
@@ -361,7 +348,7 @@
 			reg = <0x72>;
 
 			/* physical camera layer interface tags */
-			devnode = "video7";
+			devnode = "video3";
 			type = "default";
 
 			ports {
@@ -370,7 +357,7 @@
 				port@0 {
 					reg = <0>;
 					lc898212_out1: endpoint {
-						remote-endpoint = <&vi_in7>;
+						remote-endpoint = <&e3323_vi_in3>;
 					};
 				};
 			};

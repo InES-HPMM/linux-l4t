@@ -36,17 +36,23 @@
 
 	/* all cameras are disabled by default */
 	host1x {
-		vi {
+		vi_base: vi {
 			ports {
-				vi_port6: port@6 {
+				vi_port1: port@1 {
 					status = "disabled";
-					vi_in6: endpoint {
+					vi_in1: endpoint {
 						status = "disabled";
 					};
 				};
-				vi_port7: port@7 {
+				vi_port2: port@2 {
 					status = "disabled";
-					vi_in7: endpoint {
+					vi_in2: endpoint {
+						status = "disabled";
+					};
+				};
+				vi_port3: port@3 {
+					status = "disabled";
+					vi_in3: endpoint {
 						status = "disabled";
 					};
 				};
