@@ -218,7 +218,7 @@ u64 tegra_smmu_fixup_swgids(struct device *dev, struct iommu_linear_map **map)
 		if (dev->of_node)
 			break;
 
-		pr_info("No Device Node present for smmu client: %s !!\n",
+		pr_debug("No Device Node present for smmu client: %s !!\n",
 			dev_name(dev));
 		break;
 	}
