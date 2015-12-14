@@ -213,6 +213,11 @@ static int suspend_enter(suspend_state_t state, bool *wakeup)
 		goto Platform_wake;
 	}
 
+	/* flush console buffer if console_suspend_enabled cleared */
+	if (!console_suspend_enabled) {
+		console_lock();
+		console_unlock();
+	}
 	ftrace_stop();
 	error = disable_nonboot_cpus();
 	if (error || suspend_test(TEST_CPUS)) {
