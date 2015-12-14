@@ -24,6 +24,7 @@
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/clk.h>
+#include <linux/regmap.h>
 #include <linux/reset.h>
 #include <linux/regulator/consumer.h>
 #include <linux/nvhost.h>
@@ -219,6 +220,52 @@ module_param(tpg_mode, int, 0644);
 #define TEGRA_CSI_DEBUG_COUNTER_1			0xb00
 #define TEGRA_CSI_DEBUG_COUNTER_2			0xb04
 
+#define MIPI_CAL_CTRL		0x00
+#define		STARTCAL	(1 << 0)
+#define		CLKEN_OVR	(1 << 4)
+#define MIPI_CAL_AUTOCAL_CTRL0	0x04
+#define CIL_MIPI_CAL_STATUS	0x08
+#define		CAL_DONE	(1 << 16)
+#define CIL_MIPI_CAL_STATUS_2	0x0c
+#define CILA_MIPI_CAL_CONFIG	0x14
+#define		SELA		(1 << 21)
+#define CILB_MIPI_CAL_CONFIG	0x18
+#define		SELB		(1 << 21)
+#define CILC_MIPI_CAL_CONFIG	0x1c
+#define		SELC		(1 << 21)
+#define CILD_MIPI_CAL_CONFIG	0x20
+#define		SELD		(1 << 21)
+#define CILE_MIPI_CAL_CONFIG	0x24
+#define		SELE		(1 << 21)
+#define CILF_MIPI_CAL_CONFIG	0x28
+#define		SELF		(1 << 21)
+#define DSIA_MIPI_CAL_CONFIG	0x38
+#define		SELDSIA		(1 << 21)
+#define DSIB_MIPI_CAL_CONFIG	0x3c
+#define		SELDSIB		(1 << 21)
+#define DSIC_MIPI_CAL_CONFIG	0x40
+#define		SELDSIC		(1 << 21)
+#define DSID_MIPI_CAL_CONFIG	0x44
+#define		SELDSID		(1 << 21)
+#define MIPI_BIAS_PAD_CFG0	0x58
+#define		E_VCLAMP_REF	(1 << 0)
+#define		PDVCLAMP	(1 << 1)
+#define MIPI_BIAS_PAD_CFG1	0x5c
+#define MIPI_BIAS_PAD_CFG2	0x60
+#define		PDVREG		(1 << 1)
+#define DSIA_MIPI_CAL_CONFIG_2	0x64
+#define		CLKSELDSIA	(1 << 21)
+#define DSIB_MIPI_CAL_CONFIG_2	0x68
+#define		CLKSELDSIB	(1 << 21)
+#define CILC_MIPI_CAL_CONFIG_2	0x6c
+#define		CLKSELC		(1 << 21)
+#define CILD_MIPI_CAL_CONFIG_2	0x70
+#define		CLKSELD		(1 << 21)
+#define CSIE_MIPI_CAL_CONFIG_2	0x74
+#define		CLKSELE		(1 << 21)
+
+#define MIPI_CAL_BASE	0x700e3000
+
 /* These go into the TEGRA_VI_CSI_n_IMAGE_DEF registers bits 23:16 */
 #define TEGRA_IMAGE_FORMAT_T_L8				16
 #define TEGRA_IMAGE_FORMAT_T_R16_I			32
@@ -278,6 +325,13 @@ module_param(tpg_mode, int, 0644);
 #define TEGRA_IMAGE_DT_RAW10				43
 #define TEGRA_IMAGE_DT_RAW12				44
 #define TEGRA_IMAGE_DT_RAW14				45
+
+static const struct regmap_config mipi_cal_config = {
+	.reg_bits = 32,
+	.reg_stride = 4,
+	.val_bits = 32,
+	.cache_type = REGCACHE_RBTREE,
+};
 
 struct chan_regs_config {
 	u32 csi_base;
@@ -1506,6 +1560,38 @@ static int tegra_camera_slcg_handler(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static int vi2_mipi_bias_pad_init(struct vi2_camera *vi2_cam)
+{
+	void __iomem *mipi_cal;
+	struct regmap *regs;
+	struct platform_device *pdev = vi2_cam->cam.pdev;
+	struct clk *clk_mipi_cal = NULL;
+
+	clk_mipi_cal = clk_get_sys("mipi-cal", NULL);
+	if (IS_ERR_OR_NULL(clk_mipi_cal)) {
+		dev_err(&pdev->dev, "cannot get mipi-cal clk.\n");
+		return PTR_ERR(clk_mipi_cal);
+	}
+
+	mipi_cal = ioremap(MIPI_CAL_BASE, 0x100);
+	if (!mipi_cal)
+		return -ENOMEM;
+
+	regs = devm_regmap_init_mmio(&pdev->dev, mipi_cal, &mipi_cal_config);
+	if (IS_ERR(regs)) {
+		dev_err(&pdev->dev, "regmap init failed\n");
+		iounmap(mipi_cal);
+		return PTR_ERR(regs);
+	}
+
+	clk_prepare_enable(clk_mipi_cal);
+	regmap_update_bits(regs, MIPI_BIAS_PAD_CFG0, E_VCLAMP_REF, 0);
+	regmap_update_bits(regs, MIPI_BIAS_PAD_CFG2, PDVREG, 0);
+	clk_disable_unprepare(clk_mipi_cal);
+
+	return 0;
+}
+
 static int vi2_probe(struct platform_device *pdev)
 {
 	struct vi2_camera *vi2_cam;
@@ -1584,6 +1670,9 @@ static int vi2_probe(struct platform_device *pdev)
 
 	/* Get the VI register base */
 	vi2_cam->reg_base = ndata->aperture[0];
+
+	/* Init MIPI BIAS Pad */
+	vi2_mipi_bias_pad_init(vi2_cam);
 
 	/* Match the nvhost_module_init VENC powergating */
 	if (ndata->slcg_notifier_enable &&
