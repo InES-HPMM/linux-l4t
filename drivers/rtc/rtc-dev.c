@@ -347,7 +347,10 @@ static long rtc_dev_ioctl(struct file *file,
 		if (copy_from_user(&tm, uarg, sizeof(tm)))
 			return -EFAULT;
 
-		return rtc_set_time(rtc, &tm);
+		err = rtc_set_time(rtc, &tm);
+		if (!err)
+			set_systohc_rtc_time();
+		return err;
 
 	case RTC_PIE_ON:
 		err = rtc_irq_set_state(rtc, NULL, 1);

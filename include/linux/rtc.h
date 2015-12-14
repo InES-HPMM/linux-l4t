@@ -196,8 +196,10 @@ static inline bool is_leap_year(unsigned int year)
 #ifdef CONFIG_RTC_HCTOSYS_DEVICE
 extern int rtc_hctosys_ret;
 int rtc_hctosys(void);
+void set_systohc_rtc_time(void);
 #else
 #define rtc_hctosys_ret -ENODEV
+void set_systohc_rtc_time(void) { return; };
 #endif
 
 #endif /* _LINUX_RTC_H_ */
