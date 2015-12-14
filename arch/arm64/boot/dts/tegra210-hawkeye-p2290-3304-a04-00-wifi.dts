@@ -39,6 +39,11 @@
 		};
 	};
 
+	/* SAR is no longer a POR for wifi skus and hence disabled. */
+	i2c@7000c400 {
+		/delete-node/ iqs263@44;
+	};
+
 	/* On A04 the cy8c microcontroller is used to enabled
 	* the panel. This is done in part by by using the GPIO
 	* that was formerly used to enable the vdd_lcd_1v8
