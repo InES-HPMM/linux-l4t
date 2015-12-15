@@ -590,8 +590,10 @@ long gk20a_ctrl_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 		set_table_args = (struct nvgpu_gpu_zbc_set_table_args *)buf;
 
 		zbc_val = kzalloc(sizeof(struct zbc_entry), GFP_KERNEL);
-		if (zbc_val == NULL)
+		if (zbc_val == NULL) {
+			gk20a_err(dev_from_gk20a(g), "Failed to allocate memory for zbc_entry\n");
 			return -ENOMEM;
+		}
 
 		zbc_val->format = set_table_args->format;
 		zbc_val->type = set_table_args->type;
@@ -607,12 +609,18 @@ long gk20a_ctrl_dev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 			zbc_val->depth = set_table_args->depth;
 			break;
 		default:
+			gk20a_err(dev_from_gk20a(g),
+				"Invalid argument, %d didn't match to any GK20A_ZBC_TYPE\n",
+				zbc_val->type);
 			err = -EINVAL;
 		}
 
 		if (!err) {
 			err = gk20a_busy(dev);
-			if (!err) {
+			if (err) {
+				gk20a_err(dev_from_gk20a(g),
+					"failed to power on gpu: %d\n", err);
+			} else {
 				err = g->ops.gr.zbc_set_table(g, &g->gr,
 							     zbc_val);
 				gk20a_idle(dev);
