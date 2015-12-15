@@ -69,6 +69,7 @@
 		fastboot-instructions = "Press <Power> to select, <Volume Up/Down> for selection move\n";
 		long-press-power-key-on-time = <2>;
 		bootloader-orientation-support;
+		no-tnid-sn;
 	};
 
 	firmware {
