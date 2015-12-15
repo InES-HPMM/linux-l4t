@@ -26,9 +26,8 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 
-#include <mach/io_dpd.h>
-
 #include <media/v4l2-chip-ident.h>
+#include <media/tegra_v4l2_camera.h>
 #include <media/camera_common.h>
 #include <media/imx230.h>
 
@@ -55,18 +54,6 @@
 #define IMX230_DEFAULT_HEIGHT	3200
 #define IMX230_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB10_1X10
 #define IMX230_DEFAULT_CLK_FREQ	24000000
-
-static struct tegra_io_dpd csia_io = {
-	.name			= "CSIA",
-	.io_dpd_reg_index	= 0,
-	.io_dpd_bit		= 0,
-};
-
-static struct tegra_io_dpd csib_io = {
-	.name			= "CSIB",
-	.io_dpd_reg_index	= 0,
-	.io_dpd_bit		= 1,
-};
 
 struct imx230 {
 	struct camera_common_power_rail	power;
@@ -286,15 +273,10 @@ static int imx230_power_on(struct camera_common_data *s_data)
 	struct camera_common_power_rail *pw = &priv->power;
 
 	dev_dbg(&priv->i2c_client->dev, "%s: power on\n", __func__);
-	/* disable CSIA/B IOs DPD mode to turn on camera for ardbeg */
-	tegra_io_dpd_disable(&csia_io);
-	tegra_io_dpd_disable(&csib_io);
 
 	if (priv->pdata->power_on) {
 		err = priv->pdata->power_on(pw);
 		if (err) {
-			tegra_io_dpd_enable(&csia_io);
-			tegra_io_dpd_enable(&csib_io);
 			pr_err("%s failed.\n", __func__);
 		} else {
 			pw->state = SWITCH_ON;
@@ -333,8 +315,6 @@ imx230_iovdd_fail:
 	regulator_disable(pw->avdd);
 
 imx230_avdd_fail:
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
@@ -372,9 +352,6 @@ static int imx230_power_off(struct camera_common_data *s_data)
 		regulator_disable(pw->avdd);
 
 power_off_done:
-	/* put CSIA/B IOs into DPD mode to save additional power for ardbeg */
-	tegra_io_dpd_enable(&csia_io);
-	tegra_io_dpd_enable(&csib_io);
 
 	pw->state = SWITCH_OFF;
 	return 0;
@@ -1129,6 +1106,8 @@ static int imx230_probe(struct i2c_client *client,
 {
 	struct camera_common_data *common_data;
 	struct imx230 *priv;
+	struct soc_camera_subdev_desc *ssdd = soc_camera_i2c_to_desc(client);
+	struct tegra_camera_platform_data *imx230_camera_data;
 	int err;
 
 	pr_err("[IMX230]: probing v4l2 sensor.\n");
@@ -1156,13 +1135,20 @@ static int imx230_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	ssdd = soc_camera_i2c_to_desc(client);
+	imx230_camera_data = (struct tegra_camera_platform_data *)
+			     ssdd->drv_priv;
+	if (!imx230_camera_data) {
+		dev_err(&client->dev, "unable to find platform data\n");
+		return -EFAULT;
+	}
+
 	client->dev.of_node = of_find_node_by_name(NULL, "imx230");
 
 	if (client->dev.of_node)
 		priv->pdata = imx230_parse_dt(client);
 	else
-		priv->pdata = (struct camera_common_pdata *)
-				client->dev.platform_data;
+		priv->pdata = ssdd->dev_priv;
 
 	if (!priv->pdata) {
 		dev_err(&client->dev, "unable to get platform data\n");
@@ -1183,6 +1169,8 @@ static int imx230_probe(struct i2c_client *client,
 	common_data->def_width		= IMX230_DEFAULT_WIDTH;
 	common_data->def_height		= IMX230_DEFAULT_HEIGHT;
 	common_data->def_clk_freq	= IMX230_DEFAULT_CLK_FREQ;
+	common_data->csi_port		= (int)imx230_camera_data->port;
+	common_data->numlanes		= imx230_camera_data->lanes;
 
 	priv->i2c_client		= client;
 	priv->s_data			= common_data;
