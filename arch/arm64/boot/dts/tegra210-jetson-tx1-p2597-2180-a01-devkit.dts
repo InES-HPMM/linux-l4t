@@ -44,6 +44,9 @@
 			panel-a-wuxga-8-0 {
 				status = "disabled";
 			};
+			panel-s-wqxga-10-1 {
+				status = "disabled";
+			};
 		};
 	};
 

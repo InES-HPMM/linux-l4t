@@ -259,7 +259,7 @@
 				};
 			};
                         panel-s-wqxga-10-1 {
-                                status = "okay";
+                                status = "disabled";
                                 nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(V, 2) 0>; /* PV2 */
                                 nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(V, 0) 0>; /* PV0 */
 				nvidia,panel-en-gpio = <&gpio TEGRA_GPIO(V, 1) 0>; /* PV1 */
