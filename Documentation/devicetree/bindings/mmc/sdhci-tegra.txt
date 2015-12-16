@@ -81,7 +81,7 @@ in HS400 mode.
 - nvidia,enable-strobe-mode: Enable enhance strobe mode when eMMC device runs at HS400 mode.
 - nvidia,en-periodic-calib: Enable periodic calibration support for sdmmc1/sdmmc3. Auto calibration sequence will be run at interval of 100ms during sdmmc1/sdmmc3 interfaces are active.
 - nvidia,sdmmc-pin-gpios: Pass sdmmc pin details for configuring them to GPIO mode during device suspend.
-- nvidia,bcm-sdio-supress-kso-dump: Flag used by Wifi/SDIO instance of sdmmc to prevent register dump in KSO sleep mode.
+- nvidia,bcm-sdio-suppress-kso-dump: Flag used by Wifi/SDIO instance of sdmmc to prevent register dump in KSO sleep mode.
 
 Example:
 
