@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -242,6 +242,7 @@ static enum power_supply_property lc709203f_battery_props[] = {
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 };
 
@@ -252,7 +253,7 @@ static int lc709203f_get_property(struct power_supply *psy,
 	struct lc709203f_chip *chip = container_of(psy,
 				struct lc709203f_chip, battery);
 	int temperature;
-	int curr_ma;
+	int curr_ma = 0;
 	int ret = 0;
 
 	mutex_lock(&chip->mutex);
@@ -297,6 +298,15 @@ static int lc709203f_get_property(struct power_supply *psy,
 		   Report temp in dec-celcius.
 		*/
 		val->intval = temperature - 2732;
+		break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		val->intval = 0;
+		curr_ma = battery_gauge_get_input_current_limit(
+					chip->bg_dev);
+		if (curr_ma > 0)
+			val->intval = curr_ma * 1000;
+		else
+			ret = curr_ma;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = 0;
