@@ -31,6 +31,9 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
+#include <linux/wakelock.h>
+
+#define EXTCON_GPIO_STATE_WAKEUP_TIME		5000
 
 struct gpio_extcon_cables {
 	int gstate;
@@ -52,6 +55,7 @@ struct gpio_extcon_platform_data {
 	int n_out_cables;
 	struct gpio_extcon_cables *cable_states;
 	int n_cable_states;
+	int cable_detect_delay;
 };
 
 struct gpio_extcon_info {
@@ -64,11 +68,13 @@ struct gpio_extcon_info {
 	spinlock_t lock;
 	int *gpio_curr_state;
 	struct gpio_extcon_platform_data *pdata;
+	struct wake_lock wake_lock;
+	int cable_detect_jiffies;
 };
 
 static void gpio_extcon_work(struct work_struct *work)
 {
-	int state;
+	int state = 0;
 	int cstate = -1;
 	struct gpio_extcon_info	*gpex = container_of(to_delayed_work(work),
 					struct gpio_extcon_info, work);
@@ -100,6 +106,10 @@ static void gpio_extcon_work(struct work_struct *work)
 static void gpio_extcon_notifier_timer(unsigned long _data)
 {
 	struct gpio_extcon_info *gpex = (struct gpio_extcon_info *)_data;
+
+	/*take wakelock to complete cable detection */
+	if (!wake_lock_active(&gpex->wake_lock))
+		wake_lock_timeout(&gpex->wake_lock, gpex->cable_detect_jiffies);
 
 	schedule_delayed_work(&gpex->work, gpex->timer_to_work_jiffies);
 }
@@ -167,6 +177,12 @@ static struct gpio_extcon_platform_data *of_get_platform_data(
 		pdata->debounce = pval;
 	else
 		pdata->debounce = 10;
+
+	ret = of_property_read_u32(np, "cable-detect-delay", &pval);
+	if (!ret)
+		pdata->cable_detect_delay = pval;
+	else
+		pdata->cable_detect_delay = EXTCON_GPIO_STATE_WAKEUP_TIME;
 
 	pdata->n_out_cables = of_property_count_strings(np,
 					"extcon-gpio,out-cable-names");
@@ -244,6 +260,8 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	gpex->debounce_jiffies = msecs_to_jiffies(pdata->debounce);
 	gpex->timer_to_work_jiffies = msecs_to_jiffies(100);
 	gpex->edev.supported_cable = pdata->out_cable_name;
+	gpex->cable_detect_jiffies =
+			msecs_to_jiffies(pdata->cable_detect_delay);
 	gpex->pdata = pdata;
 	spin_lock_init(&gpex->lock);
 
@@ -258,6 +276,9 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 		}
 		gpex->pdata->gpios[i].irq = irq;
 	}
+
+	wake_lock_init(&gpex->wake_lock, WAKE_LOCK_SUSPEND,
+						"extcon-suspend-lock");
 
 	ret = extcon_dev_register(&gpex->edev);
 	if (ret < 0)
@@ -332,6 +353,7 @@ static int gpio_extcon_resume(struct device *dev)
 		for (i = 0; i < gpex->pdata->n_gpio; ++i)
 			disable_irq_wake(gpex->pdata->gpios[i].irq);
 	}
+	gpio_extcon_work(&gpex->work.work);
 
 	return 0;
 }
