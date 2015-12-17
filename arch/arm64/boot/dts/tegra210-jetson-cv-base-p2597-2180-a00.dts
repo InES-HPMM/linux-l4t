@@ -47,6 +47,7 @@
 #include "tegra210-platforms/tegra210-jetson-cv-super-module-e2614.dtsi"
 #include "tegra210-plugin-manager/tegra210-jetson-cv-eeprom-manager.dtsi"
 #include "tegra210-plugin-manager/tegra210-jetson-cv-plugin-manager.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-powermon-p2597.dtsi"
 
 / {
 	model = "jetson_cv";
