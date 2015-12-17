@@ -71,7 +71,7 @@ static void (*mfi_callback)(void *);
 static void *mfi_callback_arg;
 static DEFINE_MUTEX(vi_isr_lock);
 
-#ifdef CONFIG_TEGRA_GRHOST_VI
+#ifdef CONFIG_VIDEO_TEGRA_VI
 int tegra_vi_register_mfi_cb(callback cb, void *cb_arg)
 {
 	if (mfi_callback || mfi_callback_arg) {

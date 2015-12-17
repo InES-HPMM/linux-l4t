@@ -104,7 +104,7 @@ int nvhost_vi_finalize_poweron(struct platform_device *);
 
 void nvhost_vi_reset_all(struct platform_device *);
 
-#ifdef CONFIG_TEGRA_GRHOST_VI
+#ifdef CONFIG_VIDEO_TEGRA_VI
 int tegra_vi_register_mfi_cb(callback cb, void *cb_arg);
 int tegra_vi_unregister_mfi_cb(void);
 #else
