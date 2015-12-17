@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -31,6 +31,7 @@ struct bq27441_platform_data {
 	u32 reserve_cap;
 	const char *tz_name;
 	bool enable_temp_prop;
+	bool support_battery_current;
 	u32 full_charge_capacity;
 };
 

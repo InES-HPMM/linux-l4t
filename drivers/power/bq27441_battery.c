@@ -837,6 +837,7 @@ static int bq27441_get_temperature(void)
 }
 
 static enum power_supply_property bq27441_battery_props[] = {
+	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
@@ -845,7 +846,8 @@ static enum power_supply_property bq27441_battery_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_CHARGER_STANDARD,
-	POWER_SUPPLY_PROP_TEMP_INFO,
+	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
 };
 
 static int bq27441_get_property(struct power_supply *psy,
@@ -947,6 +949,22 @@ static int bq27441_get_property(struct power_supply *psy,
 			ret = -EINVAL;
 		}
 		break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		val->intval = 0;
+		input_curnt_ma = battery_gauge_get_input_current_limit(
+					chip->bg_dev);
+		if (input_curnt_ma > 0)
+			val->intval = input_curnt_ma * 1000;
+		else
+			ret = input_curnt_ma;
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		val->intval = 0;
+		ret = battery_gauge_get_battery_current(chip->bg_dev,
+					&input_curnt_ma);
+		if (!ret)
+			val->intval = 1000 * input_curnt_ma;
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -1014,6 +1032,7 @@ static struct battery_gauge_ops bq27441_bg_ops = {
 static struct battery_gauge_info bq27441_bgi = {
 	.cell_id = 0,
 	.bg_ops = &bq27441_bg_ops,
+	.current_channel_name = "battery-current",
 };
 
 static void bq27441_fc_work(struct work_struct *work)
@@ -1216,6 +1235,9 @@ static void of_bq27441_parse_platform_data(struct i2c_client *client,
 	pdata->enable_temp_prop = of_property_read_bool(np,
 					"ti,enable-temp-prop");
 
+	pdata->support_battery_current = of_property_read_bool(np,
+						"io-channel-names");
+
 	if (dt_param_not_found)
 		dev_warn(&client->dev,
 				"All the FG properties not provided in DT\n");
@@ -1286,8 +1308,11 @@ static int bq27441_probe(struct i2c_client *client,
 	chip->lasttime_status		= POWER_SUPPLY_STATUS_DISCHARGING;
 	chip->charge_complete		= 0;
 
-	/* remove temperature property if it is not supported */
-	if (!chip->enable_temp_prop && !chip->pdata->tz_name)
+	if (chip->pdata->tz_name)
+		bq27441_battery_props[0] = POWER_SUPPLY_PROP_TEMP_INFO;
+
+	/* Remove current property if it is not supported */
+	if (!chip->pdata->support_battery_current)
 		chip->battery.num_properties--;
 
 	if (!chip->enable_temp_prop && chip->pdata->tz_name)
