@@ -2015,6 +2015,7 @@ static void tegra_dc_hdmi_shutdown(struct tegra_dc *dc)
 {
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
+	_tegra_hdmivrr_activate(hdmi, false);
 	hdmi->device_shutdown = true;
 	tegra_nvhdcp_shutdown(hdmi->nvhdcp);
 
@@ -2025,6 +2026,7 @@ static void tegra_dc_hdmi_disable(struct tegra_dc *dc)
 {
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
+	_tegra_hdmivrr_activate(hdmi, false);
 	hdmi->enabled = false;
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->audio_switch, 0);
@@ -2057,6 +2059,8 @@ static void tegra_dc_hdmi_suspend(struct tegra_dc *dc)
 {
 	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
 
+	_tegra_hdmivrr_activate(hdmi, false);
+
 	if (dc->out->flags & TEGRA_DC_OUT_HOTPLUG_WAKE_LP0) {
 		int wake_irq = gpio_to_irq(dc->out->hotplug_gpio);
 		int ret;
@@ -2082,6 +2086,11 @@ static void tegra_dc_hdmi_resume(struct tegra_dc *dc)
 		disable_irq_wake(gpio_to_irq(dc->out->hotplug_gpio));
 
 	cancel_delayed_work(&hdmi->hpd_worker);
+
+	/* If resume happens with a non-VRR monitor, the HPD
+	   worker will correct the mode based on the new EDID */
+	_tegra_hdmivrr_activate(hdmi, true);
+
 	schedule_delayed_work(&hdmi->hpd_worker,
 				msecs_to_jiffies(HDMI_HPD_DEBOUNCE_DELAY_MS + HDMI_HPD_DROP_TIMEOUT_MS));
 }
@@ -2292,11 +2301,17 @@ static void tegra_dc_hdmi_vrr_enable(struct tegra_dc *dc, bool enable)
 	if (!vrr)
 		return;
 
-	if (dc->mode.vmode & FB_VMODE_VRR)
-		vrr->enable = enable;
-	else
+	if (!(dc->mode.vmode & FB_VMODE_VRR)) {
 		WARN(enable, "VRR enable request in non-VRR mode\n");
+		return;
+	}
 
+	vrr->enable = enable;
+}
+
+static void tegra_dc_hdmi_postpoweron(struct tegra_dc *dc)
+{
+	_tegra_hdmivrr_activate(tegra_dc_get_outdata(dc), true);
 }
 
 struct tegra_dc_out_ops tegra_dc_hdmi2_0_ops = {
@@ -2317,4 +2332,5 @@ struct tegra_dc_out_ops tegra_dc_hdmi2_0_ops = {
 	.vrr_enable = tegra_dc_hdmi_vrr_enable,
 	.vrr_update_monspecs = tegra_hdmivrr_update_monspecs,
 	.set_hdr = tegra_dc_hdmi_set_hdr,
+	.postpoweron = tegra_dc_hdmi_postpoweron,
 };
