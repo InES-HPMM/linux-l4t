@@ -81,4 +81,10 @@ static inline int tegra_pd_get_powergate_id(struct of_device_id *dev_id)
 }
 #endif
 
+#ifdef CONFIG_ARCH_TEGRA_21x_SOC
+extern void disable_scx_states(void);
+#else /* !CONFIG_ARCH_TEGRA_21x_SOC */
+static inline void disable_scx_states(void) { }
+#endif
+
 #endif /* _INCLUDE_TEGRA_PM_DOMAINS_H_ */

@@ -145,6 +145,14 @@ static struct gpd_dev_ops tegra_pd_ops = {
 };
 
 #ifdef CONFIG_ARCH_TEGRA_21x_SOC
+
+static int scx_enabled = 1;
+
+void disable_scx_states(void)
+{
+	scx_enabled = 0;
+}
+
 static int tegra_mc_clk_power_off(struct generic_pm_domain *genpd)
 {
 	int32_t val = cpu_to_le32(true);
@@ -153,7 +161,8 @@ static int tegra_mc_clk_power_off(struct generic_pm_domain *genpd)
 	if (!pd)
 		return -EINVAL;
 
-	tegra_bpmp_send(MRQ_SCX_ENABLE, &val, sizeof(val));
+	if (scx_enabled)
+		tegra_bpmp_send(MRQ_SCX_ENABLE, &val, sizeof(val));
 
 	return 0;
 }
@@ -166,7 +175,8 @@ static int tegra_mc_clk_power_on(struct generic_pm_domain *genpd)
 	if (!pd)
 		return -EINVAL;
 
-	tegra_bpmp_send(MRQ_SCX_ENABLE, &val, sizeof(val));
+	if (scx_enabled)
+		tegra_bpmp_send(MRQ_SCX_ENABLE, &val, sizeof(val));
 
 	return 0;
 }
