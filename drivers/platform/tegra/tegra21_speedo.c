@@ -102,12 +102,15 @@ static const u32 core_process_speedos[][CORE_PROCESS_CORNERS_NUM] = {
 
 static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 {
+	bool always_on = false;
 	bool shield_sku = false;
 	bool vcm31_sku = false;
 	bool darcy_sku = false;
 	bool a02 = rev == TEGRA_REVISION_A02;
 
 #ifdef CONFIG_OF
+	always_on = of_property_read_bool(of_chosen,
+					  "nvidia,tegra-always-on-personality");
 	shield_sku = of_property_read_bool(of_chosen,
 					   "nvidia,tegra-shield-sku");
 	vcm31_sku = of_property_read_bool(of_chosen,
@@ -118,6 +121,8 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		sku = 0x87;
 #endif
 	switch (sku) {
+	case 0x00: /* Engg sku */
+	case 0x01: /* Engg sku */
 	case 0x13:
 		if (a02 && !shield_sku) {
 			cpu_speedo_id = 5;
@@ -127,14 +132,12 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 			core_min_mv = 800;
 			break;
 		}
-		/* fall thru for a01 or shild sku */
-	case 0x00: /* Engg sku */
-	case 0x01: /* Engg sku */
+		/* fall thru for a01 or shield sku */
 	case 0x07:
 	case 0x17:
 		if (!vcm31_sku || (sku != 0x17)) {
 			if (a02 && !shield_sku) {
-				cpu_speedo_id = 1;
+				cpu_speedo_id = always_on ? 8 : 7;
 				soc_speedo_id = 0;
 				gpu_speedo_id = 2;
 				threshold_index = 0;
