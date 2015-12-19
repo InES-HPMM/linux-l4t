@@ -1887,8 +1887,8 @@ static void tegra_hdmi_config_clk(struct tegra_hdmi *hdmi, u32 clk_type)
 			clk_get_rate(clk_get_parent(sor->src_switch_clk));
 
 		/* Set sor divider */
-		if (rate != parent_rate / div) {
-			rate = parent_rate / div;
+		if (rate != DIV_ROUND_UP(parent_rate, div)) {
+			rate = DIV_ROUND_UP(parent_rate, div);
 			clk_set_rate(sor->src_switch_clk, rate);
 		}
 
