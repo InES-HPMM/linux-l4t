@@ -1343,6 +1343,12 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	if (ret)
 		goto error;
 
+	/* Initiate one-shot conversion  */
+	nct1008_write_reg(data->client, ONE_SHOT, 0x1);
+
+	/* Give hardware necessary time to finish conversion */
+	msleep(MAX_CONV_TIME_ONESHOT_MS);
+
 	/* read initial temperature */
 	ret = nct1008_read_reg(client, LOC_TEMP_RD);
 	if (ret < 0)
