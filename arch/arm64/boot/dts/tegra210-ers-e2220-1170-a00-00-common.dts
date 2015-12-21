@@ -1106,4 +1106,9 @@
 			level = "medium_throttling";
 		};
 	};
+
+	serial@70006200 {
+		dma-names = "tx";
+		nvidia,adjust-baud-rates = <921600 (100)>;
+	};
 };
