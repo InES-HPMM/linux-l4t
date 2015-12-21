@@ -1343,16 +1343,6 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	if (ret)
 		goto error;
 
-	/* read initial temperature */
-	ret = nct1008_read_reg(client, LOC_TEMP_RD);
-	if (ret < 0)
-		goto error;
-	else
-		value = ret;
-
-	temp = value_to_temperature(pdata->extended_range, value);
-	dev_dbg(&client->dev, "\n initial local temp = %d ", temp);
-
 	if (ext_err)
 		return ext_err; /* skip configuration of EXT sensor */
 
@@ -1372,6 +1362,25 @@ static int nct1008_configure_sensor(struct nct1008_data *data)
 	if (ret)
 		goto error;
 
+	 /* Initiate one-shot conversion  */
+	ret = nct1008_write_reg(data->client, ONE_SHOT, 0x1);
+	if (ret)
+		goto error;
+
+	/* Give hardware necessary time to finish conversion */
+	msleep(MAX_CONV_TIME_ONESHOT_MS);
+
+	/* read initial local temperature */
+	ret = nct1008_read_reg(client, LOC_TEMP_RD);
+	if (ret < 0)
+		goto error;
+	else
+		value = ret;
+
+	temp = value_to_temperature(pdata->extended_range, value);
+	dev_dbg(&client->dev, "\n initial local temp = %d ", temp);
+
+    /* read initial ext temperature */
 	ret = nct1008_read_reg(client, EXT_TEMP_LO_RD);
 	if (ret < 0)
 		goto error;
