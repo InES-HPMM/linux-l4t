@@ -3964,6 +3964,14 @@ static int tegra_pcie_probe_complete(struct tegra_pcie *pcie)
 	if (ret)
 		return ret;
 
+	/* FIXME:In Bug 200160313, device hang is observed during LP0 with PCIe
+	 * device connected. When PCIe device is not under mc_clk power-domain,
+	 * this issue does not occur, but SC2/SC3 might break. So, we are calling
+	 * disable_scx_states(), that will disabled SCx states whenever PCIe
+	 * device is connected.
+	 */
+	disable_scx_states();
+
 	if (IS_ENABLED(CONFIG_DEBUG_FS))
 		if (pcie->num_ports) {
 			int ret = tegra_pcie_debugfs_init(pcie);
