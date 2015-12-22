@@ -1,0 +1,357 @@
+/*
+ * arch/arm64/boot/dts/tegra210-p4573-2180.dts
+ *
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
+#include "tegra210-platforms/tegra210-modem-common.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-shim-p2597-2180-a00.dtsi"
+#include "tegra210-platforms/tegra210-p4573-2180-gpio.dtsi"
+
+#define CAM_RST_L			TEGRA_GPIO(S, 4)
+#define CAM_PWDN			TEGRA_GPIO(S, 7)
+
+#define VI_I2C_BUS			6
+
+/* generally used camera control gpio definitions and aliases*/
+#define CAM_RST				TEGRA_GPIO(S, 4)
+#define CAM_AF_EN			TEGRA_GPIO(S, 5)
+#define CAM_FLASH_EN		TEGRA_GPIO(S, 6)
+#define CAM_PWDN_RQ			TEGRA_GPIO(S, 7)
+#define CAM_PWDN_FQ			TEGRA_GPIO(T, 0)
+#define CAM_STROBE_EN		TEGRA_GPIO(T, 1)
+
+/* alias */
+#define CAMFI_PWDN			CAM_STROBE_EN
+#define CAMRI_PWDN			CAM_STROBE_EN
+
+/* specifically used on camera board designs */
+/* NxOV10823 general */
+#define OV10823_SID_CAM1	CAMRI_PWDN	/*PT1*/
+#define OV10823_SID_CAM2	CAM_AF_EN	/*PS5*/
+#define OV10823_SID_CAM3	CAM_PWDN_FQ	/*PT0*/
+
+#define OV10823_DEFAULT_I2C_ADDR_SID_LOW	(0x10)
+#define OV10823_DEFAULT_I2C_ADDR_SID_HIGH	(0x36)
+#define OV10823_SENSOR_REG_RW_SID_LOW		(0x300c)
+#define OV10823_SENSOR_REG_RW_SID_HIGH		(0x3661)
+
+#define OV10823_I2C_ADDR_CAM1		(0x20)
+#define OV10823_I2C_ADDR_CAM2		(0x22)
+#define OV10823_I2C_ADDR_CAM3		(0x24)
+
+/* ov10823 board specific */
+#define OV10823_USE_OSC_FOR_MCLK	(1)
+#define OV10823_NEED_I2C_RECOVERY	(0)
+
+#define FIRST_CAM_POS				(0)
+#define SECOND_CAM_POS				(1)
+#define THIRD_CAM_POS				(2)
+
+/ {
+	model = "p4573-2180";
+	compatible = "nvidia,jetson-cv", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
+		board-has-eeprom;
+		bootloader {
+			nvidia,skip-display-init;
+		};
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "jetson_cv";
+		};
+	};
+
+	sh_power {
+		compatible = "sensorhub,sh_power";
+		sensorhub,regulator-names = "vdd-sensorhub-hv", "vdd-sensorhub";
+		vdd-sensorhub-supply = <&max77620_sd3>;
+		vdd-sensorhub-hv-supply = <&vdd_3v3>;
+		sensorhub,reset-name = "sensorhub_reset";
+		sensorhub,boot0-name = "sensorhub_boot0";
+		sensorhub,reset-gpio = <&gpio TEGRA_GPIO(S, 4) GPIO_ACTIVE_LOW>;
+		sensorhub,boot0-gpio = <&gpio TEGRA_GPIO(S, 6) GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+
+	regulators {
+		en_vdd_fan_5v0: regulator@13 {
+			compatible = "regulator-fixed-sync";
+			reg = <13>;
+			regulator-name = "en-vdd-fan-5v0";
+			regulator-min-microvolt = <5000000>;
+			regulator-max-microvolt = <5000000>;
+			gpio = <&gpio TEGRA_GPIO(H, 7) 0>;
+			enable-active-high;
+		};
+		/delete-node/ regulator@210;
+	};
+
+	pwm-fan {
+		vdd-fan-supply = <&en_vdd_fan_5v0>;
+	};
+
+	host1x {
+		dc@54200000 {
+			status = "disabled";
+		};
+
+		dc@54240000 {
+			nvidia,dc-or-node = "/host1x/sor1";
+		};
+
+		dsi {
+			status = "disabled";
+			panel-a-wuxga-8-0 {
+				status = "disabled";
+			};
+		};
+
+		i2c@546c0000 {
+			ov5693_c@36 {
+				status = "disabled";
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		lp8557-backlight-a-wuxga-8-0@2c
+		{
+			status = "disabled";
+		};
+	};
+
+	backlight {
+		status = "disabled";
+	};
+
+	sdhci@700b0000 { /* SDMMC1 for SD card */
+		/delete-property/ wp-gpios;
+	};
+
+	tegra-camera-platform {
+		/delete-node/ modules;
+	};
+
+	camera-pcl {
+		compatible = "nvidia,tegra210-camera", "simple-bus";
+		configuration = <0xAA55AA55>;
+
+		modules {
+			module0: module0@modules {
+				compatible = "sensor,rear";
+				badge_info = "p4573_angle0_ov10823";
+
+				sensor {
+					profile = <&ov10823_A>;
+					platformdata = "t210ref_ov10823A_pdata";
+				};
+			};
+
+			module1: module1@modules {
+				compatible = "sensor,rear";
+				badge_info = "p4573_angle120_ov10823";
+
+				sensor {
+					profile = <&ov10823_B>;
+					platformdata = "t210ref_ov10823B_pdata";
+				};
+			};
+
+			module2: module2@modules {
+				compatible = "sensor,rear";
+				badge_info = "p4573_angle240_ov10823";
+
+				sensor {
+					profile = <&ov10823_C>;
+					platformdata = "t210ref_ov10823C_pdata";
+				};
+			};
+		};
+
+		profiles {
+			/delete-node/ ov5693-pcl@2_0036;
+
+			ov10823_A: ov10823-pcl@6_0020 {
+				index = <1>;
+				chipname = "pcl_OV10823_A";
+				type = "sensor";
+				guid = "sOVA823A";
+				position = <FIRST_CAM_POS>;
+				bustype = "i2c";
+				busnum = <VI_I2C_BUS>;
+				addr = <OV10823_I2C_ADDR_CAM1>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				drivername = "ov10823";
+				detect = <0x0002 0x300A 0xFFFF 0xA820>;
+				devid = <0xA823>;
+				poweron = <
+					CAMERA_GPIO_CLR(CAM_RST_L)
+					CAMERA_WAITMS(1)
+					CAMERA_GPIO_SET(CAM_RST_L)
+					CAMERA_WAITMS(100)
+					CAMERA_GPIO_SET(OV10823_SID_CAM1)
+					CAMERA_GPIO_SET(OV10823_SID_CAM2)
+					CAMERA_GPIO_SET(OV10823_SID_CAM3)
+					CAMERA_WAITUS(10)
+					CAMERA_GPIO_CLR(OV10823_SID_CAM1)
+					CAMERA_WAITUS(300)
+					CAMERA_TABLE_RAW_WRITE(CAMERA_RAW_I2C_ADDRESS(\
+						OV10823_DEFAULT_I2C_ADDR_SID_LOW, \
+						OV10823_SENSOR_REG_RW_SID_LOW, \
+						(OV10823_I2C_ADDR_CAM1 << 1)))
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_END
+					>;
+			};
+
+			ov10823_B: ov10823-pcl@6_0022 {
+				index = <1>;
+				chipname = "pcl_OV10823_B";
+				type = "sensor";
+				guid = "sOVA823B";
+				position = <THIRD_CAM_POS>;
+				bustype = "i2c";
+				busnum = <VI_I2C_BUS>;
+				addr = <OV10823_I2C_ADDR_CAM2>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				drivername = "ov10823";
+				detect = <0x0002 0x300A 0xFFFF 0xA820>;
+				devid = <0xA823>;
+				poweron = <
+					CAMERA_GPIO_CLR(OV10823_SID_CAM2)
+					CAMERA_WAITUS(300)
+					CAMERA_TABLE_RAW_WRITE(CAMERA_RAW_I2C_ADDRESS(\
+						OV10823_DEFAULT_I2C_ADDR_SID_LOW, \
+						OV10823_SENSOR_REG_RW_SID_LOW, \
+						(OV10823_I2C_ADDR_CAM2 << 1)))
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_END
+					>;
+			};
+
+			ov10823_C: ov10823-pcl@6_0024 {
+				index = <1>;
+				chipname = "pcl_OV10823_C";
+				type = "sensor";
+				guid = "sOVA823C";
+				position = <SECOND_CAM_POS>;
+				bustype = "i2c";
+				busnum = <VI_I2C_BUS>;
+				addr = <OV10823_I2C_ADDR_CAM3>;
+				datalen = <2>;
+				pinmuxgrp = <0xFFFF>;
+				gpios = <3>;
+				drivername = "ov10823";
+				detect = <0x0002 0x300A 0xFFFF 0xA820>;
+				devid = <0xA823>;
+				poweron = <
+					CAMERA_GPIO_CLR(OV10823_SID_CAM3)
+					CAMERA_WAITUS(300)
+					CAMERA_TABLE_RAW_WRITE(CAMERA_RAW_I2C_ADDRESS(\
+						OV10823_DEFAULT_I2C_ADDR_SID_LOW, \
+						OV10823_SENSOR_REG_RW_SID_LOW, \
+						(OV10823_I2C_ADDR_CAM3 << 1)))
+					CAMERA_END
+					>;
+				poweroff = <
+					CAMERA_END
+					>;
+			};
+
+			ov10823-pcl@6_0020 {
+				use_of_node = "yes";
+				dev_name = "ov10823";
+				num = <0>;
+				cam,cam-change-i2c-addr;
+				cam,cam-sids-high-to-low;
+				cam,cam-skip-sw-reset;
+				#cam,cam-i2c-recovery;
+				cam,cam-use-osc-for-mclk;
+				cam,cam-use-26mhz-mclk;
+				default_i2c_sid_low = <OV10823_DEFAULT_I2C_ADDR_SID_LOW>;
+				default_i2c_sid_high = <OV10823_DEFAULT_I2C_ADDR_SID_HIGH>;
+				regw_sid_low = <OV10823_SENSOR_REG_RW_SID_LOW>;
+				regw_sid_high = <OV10823_SENSOR_REG_RW_SID_HIGH>;
+				cam1i2c_addr = <OV10823_I2C_ADDR_CAM1>;
+				cam2i2c_addr = <OV10823_I2C_ADDR_CAM2>;
+				cam3i2c_addr = <OV10823_I2C_ADDR_CAM3>;
+				cam1sid-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
+				cam2sid-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+				cam3sid-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+			};
+
+			ov10823-pcl@6_0022 {
+				use_of_node = "yes";
+				dev_name = "ov10823";
+				num = <1>;
+				cam,cam-change-i2c-addr;
+				cam,cam-sids-high-to-low;
+				cam,cam-skip-sw-reset;
+				#cam,cam-i2c-recovery;
+				cam,cam-use-osc-for-mclk;
+				cam,cam-use-26mhz-mclk;
+				default_i2c_sid_low = <OV10823_DEFAULT_I2C_ADDR_SID_LOW>;
+				default_i2c_sid_high = <OV10823_DEFAULT_I2C_ADDR_SID_HIGH>;
+				regw_sid_low = <OV10823_SENSOR_REG_RW_SID_LOW>;
+				regw_sid_high = <OV10823_SENSOR_REG_RW_SID_HIGH>;
+				cam1i2c_addr = <OV10823_I2C_ADDR_CAM1>;
+				cam2i2c_addr = <OV10823_I2C_ADDR_CAM2>;
+				cam3i2c_addr = <OV10823_I2C_ADDR_CAM3>;
+				cam1sid-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
+				cam2sid-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+				cam3sid-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+			};
+
+			ov10823-pcl@6_0024 {
+				use_of_node = "yes";
+				dev_name = "ov10823";
+				num = <2>;
+				cam,cam-change-i2c-addr;
+				cam,cam-sids-high-to-low;
+				cam,cam-skip-sw-reset;
+				#cam,cam-i2c-recovery;
+				cam,cam-use-osc-for-mclk;
+				cam,cam-use-26mhz-mclk;
+				default_i2c_sid_low = <OV10823_DEFAULT_I2C_ADDR_SID_LOW>;
+				default_i2c_sid_high = <OV10823_DEFAULT_I2C_ADDR_SID_HIGH>;
+				regw_sid_low = <OV10823_SENSOR_REG_RW_SID_LOW>;
+				regw_sid_high = <OV10823_SENSOR_REG_RW_SID_HIGH>;
+				cam1i2c_addr = <OV10823_I2C_ADDR_CAM1>;
+				cam2i2c_addr = <OV10823_I2C_ADDR_CAM2>;
+				cam3i2c_addr = <OV10823_I2C_ADDR_CAM3>;
+				cam1sid-gpios = <&gpio TEGRA_GPIO(T, 1) 0>;
+				cam2sid-gpios = <&gpio TEGRA_GPIO(S, 5) 0>;
+				cam3sid-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+			};
+		};
+	};
+};
