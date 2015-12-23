@@ -159,7 +159,7 @@ static int channel_gk20a_set_schedule_params(struct channel_gk20a *c,
 	c->g->ops.fifo.disable_channel(c);
 
 	/* preempt the channel */
-	WARN_ON(c->g->ops.fifo.preempt_channel(c->g, c->hw_chid));
+	WARN_ON(gk20a_fifo_preempt(c->g, c));
 
 	/* value field is 8 bits long */
 	while (value >= 1 << 8) {
@@ -451,7 +451,7 @@ void gk20a_disable_channel(struct channel_gk20a *ch,
 	gk20a_wait_channel_idle(ch);
 
 	/* preempt the channel */
-	ch->g->ops.fifo.preempt_channel(ch->g, ch->hw_chid);
+	gk20a_fifo_preempt(ch->g, ch);
 
 	/* remove channel from runlist */
 	channel_gk20a_update_runlist(ch, false);
@@ -2305,7 +2305,7 @@ int gk20a_channel_suspend(struct gk20a *g)
 			/* disable channel */
 			g->ops.fifo.disable_channel(ch);
 			/* preempt the channel */
-			g->ops.fifo.preempt_channel(g, chid);
+			gk20a_fifo_preempt(ch->g, ch);
 			/* wait for channel update notifiers */
 			if (ch->update_fn &&
 					work_pending(&ch->update_fn_work))

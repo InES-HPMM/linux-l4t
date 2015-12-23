@@ -2134,11 +2134,9 @@ static int gk20a_fifo_update_runlist_locked(struct gk20a *g, u32 runlist_id,
 			/* add TSG entry */
 			gk20a_dbg_info("add TSG %d to runlist", tsg->tsgid);
 			runlist_entry[0] = ram_rl_entry_id_f(tsg->tsgid) |
-				ram_rl_entry_type_f(ram_rl_entry_type_tsg_f()) |
-				ram_rl_entry_timeslice_scale_f(
-					ram_rl_entry_timeslice_scale_3_f()) |
-				ram_rl_entry_timeslice_timeout_f(
-				       ram_rl_entry_timeslice_timeout_128_f()) |
+				ram_rl_entry_type_tsg_f() |
+				ram_rl_entry_timeslice_scale_3_f() |
+				ram_rl_entry_timeslice_timeout_128_f() |
 				ram_rl_entry_tsg_length_f(
 					tsg->num_active_channels);
 			runlist_entry[1] = 0;
