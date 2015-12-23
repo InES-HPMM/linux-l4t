@@ -53,6 +53,8 @@ Optional properties:
 -ti,auto-recharge-time-suspend: time setting in seconds to register
                       rtc alarm timer to wake the device from LP0.
 -extcon-name: the extcon name to be used for USB VBUS detection
+-ti,charge-hw-current-limit-milliamp: maximum hardware input charge
+		 current limit in milliamp
 
 Subnode properties:
 ==================

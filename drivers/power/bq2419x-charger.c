@@ -62,6 +62,7 @@
 #define BQ2419X_PC_USB_LP0_THRESHOLD	95
 #define BQ2419x_TEMP_H_CHG_DISABLE	50
 #define BQ2419x_TEMP_L_CHG_DISABLE	0
+#define BQ2419x_SW_CHG_CURRENT_LIMIT	2000
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -140,6 +141,7 @@ struct bq2419x_chip {
 	int				last_input_voltage;
 	int				wdt_refresh_timeout;
 	int				wdt_time_sec;
+	int				charge_hw_current_limit;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -1600,7 +1602,8 @@ static int bq2419x_get_input_current_limit(struct battery_charger_dev *bc_dev)
 	if (!bq2419x->cable_connected)
 		return 0;
 
-	return bq2419x->in_current_limit;
+	return (bq2419x->in_current_limit <= BQ2419x_SW_CHG_CURRENT_LIMIT) ?
+		bq2419x->in_current_limit : bq2419x->charge_hw_current_limit;
 }
 
 static int bq2419x_charger_termination_configure(
@@ -1863,6 +1866,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 				"ti,watchdog-timeout", &wdt_timeout);
 		if (!ret)
 			pdata->bcharger_pdata->wdt_timeout = wdt_timeout;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,charge-hw-current-limit-milliamp", &pval);
+		if (!ret)
+			pdata->bcharger_pdata->charge_hw_current_limit = pval;
+		else
+			pdata->bcharger_pdata->charge_hw_current_limit = 2100;
 
 		count = of_property_count_u32(batt_reg_node, "ti,soc-range");
 		soc_range_len = (count > 0) ? count : 0;
@@ -2134,6 +2144,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->auto_rechg_power_on_time =
 			pdata->bcharger_pdata->auto_rechg_power_on_time;
 	bq2419x->wdt_time_sec = pdata->bcharger_pdata->wdt_timeout;
+	bq2419x->charge_hw_current_limit =
+			pdata->bcharger_pdata->charge_hw_current_limit;
 
 	bq2419x_process_charger_plat_data(bq2419x, pdata->bcharger_pdata);
 

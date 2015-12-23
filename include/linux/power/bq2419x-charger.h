@@ -173,6 +173,7 @@ struct bq2419x_charger_platform_data {
 	u32 auto_rechg_power_on_time;
 	int min_system_voltage_limit_mV;
 	int n_soc_profile;
+	int charge_hw_current_limit;
 };
 
 /*

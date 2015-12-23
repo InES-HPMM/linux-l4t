@@ -58,6 +58,7 @@
 #define BQ2419x_OTG_ENABLE_TIME		(30*HZ)
 #define BQ2419x_TEMP_H_CHG_DISABLE	50
 #define BQ2419x_TEMP_L_CHG_DISABLE	0
+#define BQ2419x_SW_CHG_CURRENT_LIMIT	2000
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -121,6 +122,7 @@ struct bq2419x_chip {
 	struct bq2419x_vbus_platform_data *vbus_pdata;
 	struct bq2419x_charger_platform_data *charger_pdata;
 	int				last_input_voltage;
+	int charge_hw_current_limit;
 };
 
 static int current_to_reg(const unsigned int *tbl,
@@ -1464,11 +1466,23 @@ static int bq2419x_charging_restart(struct battery_charger_dev *bc_dev)
 	return ret;
 }
 
+static int bq2419x_get_input_current_limit(struct battery_charger_dev *bc_dev)
+{
+	struct bq2419x_chip *bq2419x = battery_charger_get_drvdata(bc_dev);
+
+	if (!bq2419x->cable_connected)
+		return 0;
+
+	return (bq2419x->in_current_limit <= BQ2419x_SW_CHG_CURRENT_LIMIT) ?
+		bq2419x->in_current_limit : bq2419x->charge_hw_current_limit;
+}
+
 static struct battery_charging_ops bq2419x_charger_bci_ops = {
 	.get_charging_status = bq2419x_charger_get_status,
 	.restart_charging = bq2419x_charging_restart,
 	.thermal_configure = bq2419x_charger_thermal_configure,
 	.input_voltage_configure = bq2419x_charger_input_voltage_configure,
+	.get_input_current_limit = bq2419x_get_input_current_limit,
 };
 
 static struct battery_charger_info bq2419x_charger_bci = {
@@ -1654,6 +1668,13 @@ static struct bq2419x_platform_data *bq2419x_dt_parse(struct i2c_client *client,
 			"ti,temp-polling-time-sec", &temp_polling_time);
 		bcharger_pdata->temp_polling_time_sec =
 						temp_polling_time;
+
+		ret = of_property_read_u32(batt_reg_node,
+				"ti,charge-hw-current-limit-milliamp", &pval);
+		if (!ret)
+			pdata->bcharger_pdata->charge_hw_current_limit = pval;
+		else
+			pdata->bcharger_pdata->charge_hw_current_limit = 2100;
 
 		count = of_property_count_u32(child, "ti,soc-range");
 		soc_range_len = (count > 0) ? count : 0;
@@ -1913,6 +1934,8 @@ static int bq2419x_probe(struct i2c_client *client,
 	bq2419x->auto_recharge_time_supend =
 			pdata->bcharger_pdata->auto_recharge_time_supend;
 	bq2419x->thermal_chg_disable = false;
+	bq2419x->charge_hw_current_limit =
+			pdata->bcharger_pdata->charge_hw_current_limit;
 
 	bq2419x_process_charger_plat_data(bq2419x, pdata->bcharger_pdata);
 
