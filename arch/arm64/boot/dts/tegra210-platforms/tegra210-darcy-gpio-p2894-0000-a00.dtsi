@@ -25,6 +25,7 @@
 
 		gpio_default: default {
 			gpio-input = <
+				TEGRA_GPIO(E, 6)
 				TEGRA_GPIO(A, 5)
 				TEGRA_GPIO(X, 4)
 				TEGRA_GPIO(X, 6)
