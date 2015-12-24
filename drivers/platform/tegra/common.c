@@ -2449,13 +2449,24 @@ static int __init tegra_get_last_reset_reason(void)
 #define RESET_STR(REASON) "last reset is due to "#REASON"\n"
 	char *reset_reason[] = {
 		RESET_STR(power on reset),
-		RESET_STR(watchdog timeout),
+		RESET_STR(tegra watchdog timeout),
 		RESET_STR(sensor),
 		RESET_STR(software reset),
 		RESET_STR(deep sleep reset),
+		RESET_STR(pmic watchdog timeout),
 	};
+	/* read PMC_SCRATCH203, if last reset due to pmic watchdog, stored by
+	 * nvtboot
+	 */
+	u32 val = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_SCRATCH203);
+	if (val & 0x2)
+		/* reset-reason due to pmic watchdog, set val to index of array
+		 * reset_reason so that it points to "pmic watchdog timeout"
+		 */
+		val = 5;
+	else
+		val = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_RST_STATUS) & 0x7;
 
-	u32 val = readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_RST_STATUS) & 0x7;
 	if (val >= ARRAY_SIZE(reset_reason))
 		pr_info("last reset value is invalid 0x%x\n", val);
 	else {

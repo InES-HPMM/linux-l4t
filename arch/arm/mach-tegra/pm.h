@@ -39,6 +39,7 @@
 #define PMC_SCRATCH0		0x50
 #define PMC_SCRATCH1		0x54
 #define PMC_SCRATCH4		0x60
+#define PMC_SCRATCH203		0x84c
 
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
