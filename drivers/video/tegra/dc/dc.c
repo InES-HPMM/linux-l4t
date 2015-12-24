@@ -2223,6 +2223,7 @@ int tegra_dc_set_hdr(struct tegra_dc *dc, struct tegra_dc_hdr *hdr,
 		mutex_unlock(&dc->lock);
 		return 0;
 	}
+	trace_hdr_data_update(dc, hdr);
 	if (cache_dirty) {
 		dc->hdr.eotf = hdr->eotf;
 		dc->hdr.static_metadata_id = hdr->static_metadata_id;
@@ -2239,7 +2240,6 @@ int tegra_dc_set_hdr(struct tegra_dc *dc, struct tegra_dc_hdr *hdr,
 	ret = _tegra_dc_config_frame_end_intr(dc, true);
 
 	mutex_unlock(&dc->lock);
-
 	return ret;
 }
 EXPORT_SYMBOL(tegra_dc_set_hdr);
