@@ -1,0 +1,75 @@
+/*
+ * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
+#include "tegra210-platforms/tegra210-modem-common.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-shim-p2597-2180-a00.dtsi"
+
+/ {
+	model = "jetson_cv";
+	compatible = "nvidia,jetson-cv", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
+		board-has-eeprom;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "jetson_cv";
+		};
+	};
+
+	i2c@7000c000 {
+		tca6416@20 {
+			status = "ok";
+		};
+
+		icm20628@68 {
+			status = "ok";
+		};
+
+		ak8963@0d {
+			status = "ok";
+		};
+
+		bmp280@77 {
+			status = "ok";
+		};
+
+		cm32180@48 {
+			status = "ok";
+		};
+
+		i2cmux@70 {
+			status = "ok";
+			i2c@3 {
+				rt5659.10-001a@1a {
+					status = "ok";
+				};
+			};
+		};
+	};
+
+	sound {
+		nvidia,dai-link-1 {
+			codec-dai = <&rt5658_b00>;
+		};
+	};
+};
