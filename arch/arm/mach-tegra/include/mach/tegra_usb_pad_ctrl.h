@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -141,8 +141,11 @@ static inline enum padctl_lane usb3_laneowner_to_lane_enum(u8 laneowner)
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1	0x460
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_RX_IDLE_TH_MASK	(0x3 << 24)
 #define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_RX_IDLE_TH	(1 << 24)
+#define XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_TX_RDET_STATUS	(1 << 7)
 
 #define XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL1	0x4A0
+#define XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL1_AUX_TX_RDET_STATUS	(1 << 7)
+
 #define XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL1	0x4E0
 #define XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL1	0x520
 #define XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL1	0x560
@@ -647,6 +650,7 @@ int utmi_phy_pad_enable(struct tegra_prod_list *prod_list);
 #endif
 int usb3_phy_pad_enable(u32 lane_owner);
 int pcie_phy_pad_enable(bool enable, int lane_owner);
+bool tegra_phy_get_lane_rdet(u8 lane_num);
 
 int utmi_phy_iddq_override(bool set);
 void tegra_usb_pad_reg_update(u32 reg_offset, u32 mask, u32 val);

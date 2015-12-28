@@ -49,11 +49,11 @@
 #include <linux/pm_runtime.h>
 #include <linux/tegra-powergate.h>
 #include <linux/tegra-soc.h>
-#include <linux/pci-tegra.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/of_gpio.h>
 #include <linux/of_pci.h>
+#include <linux/tegra_prod.h>
 #include <linux/tegra_pm_domains.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/consumer.h>
@@ -65,6 +65,7 @@
 
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <mach/io_dpd.h>
+#include <linux/pci-tegra.h>
 
 #define PCI_CFG_SPACE_SIZE		256
 #define PCI_EXT_CFG_SPACE_SIZE	4096
@@ -196,6 +197,11 @@
 #define RP_LINK_CONTROL_STATUS_NEG_LINK_WIDTH	(0x3F << 20)
 #define RP_LINK_CONTROL_STATUS_L0s_ENABLED		0x00000001
 #define RP_LINK_CONTROL_STATUS_L1_ENABLED		0x00000002
+
+#define RP_LINK_CONTROL_STATUS_2				0x000000B0
+#define RP_LINK_CONTROL_STATUS_2_TRGT_LNK_SPD_MASK	0x0000000F
+#define RP_LINK_CONTROL_STATUS_2_TRGT_LNK_SPD_GEN1	0x00000001
+#define RP_LINK_CONTROL_STATUS_2_TRGT_LNK_SPD_GEN2	0x00000002
 
 #define NV_PCIE2_RP_RSR					0x000000A0
 #define NV_PCIE2_RP_RSR_PMESTAT				(1 << 16)
@@ -356,6 +362,10 @@ static struct of_device_id tegra_pcie_pd[] = {
 	{ .compatible = "nvidia, tegra124-pcie-pd", },
 	{},
 };
+#endif
+
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static u32 rp_to_lane_map[] = {1, 0};
 #endif
 
 struct tegra_pcie_soc_data {
@@ -1749,7 +1759,7 @@ static void tegra_pcie_port_disable(struct tegra_pcie_port *port)
  * can result in the increase of the bootup time as there are big timeout
  * loops.
  */
-#define TEGRA_PCIE_LINKUP_TIMEOUT	200	/* up to 1.2 seconds */
+#define TEGRA_PCIE_LINKUP_TIMEOUT	100	/* up to 100 ms */
 static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 {
 	unsigned int retries = 3;
@@ -1760,32 +1770,22 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 		unsigned int timeout = TEGRA_PCIE_LINKUP_TIMEOUT;
 
 		do {
-			value = readl(port->base + RP_VEND_XP);
-
-			if (value & RP_VEND_XP_DL_UP)
-				break;
-
-			usleep_range(1000, 2000);
-		} while (--timeout);
-
-		if (!timeout) {
-			dev_info(port->pcie->dev, "link %u down, retrying\n",
-				port->index);
-			goto retry;
-		}
-
-		timeout = TEGRA_PCIE_LINKUP_TIMEOUT;
-
-		do {
 			value = readl(port->base + RP_LINK_CONTROL_STATUS);
-
 			if (value & RP_LINK_CONTROL_STATUS_DL_LINK_ACTIVE)
 				return true;
-
 			usleep_range(1000, 2000);
 		} while (--timeout);
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+		if (tegra_phy_get_lane_rdet(
+				rp_to_lane_map[port->index]))
+			goto retry;
+		else
+			return false;
 
 retry:
+#endif
+		dev_info(port->pcie->dev, "link %u down, retrying\n",
+					port->index);
 		tegra_pcie_port_reset(port);
 	} while (--retries);
 
@@ -1819,6 +1819,18 @@ static void tegra_pcie_apply_sw_war(struct tegra_pcie_port *port,
 			if (pci_pcie_type(pdev) == PCI_EXP_TYPE_ROOT_PORT)
 				pdev->msi_enabled = 0;
 	} else {
+
+		/* Some of the old PCIe end points don't get enumerated
+		 * if RP advertises both Gen-1 and Gen-2 speeds. Hence, the
+		 * strategy followed here is to initially advertise only
+		 * Gen-1 and after link is up, check end point's capability
+		 * for Gen-2 and retrain link to Gen-2 speed
+		 */
+		data = rp_readl(port, RP_LINK_CONTROL_STATUS_2);
+		data &= ~RP_LINK_CONTROL_STATUS_2_TRGT_LNK_SPD_MASK;
+		data |= RP_LINK_CONTROL_STATUS_2_TRGT_LNK_SPD_GEN1;
+		rp_writel(port, data, RP_LINK_CONTROL_STATUS_2);
+
 		/* Avoid warning during enumeration for invalid IRQ of RP */
 		data = rp_readl(port, NV_PCIE2_RP_INTR_BCR);
 		data |= NV_PCIE2_RP_INTR_BCR_INTR_LINE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -2082,6 +2082,29 @@ static void tegra_pcie_lane_aux_idle(bool ovdr, int lane)
 	val |= XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_RX_IDLE_TH;
 	writel(val, pad_base + misc_pad_ctl1_regs[lane]);
 }
+
+bool tegra_phy_get_lane_rdet(u8 lane_num)
+{
+	u32 data;
+	void __iomem *pad_base = IO_ADDRESS(TEGRA_XUSB_PADCTL_BASE);
+
+	switch (lane_num) {
+	case 0:
+		data = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1);
+		data = data &
+			XUSB_PADCTL_UPHY_MISC_PAD_P0_CTL1_AUX_TX_RDET_STATUS;
+		break;
+	case 1:
+		data = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL1);
+		data = data &
+			XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL1_AUX_TX_RDET_STATUS;
+		break;
+	default:
+		return 0;
+	}
+	return !(!data);
+}
+EXPORT_SYMBOL_GPL(tegra_phy_get_lane_rdet);
 #endif
 
 static void tegra_pcie_lane_misc_pad_override(bool ovdr, int lane_owner)
