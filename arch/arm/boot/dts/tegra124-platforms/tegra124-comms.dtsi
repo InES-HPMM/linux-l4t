@@ -51,5 +51,8 @@
 		wlan-pwr-gpio = <&gpio TEGRA_GPIO(X, 7) 0>;
 		wlan-rst-gpio = <&gpio TEGRA_GPIO(CC, 5) 0>;
 		status = "okay";
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
 	};
 };

@@ -30,6 +30,9 @@
 		interrupts = <TEGRA_GPIO(H, 2) 0x14>;
 		wlan-pwr-gpio = <&gpio TEGRA_GPIO(H, 0) 0>;
 		status = "okay";
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
 	};
 
 	bcm4329_wlan2_ {

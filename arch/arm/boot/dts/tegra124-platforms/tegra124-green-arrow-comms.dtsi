@@ -20,6 +20,9 @@
 
 / {
 	bcmdhd_wlan {
+		/* wifi MAC address */
+		mac-address-chosen-dtb-node = "nvidia,wifi-mac";
+		mac-address-file = "/mnt/factory/wifi/wifi_mac.txt";
 		country_code_map {
 			CC1 {
 				iso_abbrev = "XV";

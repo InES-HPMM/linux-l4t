@@ -45,6 +45,7 @@
 #include <linux/wlan_plat.h>
 #endif
 #include <linux/of_gpio.h>
+#include <linux/of_net.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/irq.h>
@@ -216,120 +217,21 @@ int wifi_platform_bus_enumerate(wifi_adapter_info_t *adapter, bool device_presen
 
 }
 
-#define ARDBEG_WIFI_MAC_ADDR_FILE	"/mnt/factory/wifi/wifi_mac.txt"
-static int _wifi_get_mac_addr_file(unsigned char *buf)
-{
-	struct file *fp;
-	int rdlen;
-	char str[32];
-	int mac[6];
-	int ret = 0;
-
-	/* open wifi mac address file */
-	fp = filp_open(ARDBEG_WIFI_MAC_ADDR_FILE, O_RDONLY, 0);
-	if (IS_ERR(fp)) {
-		DHD_ERROR(("%s: cannot open %s\n",
-			__FUNCTION__, ARDBEG_WIFI_MAC_ADDR_FILE));
-		return -ENOENT;
-	}
-
-	/* read wifi mac address file */
-	memset(str, 0, sizeof(str));
-	rdlen = kernel_read(fp, fp->f_pos, str, 17);
-	if (rdlen > 0)
-		fp->f_pos += rdlen;
-	if (rdlen != 17) {
-		DHD_ERROR(("%s: bad mac address file"
-			" - len %d < 17",
-			__FUNCTION__, rdlen));
-		ret = -ENOENT;
-	} else if (sscanf(str, "%x:%x:%x:%x:%x:%x",
-		&mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]) != 6) {
-		DHD_ERROR(("%s: bad mac address file"
-			" - must contain xx:xx:xx:xx:xx:xx\n",
-			__FUNCTION__));
-		ret = -ENOENT;
-	} else {
-		DHD_ERROR(("%s: using wifi mac %02x:%02x:%02x:%02x:%02x:%02x\n",
-			__FUNCTION__,
-			mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]));
-		buf[0] = (unsigned char) mac[0];
-		buf[1] = (unsigned char) mac[1];
-		buf[2] = (unsigned char) mac[2];
-		buf[3] = (unsigned char) mac[3];
-		buf[4] = (unsigned char) mac[4];
-		buf[5] = (unsigned char) mac[5];
-	}
-
-	/* close wifi mac address file */
-	filp_close(fp, NULL);
-
-	return ret;
-}
-
-/* Get MAC address from the specified DTB path */
-static int _wifi_get_mac_address_dtb(const char *node_name,
-					const char *property_name,
-					unsigned char *mac_addr)
-{
-	struct device_node *np = of_find_node_by_path(node_name);
-	const char *mac_str = NULL;
-	int values[6] = {0};
-	unsigned char mac_temp[6] = {0};
-	int i, ret = 0;
-
-	if (!np)
-		return -EADDRNOTAVAIL;
-
-	/* If the property is present but contains an invalid value,
-	 * then something is wrong. Log the error in that case.
-	 */
-	if (of_property_read_string(np, property_name, &mac_str)) {
-		ret = -EADDRNOTAVAIL;
-		goto err_out;
-	}
-
-	/* The DTB property is a string of the form xx:xx:xx:xx:xx:xx
-	 * Convert to an array of bytes.
-	 */
-	if (sscanf(mac_str, "%x:%x:%x:%x:%x:%x",
-		&values[0], &values[1], &values[2],
-		&values[3], &values[4], &values[5]) != 6) {
-		ret = -EINVAL;
-		goto err_out;
-	}
-
-	for (i = 0; i < 6; ++i)
-		mac_temp[i] = (unsigned char)values[i];
-
-	if (!is_valid_ether_addr(mac_temp)) {
-		ret = -EINVAL;
-		goto err_out;
-	}
-
-	memcpy(mac_addr, mac_temp, 6);
-
-	of_node_put(np);
-
-	return ret;
-
-err_out:
-	DHD_ERROR(("%s: bad mac address at %s/%s: %s.\n",
-		__func__, node_name, property_name,
-		(mac_str) ? mac_str : "null"));
-
-	of_node_put(np);
-
-	return ret;
-}
-
 static int wifi_get_mac_addr(unsigned char *buf)
 {
-	/* try to get mac address stored in dtb chosen first and if that
-	 * fails try filesystem.
-	 */
-	if (_wifi_get_mac_address_dtb("/chosen", "nvidia,wifi-mac", buf))
-		return _wifi_get_mac_addr_file(buf);
+	struct device_node *dt_node;
+	const void *mac_addr;
+
+	dt_node = of_find_compatible_node(NULL, NULL, "android,bcmdhd_wlan");
+	if (!dt_node)
+		return -ENOENT;
+	mac_addr = of_get_mac_address(dt_node);
+	of_node_put(dt_node);
+	if (!mac_addr)
+		return -ENOENT;
+	memcpy(buf, mac_addr, 6);
+	pr_info("%s: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		__func__, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
 
 	return 0;
 }
@@ -344,8 +246,7 @@ int wifi_platform_get_mac_addr(wifi_adapter_info_t *adapter, unsigned char *buf)
 
 	/* The MAC address search order is:
 	 * Userspace command (e.g. ifconfig)
-	 * DTB (from NCT/EEPROM)
-	 * File (FCT/rootfs)
+	 * of_get_mac_address()
 	 * OTP
 	 */
 	if (wifi_get_mac_addr(buf) == 0)
