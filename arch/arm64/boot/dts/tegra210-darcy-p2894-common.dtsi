@@ -182,6 +182,7 @@
 
 	chosen {
 		nvidia,tegra-shield-sku;
+		no-tnid-sn;
         };
 
 	gpio-keys {
