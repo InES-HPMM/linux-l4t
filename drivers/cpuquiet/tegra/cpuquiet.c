@@ -3,7 +3,7 @@
  *
  * Cpuquiet driver for Tegra CPUs
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -255,7 +255,8 @@ static int update_core_config(unsigned int cpunumber, bool up)
 
 	mutex_lock(tegra_cpu_lock);
 
-	if (cpq_state == TEGRA_CPQ_DISABLED || cpunumber >= nr_cpu_ids) {
+	if (cpq_state == TEGRA_CPQ_DISABLED || cpunumber >= nr_cpu_ids ||
+		!cpunumber) {
 		mutex_unlock(tegra_cpu_lock);
 		return -EINVAL;
 	}
@@ -404,6 +405,7 @@ static void __cpuinit __apply_core_config(void)
 	/* always keep CPU0 online */
 	cpumask_set_cpu(0, &online);
 	cpu_online = *cpu_online_mask;
+	cpumask_clear_cpu(0, &offline);
 
 	if (no_lp == -1) {
 		max_cpus = 1;
