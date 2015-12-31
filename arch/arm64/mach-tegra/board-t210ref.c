@@ -179,6 +179,7 @@ static struct of_dev_auxdata t210ref_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("linux,spdif-dit", 1, "spdif-dit.1", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 2, "spdif-dit.2", NULL),
 	OF_DEV_AUXDATA("linux,spdif-dit", 3, "spdif-dit.3", NULL),
+	OF_DEV_AUXDATA("linux,spdif-dit", 4, "spdif-dit.4", NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xhci", 0x70090000, "tegra-xhci",
 			NULL),
 	OF_DEV_AUXDATA("nvidia,tegra210-xudc", 0x700D0000, "tegra-xudc",

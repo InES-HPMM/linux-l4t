@@ -204,6 +204,11 @@
 		reg = <0x0 0x03 0x0 0x0>;
 	};
 
+	spdif_dit4: spdif-dit.4@4 {
+		compatible = "linux,spdif-dit";
+		reg = <0x0 0x04 0x0 0x0>;
+	};
+
 	adsp_audio {
 		status = "okay";
 	};
