@@ -553,7 +553,7 @@ static inline void nvmap_handle_mkdirty(struct nvmap_handle *h,
 {
 	int nchanged = nvmap_handle_mk(h, offset, size, nvmap_page_mkdirty);
 	if (h->heap_pgalloc)
-		atomic_sub(nchanged, &h->pgalloc.ndirty);
+		atomic_add(nchanged, &h->pgalloc.ndirty);
 }
 
 static inline void nvmap_handle_mkunreserved(struct nvmap_handle *h,
