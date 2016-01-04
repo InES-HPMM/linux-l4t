@@ -189,6 +189,38 @@ static int channel_gk20a_set_schedule_params(struct channel_gk20a *c,
 	return 0;
 }
 
+u32 channel_gk20a_pbdma_acquire_val(struct channel_gk20a *c)
+{
+	u32 val, exp, man;
+	u64 timeout;
+	int val_len;
+
+	timeout = gk20a_get_gr_idle_timeout(c->g);
+	do_div(timeout, 2); /* set acquire timeout to half of idle wdt */
+	timeout *= 1000000UL; /* ms -> ns */
+	do_div(timeout, 1024); /* in unit of 1024ns */
+	val_len = fls(timeout >> 32) + 32;
+	if (val_len == 32)
+		val_len = fls(timeout);
+	if (val_len > 16 + pbdma_acquire_timeout_exp_max_v()) { /* man: 16bits */
+		exp = pbdma_acquire_timeout_exp_max_v();
+		man = pbdma_acquire_timeout_man_max_v();
+	} else if (val_len > 16) {
+		exp = val_len - 16;
+		man = timeout >> exp;
+	} else {
+		exp = 0;
+		man = timeout;
+	}
+
+	val = pbdma_acquire_retry_man_2_f() |
+		pbdma_acquire_retry_exp_2_f() |
+		pbdma_acquire_timeout_exp_f(exp) |
+		pbdma_acquire_timeout_man_f(man) |
+		pbdma_acquire_timeout_en_enable_f();
+	return val;
+}
+
 int channel_gk20a_setup_ramfc(struct channel_gk20a *c,
 			u64 gpfifo_base, u32 gpfifo_entries, u32 flags)
 {
@@ -234,11 +266,7 @@ int channel_gk20a_setup_ramfc(struct channel_gk20a *c,
 	gk20a_mem_wr32(inst_ptr, ram_fc_target_w(), pbdma_target_engine_sw_f());
 
 	gk20a_mem_wr32(inst_ptr, ram_fc_acquire_w(),
-		pbdma_acquire_retry_man_2_f() |
-		pbdma_acquire_retry_exp_2_f() |
-		pbdma_acquire_timeout_exp_max_f() |
-		pbdma_acquire_timeout_man_max_f() |
-		pbdma_acquire_timeout_en_disable_f());
+		channel_gk20a_pbdma_acquire_val(c));
 
 	gk20a_mem_wr32(inst_ptr, ram_fc_runlist_timeslice_w(),
 		fifo_runlist_timeslice_timeout_128_f() |

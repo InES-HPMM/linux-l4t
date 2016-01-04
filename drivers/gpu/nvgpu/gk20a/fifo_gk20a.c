@@ -1617,6 +1617,12 @@ static u32 gk20a_fifo_handle_pbdma_intr(struct device *dev,
 				    pbdma_intr_0);
 		}
 
+		if (pbdma_intr_0 & pbdma_intr_0_acquire_pending_f()) {
+			u32 val = gk20a_readl(g, pbdma_acquire_r(pbdma_id));
+			val &= ~pbdma_acquire_timeout_en_enable_f();
+			gk20a_writel(g, pbdma_acquire_r(pbdma_id), val);
+		}
+
 		if (pbdma_intr_0 & pbdma_intr_0_pbentry_pending_f()) {
 			gk20a_fifo_reset_pbdma_header(g, pbdma_id);
 			gk20a_fifo_reset_pbdma_method(g, pbdma_id, 0);
