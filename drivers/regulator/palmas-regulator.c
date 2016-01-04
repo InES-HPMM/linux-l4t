@@ -2036,7 +2036,7 @@ static struct platform_driver palmas_driver = {
 	},
 	.probe = palmas_regulators_probe,
 	.remove = palmas_regulators_remove,
-	.shutdown = palams_regulators_shutdown,
+	.late_shutdown = palams_regulators_shutdown,
 };
 
 static int __init palmas_init(void)
