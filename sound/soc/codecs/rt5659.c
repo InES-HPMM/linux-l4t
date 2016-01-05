@@ -29,6 +29,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <sound/rt5659.h>
+#include <linux/of_gpio.h>
 
 #include "rt5659.h"
 
@@ -1398,9 +1399,8 @@ static irqreturn_t rt5659_irq(int irq, void *data)
 {
 	struct rt5659_priv *rt5659 = data;
 
-	/* FIXME: define a local workqueue and use it */
-	//queue_delayed_work(system_power_efficient_wq,
-			   //&rt5659->jack_detect_work, msecs_to_jiffies(250));
+	queue_delayed_work(rt5659->jack_workq, &rt5659->jack_detect_work,
+		msecs_to_jiffies(250));
 
 	return IRQ_HANDLED;
 }
@@ -3728,7 +3728,6 @@ static int rt5659_probe(struct snd_soc_codec *codec)
 	struct rt5659_priv *rt5659 = snd_soc_codec_get_drvdata(codec);
 
 	rt5659->codec = codec;
-
 	return 0;
 }
 
@@ -3737,6 +3736,8 @@ static int rt5659_remove(struct snd_soc_codec *codec)
 	struct rt5659_priv *rt5659 = snd_soc_codec_get_drvdata(codec);
 
 	regmap_write(rt5659->regmap, RT5659_RESET, 0);
+	if (rt5659->jack_workq)
+		destroy_workqueue(rt5659->jack_workq);
 
 	return 0;
 }
@@ -4273,10 +4274,18 @@ static int rt5659_i2c_probe(struct i2c_client *i2c,
 		break;
 	}
 
+	rt5659->jack_workq = create_workqueue("rt5659_jack_workq");
+	if (rt5659->jack_workq == NULL) {
+		dev_err(&i2c->dev, "cannot create workqueue for jack detection\n");
+		return -ENOMEM;
+	}
+
 	INIT_DELAYED_WORK(&rt5659->jack_detect_work, rt5659_jack_detect_work);
 
-	/* FIXME: pass this info from device tree */
-	rt5659->i2c->irq = 542;
+	rt5659->i2c->irq = gpio_to_irq(of_get_gpio
+		(rt5659->i2c->dev.of_node, 0));
+	dev_dbg(&i2c->dev, "irq = %d, assigned for jack interrupt handling\n",
+		rt5659->i2c->irq);
 
 	if (rt5659->i2c->irq) {
 		ret = request_threaded_irq(rt5659->i2c->irq, NULL, rt5659_irq,

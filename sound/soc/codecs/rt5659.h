@@ -1796,6 +1796,7 @@ struct rt5659_priv {
 	struct gpio_desc *gpiod_ldo1_en;
 	struct gpio_desc *gpiod_reset;
 	struct snd_soc_jack *hs_jack;
+	struct workqueue_struct *jack_workq;
 	struct delayed_work jack_detect_work;
 
 	int sysclk;
