@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/input.h>
 #include <linux/i2c.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
@@ -114,17 +115,15 @@ static void tegra_t210ref_shutdown(struct snd_pcm_substream *substream)
 static int tegra_t210ref_jack_notifier(struct notifier_block *self,
 			      unsigned long action, void *dev)
 {
-	/* FIXME - headset button detection*/
 	struct snd_soc_jack *jack = dev;
 	struct snd_soc_codec *codec = jack->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_t210ref *machine = snd_soc_card_get_drvdata(card);
 	enum headset_state state = BIT_NO_HEADSET;
-	unsigned char status_jack = 0;
 	int idx = 0;
-	struct tegra_asoc_platform_data *pdata = machine->pdata;
+	static bool button_pressed;
 
-	if (!gpio_is_valid(pdata->gpio_hp_det))
+	if (machine->is_codec_dummy)
 		return NOTIFY_OK;
 
 	idx = tegra_machine_get_codec_dai_link_idx("rt565x-playback");
@@ -133,35 +132,18 @@ static int tegra_t210ref_jack_notifier(struct notifier_block *self,
 		return idx;
 
 	codec = card->rtd[idx].codec;
-	if (jack == &tegra_t210ref_hp_jack) {
-		if (action) {
-			status_jack = rt5659_headset_detect(codec, 1);
 
-			machine->jack_status &= ~SND_JACK_HEADPHONE;
-			machine->jack_status &= ~SND_JACK_MICROPHONE;
-			machine->jack_status &= ~SND_JACK_HEADSET;
-
-			if (status_jack == SND_JACK_HEADPHONE) {
-				machine->jack_status |=
-					SND_JACK_HEADPHONE;
-				dev_dbg(codec->dev, "headphone inserted");
-			} else if (status_jack == SND_JACK_HEADSET) {
-				machine->jack_status |=
-					SND_JACK_HEADPHONE;
-				machine->jack_status |=
-					SND_JACK_MICROPHONE;
-				dev_dbg(codec->dev, "headset inserted");
-			}
-		} else {
-			rt5659_headset_detect(codec, 0);
-			dev_err(codec->dev, "jack removed");
-
-			machine->jack_status &= ~SND_JACK_HEADPHONE;
-			machine->jack_status &= ~SND_JACK_MICROPHONE;
-		}
+	dev_dbg(card->dev, "jack status = %ld", action);
+	if (action & (SND_JACK_BTN_0 | SND_JACK_BTN_1 |
+		SND_JACK_BTN_2 | SND_JACK_BTN_3)) {
+		button_pressed = true;
+		return NOTIFY_OK;
+	} else if ((action & SND_JACK_HEADSET) && button_pressed) {
+		button_pressed = false;
+		return NOTIFY_OK;
 	}
 
-	switch (machine->jack_status) {
+	switch (action) {
 	case SND_JACK_HEADPHONE:
 		state = BIT_HEADSET_NO_MIC;
 		break;
@@ -174,6 +156,7 @@ static int tegra_t210ref_jack_notifier(struct notifier_block *self,
 		state = BIT_NO_HEADSET;
 	}
 
+	dev_dbg(card->dev, "switch state to %x\n", state);
 	switch_set_state(&tegra_t210ref_headset_switch, state);
 	return NOTIFY_OK;
 }
@@ -397,24 +380,38 @@ static int tegra_t210ref_init(struct snd_soc_pcm_runtime *rtd)
 		return err;
 	}
 
-	if (gpio_is_valid(pdata->gpio_hp_det)) {
-		tegra_t210ref_hp_jack_gpio.gpio = pdata->gpio_hp_det;
-		tegra_t210ref_hp_jack_gpio.invert =
-			!pdata->gpio_hp_det_active_high;
-		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
-				&tegra_t210ref_hp_jack);
+	tegra_t210ref_hp_jack_gpio.gpio = pdata->gpio_hp_det;
+	tegra_t210ref_hp_jack_gpio.invert =
+		!pdata->gpio_hp_det_active_high;
+	snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
+		&tegra_t210ref_hp_jack);
 #ifndef CONFIG_SWITCH
-		snd_soc_jack_add_pins(&tegra_t210ref_hp_jack,
-					ARRAY_SIZE(tegra_t210ref_hp_jack_pins),
-					tegra_t210ref_hp_jack_pins);
+	snd_soc_jack_add_pins(&tegra_t210ref_hp_jack,
+		ARRAY_SIZE(tegra_t210ref_hp_jack_pins),
+		tegra_t210ref_hp_jack_pins);
 #else
-		snd_soc_jack_notifier_register(&tegra_t210ref_hp_jack,
-					&tegra_t210ref_jack_detect_nb);
+	snd_soc_jack_notifier_register(&tegra_t210ref_hp_jack,
+		&tegra_t210ref_jack_detect_nb);
 #endif
+
+	if (gpio_is_valid(pdata->gpio_hp_det)) {
+		dev_dbg(card->dev, "associate the gpio to jack\n");
 		snd_soc_jack_add_gpios(&tegra_t210ref_hp_jack,
-					1,
-					&tegra_t210ref_hp_jack_gpio);
+			1, &tegra_t210ref_hp_jack_gpio);
 	}
+
+	/* button mappings - supported play/pause and volume up/down */
+	snd_jack_set_key(tegra_t210ref_hp_jack.jack,
+		SND_JACK_BTN_0, KEY_MEDIA);
+
+	snd_jack_set_key(tegra_t210ref_hp_jack.jack,
+		SND_JACK_BTN_1, KEY_MEDIA);
+
+	snd_jack_set_key(tegra_t210ref_hp_jack.jack,
+		SND_JACK_BTN_2, KEY_VOLUMEUP);
+
+	snd_jack_set_key(tegra_t210ref_hp_jack.jack,
+		SND_JACK_BTN_3, KEY_VOLUMEDOWN);
 
 	snd_soc_dapm_sync(dapm);
 
@@ -818,8 +815,11 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 
 	pdata->gpio_hp_det = of_get_named_gpio(np,
 					"nvidia,hp-det-gpios", 0);
-	if (pdata->gpio_hp_det < 0)
-		dev_warn(&pdev->dev, "Failed to get HP Det GPIO\n");
+	if (pdata->gpio_hp_det < 0) {
+		/* interrupt handled by codec */
+		dev_warn(&pdev->dev, "Failed to get HP Det GPIO,"
+			"should be handled by codec\n");
+	}
 
 	pdata->gpio_codec1 = pdata->gpio_codec2 = pdata->gpio_codec3 =
 	pdata->gpio_spkr_en = pdata->gpio_hp_mute =
@@ -855,6 +855,11 @@ static int tegra_t210ref_driver_probe(struct platform_device *pdev)
 			dev_info(&pdev->dev, "This is a dummy codec\n");
 			machine->is_codec_dummy = 1;
 		}
+	}
+
+	if (!machine->is_codec_dummy) {
+		/* setup for jack detection only in non-dummy case */
+		rt5659_set_jack_detect(codec, &tegra_t210ref_hp_jack);
 	}
 
 	return 0;
