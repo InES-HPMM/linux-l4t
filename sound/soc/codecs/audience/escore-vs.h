@@ -17,6 +17,11 @@
 #define ES_VS_KEYWORD_PARAM_MAX 512
 #define MAX_NO_OF_VS_KW		5
 
+/* Preset ID used for Hotword (9999) */
+#define ES_VS_HOTWORD_PRESET	0x270F
+/* Keyword length of 2 seconds */
+#define ES_VS_HOTWORD_LENGTH	2000
+
 #ifdef CONFIG_SND_SOC_ES_CVQ_TIME_MEASUREMENT
 #define es_cvq_profiling(x) getnstimeofday(x)
 #else
@@ -45,6 +50,10 @@ extern int escore_vs_load(struct escore_priv *escore);
 extern int escore_get_vs_sleep(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol);
 extern int escore_put_vs_sleep(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol);
+extern int escore_get_voice_recognition_enum(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol);
+extern int escore_put_voice_recognition_enum(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol);
 extern int escore_get_vs_wakeup_keyword(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol);

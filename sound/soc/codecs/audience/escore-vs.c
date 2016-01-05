@@ -55,15 +55,15 @@ static int escore_vs_sleep(struct escore_priv *escore)
 	es_cvq_profiling(&cvq_sleep_start);
 
 	if (escore->escore_power_state == ES_SET_POWER_STATE_VS_OVERLAY &&
-		escore->es_vs_route_preset == voice_sense->vs_route_preset) {
+		escore->es_vs_route_preset == voice_sense->vs_route_preset &&
+		!escore->voice_recognition) {
 		dev_dbg(escore->dev,
 			"%s() No route change. Skipping CVQ sequence\n",
 			__func__);
 		skip_vs_seq = 1;
 		skip_vs_load = 1;
 		goto vs_set_low_power;
-	} else if (escore->escore_power_state ==
-				ES_SET_POWER_STATE_VS_OVERLAY) {
+	} else if (escore->escore_power_state == ES_SET_POWER_STATE_VS_OVERLAY) {
 		skip_vs_load = 1;
 		dev_dbg(escore->dev, "%s() already in VS overlay mode\n",
 								__func__);
@@ -159,19 +159,38 @@ static int escore_vs_sleep(struct escore_priv *escore)
 
 	es_cvq_profiling(&vs_load_end);
 
-vs_set_presets:
-	cmd = ES_SET_PRESET << 16 | escore->es_vs_route_preset;
-	rc = escore_cmd_nopm(escore, cmd, &rsp);
-	if (rc) {
-		dev_err(escore->dev, "%s(): Set Preset cmd fail %d\n",
-			__func__, rc);
-		goto vs_sleep_err;
-	}
-	voice_sense->vs_route_preset = escore->es_vs_route_preset;
+	/* Write hotword before CVS / VS preset */
+	if (escore->voice_recognition) {
+		es_cvq_profiling(&wdb_start);
 
+		rc = escore_vs_write_bkg_and_keywords(escore);
+		if (rc) {
+			dev_err(escore->dev,
+				"%s(): datablock write fail rc = %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
+
+		es_cvq_profiling(&wdb_end);
+	}
+
+vs_set_presets:
+	if (!escore->voice_recognition) {
+		cmd = ES_SET_PRESET << 16 | escore->es_vs_route_preset;
+		rc = escore_cmd_nopm(escore, cmd, &rsp);
+		if (rc) {
+			dev_err(escore->dev, "%s(): Set Preset cmd fail %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
+		voice_sense->vs_route_preset = escore->es_vs_route_preset;
+	}
 	msleep(20);
 
-	cmd = ES_SET_CVS_PRESET << 16 | escore->es_cvs_preset;
+	if (escore->voice_recognition)
+		cmd = ES_SET_CVS_PRESET << 16 | ES_VS_HOTWORD_PRESET;
+	else
+		cmd = ES_SET_CVS_PRESET << 16 | escore->es_cvs_preset;
 	rc = escore_cmd_nopm(escore, cmd, &rsp);
 	if (rc) {
 		dev_err(escore->dev, "%s(): Set CVS Preset cmd fail %d\n",
@@ -195,38 +214,56 @@ vs_set_presets:
 		}
 	}
 
-	es_cvq_profiling(&wdb_start);
+	/* Write CVQ model files after CVS / VS preset for Normal CVQ */
+	if (!escore->voice_recognition) {
+		es_cvq_profiling(&wdb_start);
 
-	/* Reconfig API Interrupt mode */
-	rc = escore_reconfig_api_intr(escore);
-	if (rc)
-		goto vs_sleep_err;
+		/* Reconfig API Interrupt mode */
+		rc = escore_reconfig_api_intr(escore);
+		if (rc)
+			goto vs_sleep_err;
 
-	/* write background model and keywords files */
-	rc = escore_vs_write_bkg_and_keywords(escore);
-	if (rc) {
-		dev_err(escore->dev,
-			"%s(): datablock write fail rc = %d\n",
-			__func__, rc);
-		goto vs_sleep_err;
-	}
+		/* write background model and keywords files */
+		rc = escore_vs_write_bkg_and_keywords(escore);
+		if (rc) {
+			dev_err(escore->dev,
+				"%s(): datablock write fail rc = %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
 
-	es_cvq_profiling(&wdb_end);
+		es_cvq_profiling(&wdb_end);
 
-	cmd = ES_SET_ALGO_PARAM_ID << 16 | ES_VS_PROCESSING_MOE;
-	rc = escore_cmd_nopm(escore, cmd, &rsp);
-	if (rc) {
-		dev_err(escore->dev, "%s(): Set Algo Param ID cmd fail %d\n",
-			__func__, rc);
-		goto vs_sleep_err;
-	}
+		cmd = ES_SET_ALGO_PARAM_ID << 16 | ES_VS_PROCESSING_MOE;
+		rc = escore_cmd_nopm(escore, cmd, &rsp);
+		if (rc) {
+			dev_err(escore->dev,
+				"%s(): Set Algo Param ID cmd fail %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
 
-	cmd = ES_SET_ALGO_PARAM << 16 | ES_VS_DETECT_KEYWORD;
-	rc = escore_cmd_nopm(escore, cmd, &rsp);
-	if (rc) {
-		dev_err(escore->dev, "%s(): Set Algo Param cmd fail %d\n",
-			__func__, rc);
-		goto vs_sleep_err;
+		cmd = ES_SET_ALGO_PARAM << 16 | ES_VS_DETECT_KEYWORD;
+		rc = escore_cmd_nopm(escore, cmd, &rsp);
+		if (rc) {
+			dev_err(escore->dev,
+				"%s(): Set Algo Param cmd fail %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
+	} else {
+		/* Send route preset after keyword length is set
+		 * for hotword feature */
+		cmd = ES_SET_PRESET << 16 | escore->es_vs_route_preset;
+		rc = escore_cmd_nopm(escore, cmd, &rsp);
+		if (rc) {
+			dev_err(escore->dev, "%s(): Set Preset cmd fail %d\n",
+				__func__, rc);
+			goto vs_sleep_err;
+		}
+		voice_sense->vs_route_preset = escore->es_vs_route_preset;
+
+		msleep(20);
 	}
 
 	rc = escore_is_sleep_aborted(escore);
@@ -270,7 +307,7 @@ vs_sleep_err:
 	if (!skip_vs_load) {
 		vs_load_time = (timespec_sub(vs_load_end, vs_load_start));
 		dev_info(escore->dev, "VS firmware load time = %lu.%03lu sec\n",
-			vs_load_time.tv_sec, (vs_load_time.tv_nsec)/1000000);
+				vs_load_time.tv_sec, (vs_load_time.tv_nsec)/1000000);
 	}
 	if (!skip_vs_seq) {
 		wdb_time = (timespec_sub(wdb_end, wdb_start));
@@ -472,6 +509,70 @@ int escore_put_vs_sleep(struct snd_kcontrol *kcontrol,
 int escore_get_vs_sleep(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
+	return 0;
+}
+
+int escore_put_voice_recognition_enum(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct escore_priv *escore = &escore_priv;
+	struct escore_voice_sense *voice_sense =
+			(struct escore_voice_sense *) escore_priv.voice_sense;
+	unsigned int value;
+	int rc = 0;
+	u32 cmd, rsp;
+
+	value = ucontrol->value.enumerated.item[0];
+
+	mutex_lock(&escore->access_lock);
+
+	rc = escore_pm_get_sync();
+	if (rc < 0) {
+		pr_err("%s(): pm_get_sync failed :%d\n", __func__, rc);
+		mutex_unlock(&escore->access_lock);
+		return rc;
+	}
+
+	escore->voice_recognition = value;
+
+	if (escore->voice_recognition) {
+		voice_sense->es_vs_keyword_length = ES_VS_HOTWORD_LENGTH;
+		rc = escore_pm_put_sync_suspend();
+	} else {
+		if (escore->escore_power_state ==
+			ES_POWER_STATE_VS_STREAMING) {
+			/* change power state to OVERLAY */
+			cmd = (ES_SET_POWER_STATE << 16) |
+				ES_SET_POWER_STATE_VS_OVERLAY;
+			rc = escore_cmd_nopm(escore, cmd, &rsp);
+			if (rc) {
+				dev_err(escore->dev,
+					"%s(): Set Power State cmd fail %d\n",
+					__func__, rc);
+				goto voice_recognition_err;
+			}
+			msleep(escore->delay.vs_streaming_to_vs);
+			escore->escore_power_state =
+				ES_SET_POWER_STATE_VS_OVERLAY;
+		}
+		/* Reset Keyword length on reset */
+		voice_sense->es_vs_keyword_length = 0;
+		escore_pm_put_autosuspend();
+	}
+
+voice_recognition_err:
+	mutex_unlock(&escore->access_lock);
+
+	return rc;
+}
+
+int escore_get_voice_recognition_enum(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct escore_priv *escore = &escore_priv;
+
+	ucontrol->value.enumerated.item[0] = escore->voice_recognition;
+
 	return 0;
 }
 
@@ -764,26 +865,48 @@ int escore_vs_write_bkg_and_keywords(struct escore_priv *escore)
 		goto escore_vs_write_bkg_keywords_exit;
 	}
 
-	rc = escore_datablock_write(escore, voice_sense->bkg->data,
-			voice_sense->bkg->size);
-	if ((rc < 0) || (rc < voice_sense->bkg->size)) {
-		dev_err(escore->dev, "%s(): bkg write failed rc = %d\n",
-						__func__, rc);
-		goto escore_vs_write_bkg_keywords_exit;
-	}
-
-	for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
-		if (!(voice_sense->vs_active_keywords & (1 << i)))
-			continue;
-		dev_dbg(escore->dev, "%s(): Write kw = %d\n", __func__, i + 1);
-		rc = escore_datablock_write(escore, voice_sense->kw[i]->data,
-						voice_sense->kw[i]->size);
-		if ((rc < 0) || (rc < voice_sense->kw[i]->size)) {
+	/* Write Hotword datablock received from user space */
+	if (escore->voice_recognition && escore->hotword_buf) {
+		dev_dbg(escore->dev, "%s(): Write hotword, size = %d\n",
+				__func__, escore->hotword_buf_size);
+		rc = escore_datablock_write(escore, escore->hotword_buf,
+						escore->hotword_buf_size);
+		if ((rc < 0) || (rc < escore->hotword_buf_size)) {
 			dev_err(escore->dev,
-				"%s(): kw %d write failed rc = %d\n",
-				__func__, i + 1, rc);
+				"%s(): hotword write failed rc = %d\n",
+				__func__, rc);
 			goto escore_vs_write_bkg_keywords_exit;
 		}
+	} else if (voice_sense->vs_active_keywords) {
+		rc = escore_datablock_write(escore, voice_sense->bkg->data,
+				voice_sense->bkg->size);
+		if ((rc < 0) || (rc < voice_sense->bkg->size)) {
+			dev_err(escore->dev, "%s(): bkg write failed rc = %d\n",
+							__func__, rc);
+			goto escore_vs_write_bkg_keywords_exit;
+		}
+
+		for (i = 0; i < MAX_NO_OF_VS_KW; i++) {
+			if (!(voice_sense->vs_active_keywords & (1 << i)))
+				continue;
+			dev_dbg(escore->dev, "%s(): Write kw = %d\n",
+							__func__, i + 1);
+			rc = escore_datablock_write(escore,
+						voice_sense->kw[i]->data,
+						voice_sense->kw[i]->size);
+			if ((rc < 0) || (rc < voice_sense->kw[i]->size)) {
+				dev_err(escore->dev,
+					"%s(): kw %d write failed rc = %d\n",
+					__func__, i + 1, rc);
+				goto escore_vs_write_bkg_keywords_exit;
+			}
+		}
+	} else {
+		dev_err(escore->dev,
+			"%s(): Invalid condition, shouldn't occur\n",
+			__func__);
+		rc = -EINVAL;
+		goto escore_vs_write_bkg_keywords_exit;
 	}
 
 	escore_datablock_close(escore);
@@ -799,13 +922,12 @@ static int escore_vs_isr(struct notifier_block *self, unsigned long action,
 		void *dev)
 {
 	struct escore_priv *escore = (struct escore_priv *)dev;
-	char *event[] = { "ACTION=ADNC_KW_DETECT", NULL };
+	char *def_event[] = { "ACTION=ADNC_KW_DETECT", NULL };
+	char *hotword_event[] = { "ACTION=HOTWORD", NULL };
 	struct escore_voice_sense *voice_sense =
 		(struct escore_voice_sense *) escore->voice_sense;
-#ifndef CONFIG_SND_SOC_ES_VS_STREAMING
 	u32 es_set_power_level = ES_SET_POWER_LEVEL << 16 | ES_POWER_LEVEL_6;
 	u32 resp;
-#endif
 	int rc = 0;
 
 	dev_dbg(escore->dev, "%s(): Event: 0x%04x\n", __func__, (u32)action);
@@ -819,13 +941,16 @@ static int escore_vs_isr(struct notifier_block *self, unsigned long action,
 				__func__, (u32) action);
 
 	if (voice_sense->cvs_preset != 0xFFFF && voice_sense->cvs_preset != 0) {
-#ifdef CONFIG_SND_SOC_ES_VS_STREAMING
-		/* Chip wakes up in VS Streaming mode */
-		escore->escore_power_state = ES_POWER_STATE_VS_STREAMING;
-#else
-		escore->escore_power_state = ES_SET_POWER_STATE_NORMAL;
-#endif
-		escore->mode = STANDARD;
+		if (escore->voice_recognition)
+			/* In hotword feature device wakes
+			 * up in VS Streaming mode */
+			escore->escore_power_state =
+				ES_POWER_STATE_VS_STREAMING;
+		else {
+			escore->escore_power_state =
+				ES_SET_POWER_STATE_NORMAL;
+			escore->mode = STANDARD;
+		}
 	}
 
 	mutex_lock(&voice_sense->vs_event_mutex);
@@ -839,18 +964,20 @@ static int escore_vs_isr(struct notifier_block *self, unsigned long action,
 	 */
 	if (voice_sense->cvs_preset != 0xFFFF &&
 			voice_sense->cvs_preset != 0) {
-#ifndef CONFIG_SND_SOC_ES_VS_STREAMING
-		/* Following command will set the power level to 6,
-		   any subsequent preset will switch the oscillator
-		   to external */
-		rc = escore_cmd_locked(escore, es_set_power_level, &resp);
-		if (rc < 0) {
-			pr_err("%s(): Error setting power level %d\n",
-			       __func__, rc);
-			goto voiceq_isr_exit;
+		if (!escore->voice_recognition) {
+			/* Following command will set the power level to 6,
+			   any subsequent preset will switch the oscillator
+			   to external */
+			rc = escore_cmd_locked(escore,
+						es_set_power_level,
+						&resp);
+			if (rc < 0) {
+				pr_err("%s(): Error setting power level %d\n",
+				       __func__, rc);
+				goto voiceq_isr_exit;
+			}
+			usleep_range(2000, 2005);
 		}
-		usleep_range(2000, 2005);
-#endif
 		/* Enable the clock before switching to external oscillator */
 		if (escore->pdata->esxxx_clk_cb)
 			escore->pdata->esxxx_clk_cb(1);
@@ -871,7 +998,13 @@ static int escore_vs_isr(struct notifier_block *self, unsigned long action,
 		 * VS detect, CVS mode will be disabled */
 		voice_sense->cvs_preset = 0;
 	}
-	kobject_uevent_env(&escore->dev->kobj, KOBJ_CHANGE, event);
+
+	if (escore->voice_recognition) {
+		pr_debug("%s(): Hotword detected", __func__);
+		kobject_uevent_env(&escore->dev->kobj, KOBJ_CHANGE,
+				hotword_event);
+	} else
+		kobject_uevent_env(&escore->dev->kobj, KOBJ_CHANGE, def_event);
 
 	return NOTIFY_OK;
 

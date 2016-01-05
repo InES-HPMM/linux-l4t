@@ -1924,6 +1924,7 @@ static int put_dhwpt_sel(struct snd_kcontrol *kcontrol,
 	escore->dhwpt_enabled = ucontrol->value.enumerated.item[0];
 	pr_debug("put DHWPT enable control val %d\n", escore->dhwpt_enabled);
 
+	/* BAS-3675 - Call stop_route to fix capture stop issue */
 	if (escore->dhwpt_enabled && !escore->dhwpt_mode) {
 		mutex_lock(&escore->access_lock);
 		_es_stop_route(escore, ES_TYPE_CAP);

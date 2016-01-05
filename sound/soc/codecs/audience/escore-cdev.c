@@ -1059,6 +1059,65 @@ static const struct file_operations datalogging_fops = {
 /* must init on open, update later, protected by open lock */
 static char *data_buf;
 
+/* IOCTL to transfer data between user space and kernel */
+static long datablock_ioctl(struct file *filp, unsigned int cmd,
+				unsigned long arg)
+{
+	struct escore_priv * const escore
+				= (struct escore_priv *)filp->private_data;
+	void __user *argp = (void __user *)arg;
+	struct escore_user_buf datablock_copy;
+	int rc = 0;
+	int buffer_size = 0;
+
+	pr_debug("%s():  datablock_ioctl called\n", __func__);
+
+	/* Copy structure */
+	rc = copy_from_user(&datablock_copy, argp, sizeof(datablock_copy));
+	if (rc) {
+		pr_err("%s(): structur copy from user is failed rc: %d\n",
+						__func__, rc);
+		return -EFAULT;
+	}
+
+	buffer_size = datablock_copy.buf_size;
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(ADNC_WRITE_HOTWORD_IOCTL):
+		pr_debug("%s(): User buffer size = %d actual buffer_size %d\n ",
+		 __func__, datablock_copy.buf_size, buffer_size);
+
+		/* Free previously allocated buffer and reset size */
+		kfree(escore->hotword_buf);
+		escore->hotword_buf_size = 0;
+
+		/* Allocate memory to store hotword buffer */
+		escore->hotword_buf = kzalloc(buffer_size,
+						GFP_KERNEL);
+		if (!escore->hotword_buf) {
+			pr_err("%s(): could not allocate memory\n", __func__);
+			rc = -ENOMEM;
+			break;
+		}
+
+		/* Copy data */
+		rc = copy_from_user(escore->hotword_buf,
+				(char *)datablock_copy.buf, buffer_size);
+		if (rc) {
+			pr_err("%s(): Data copy from user is failed rc: %d\n",
+							__func__, rc);
+			rc = -EFAULT;
+		} else
+			escore->hotword_buf_size = datablock_copy.buf_size;
+		break;
+	default:
+		pr_err("%s(): Invalid command : 0x%X\n", __func__, cmd);
+		rc = -EINVAL;
+		break;
+	}
+
+	return rc;
+}
+
 /* just read the global read buffer */
 static ssize_t datablock_read(struct file *filp, char __user *buf,
 					size_t count, loff_t *f_pos)
@@ -1433,6 +1492,10 @@ static const struct file_operations datablock_fops = {
 	.write = datablock_write,
 	.open = datablock_open,
 	.release = datablock_release,
+	.unlocked_ioctl = datablock_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = datablock_ioctl,
+#endif
 };
 
 

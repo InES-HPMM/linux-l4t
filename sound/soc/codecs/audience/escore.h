@@ -139,9 +139,7 @@
 #define ES_SET_POWER_STATE_NORMAL	0x0004
 #define ES_SET_POWER_STATE_VS_OVERLAY	0x0005
 #define ES_SET_POWER_STATE_VS_LOWPWR	0x0006
-#ifdef CONFIG_SND_SOC_ES_VS_STREAMING
 #define ES_POWER_STATE_VS_STREAMING	0x0007
-#endif
 #ifdef CONFIG_SND_SOC_ES_AVOID_REPEAT_FW_DOWNLOAD
 #define ES_POWER_STATE_VS_OVERLAP	0x0008
 #endif
@@ -246,8 +244,27 @@ enum {
 #define ES_PS_NORMAL (ES_GET_POWER_STATE << 16 | ES_SET_POWER_STATE_NORMAL)
 #define ES_PS_OVERLAY (ES_GET_POWER_STATE << 16 | ES_SET_POWER_STATE_VS_OVERLAY)
 
-/* Maximum number of digital gain allowed, equal to ES300_PASSOUT4+1 */
-#define ES_DIGITAL_GAIN_MAX_NUM 48
+#define ES_DIGITAL_GAIN_MAX_NUM 48 /* Maximum number of digital gain allowed, equal to ES300_PASSOUT4+1 */
+
+/* Used to copy buffer reference from userspace */
+struct escore_user_buf {
+	int buf_size;
+	int __user buf;
+};
+
+/* IOCTL Magic character */
+#define ADNC_IOCTL_MAGIC 'A'
+
+/* Unique NR shift value */
+enum {
+	ADNC_WRITE_HOTWORD_NR = 0x01,
+};
+
+/* Create IOCTL */
+enum {
+	ADNC_WRITE_HOTWORD_IOCTL = _IOW(ADNC_IOCTL_MAGIC,
+			ADNC_WRITE_HOTWORD_NR, struct escore_user_buf),
+};
 
 enum {
 	SBL,
@@ -469,6 +486,7 @@ struct escore_delay {
 	u8 wakeup_to_vs;
 	u8 vs_to_normal;
 	u8 mpsleep_to_normal; /* Used for es755 only */
+	u8 vs_streaming_to_vs;
 };
 
 #ifdef CONFIG_ARCH_MSM
@@ -496,6 +514,10 @@ struct escore_priv {
 	unsigned int wakeup_intf;
 	struct completion cmd_compl;
 	void *voice_sense;
+	bool voice_recognition;
+	char *hotword_buf;
+	size_t hotword_buf_size;
+	bool mic_source_change;
 	struct escore_voicesense_ops vs_ops;
 
 	struct esxxx_platform_data *pdata;
@@ -541,8 +563,6 @@ struct escore_priv {
 	int (*set_streaming)(struct escore_priv *escore, int val);
 	int (*set_datalogging)(struct escore_priv *escore, int val);
 	int (*config_jack)(struct escore_priv *escore);
-	int (*disable_codec_irq)(struct escore_priv *escore);
-	int (*enable_codec_irq)(struct escore_priv *escore);
 
 	struct escore_slim_dai_data *slim_dai_data;
 	struct escore_i2s_dai_data *i2s_dai_data;
@@ -588,8 +608,7 @@ struct escore_priv {
 	u16 algo_preset_two;
 /* endif 705 */
 
-	/* Selected endpoint(pathID) for following digital gain setting */
-	int selected_endpoint;
+	int selected_endpoint; /* Selected endpoint(pathID) for following digital gain setting */
 	u32 digital_gain[ES_DIGITAL_GAIN_MAX_NUM];
 
 	struct mutex pm_mutex;
@@ -675,7 +694,6 @@ struct escore_priv {
 	u32 disable_fw_recovery_cnt;
 	unsigned char *debug_buff;
 	struct escore_delay delay;
-
 	int pcm_format;
 };
 
@@ -738,6 +756,7 @@ int escore_api_intr_wait_completion(struct escore_priv *escore);
 int escore_reconfig_api_intr(struct escore_priv *escore);
 int escore_wakeup(struct escore_priv *escore);
 void escore_pm_put_autosuspend(void);
+int escore_pm_put_sync_suspend(void);
 int escore_pm_get_sync(void);
 int escore_platform_init(void);
 int escore_retrigger_probe(void);

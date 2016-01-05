@@ -907,6 +907,7 @@ int escore_wakeup(struct escore_priv *escore)
 			__func__, rc);
 		goto escore_wakeup_exit;
 	}
+
 escore_wakeup_exit:
 	return rc;
 }
@@ -1403,6 +1404,8 @@ int escore_probe(struct escore_priv *escore, struct device *dev, int curr_intf,
 #else
 	complete(&escore->fw_download);
 #endif
+	/* Don't call following function if Runtime PM support
+	 * is required to be disabled */
 	escore->is_probe_error = 0;
 	escore_pm_enable();
 

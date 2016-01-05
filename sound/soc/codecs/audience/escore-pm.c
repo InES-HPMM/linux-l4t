@@ -137,7 +137,7 @@ static int escore_runtime_suspend(struct device *dev)
 {
 	struct escore_priv *escore = &escore_priv;
 	int ret = 0;
-	pr_info("%s(): @@@@@@ Entry #####\n", __func__);
+
 	dev_dbg(dev, "%s()\n", __func__);
 	if (escore->dev != dev) {
 		dev_dbg(dev, "%s() Invalid device\n", __func__);
@@ -166,7 +166,8 @@ static int escore_runtime_suspend(struct device *dev)
 	}
 
 	if (escore->voice_sense &&
-		escore->vs_ops.escore_is_voicesense_sleep_enable(escore))
+		(escore->vs_ops.escore_is_voicesense_sleep_enable(escore) ||
+		escore->voice_recognition))
 		ret = escore_vs_suspend(dev);
 	else
 		ret = escore_non_vs_suspend(dev);
@@ -180,7 +181,6 @@ static int escore_runtime_suspend(struct device *dev)
 
 	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
 	DEC_DISABLE_FW_RECOVERY_USE_CNT(escore);
-	pr_info("%s(): @@@@@@ EXIT #####\n", __func__);
 	return ret;
 
 out:
@@ -199,7 +199,7 @@ static int escore_runtime_resume(struct device *dev)
 	struct escore_priv *escore = &escore_priv;
 	struct device *p = dev->parent;
 	int ret = 0;
-	pr_info("%s(): @@@@@@ Entry #####\n", __func__);
+
 	dev_dbg(dev, "%s()\n", __func__);
 
 	if (p && pm_runtime_status_suspended(p)) {
@@ -210,7 +210,8 @@ static int escore_runtime_resume(struct device *dev)
 	INC_DISABLE_FW_RECOVERY_USE_CNT(escore);
 	/* Resume functions will take care of enabling clock */
 	if (escore->voice_sense &&
-		escore->vs_ops.escore_is_voicesense_sleep_enable(escore))
+		(escore->vs_ops.escore_is_voicesense_sleep_enable(escore) ||
+		escore->voice_recognition))
 		ret = escore_vs_resume(dev);
 	else
 		ret = escore_non_vs_resume(dev);
@@ -222,7 +223,7 @@ static int escore_runtime_resume(struct device *dev)
 
 	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
 	DEC_DISABLE_FW_RECOVERY_USE_CNT(escore);
-	pr_info("%s(): @@@@@@ EXIT #####\n", __func__);
+
 	return ret;
 
 escore_wakeup_fail_recovery:
@@ -240,7 +241,7 @@ static int escore_system_suspend(struct device *dev)
 {
 	struct escore_priv *escore = &escore_priv;
 	int ret = 0;
-	pr_info("%s(): @@@@@@ Entry #####\n", __func__);
+
 	dev_dbg(dev, "%s()\n", __func__);
 
 	if (escore->dev != dev) {
@@ -248,20 +249,10 @@ static int escore_system_suspend(struct device *dev)
 		return 0;
 	}
 
-/*	if (!es_ready_to_suspend(escore)) {
+	if (!es_ready_to_suspend(escore)) {
 		dev_dbg(dev, "%s() - Not ready for suspend\n", __func__);
 		return -EBUSY;
 	}
-
-	if (escore->disable_codec_irq) {
-		ret = escore->disable_codec_irq(escore);
-		if (ret < 0) {
-			dev_err(dev, "%s(): Disable irq failed\n",
-				__func__);
-			return -EBUSY;
-		}
-		pr_info("%s(): @@@@@@ disable_codec_irq #####\n", __func__);
-	}*/
 
 	if (!pm_runtime_suspended(dev)) {
 		dev_dbg(dev, "%s() system suspend\n", __func__);
@@ -285,14 +276,14 @@ static int escore_system_suspend(struct device *dev)
 	}
 
 	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
-	pr_info("%s(): @@@@@@ Exit #####\n", __func__);
+
 	return ret;
 }
 static int escore_system_resume(struct device *dev)
 {
 	struct escore_priv *escore = &escore_priv;
 	int ret = 0;
-	pr_info("%s(): @@@@@@ Entry #####\n", __func__);
+
 	dev_dbg(dev, "%s()\n", __func__);
 
 	if (escore->dev != dev) {
@@ -312,7 +303,7 @@ static int escore_system_resume(struct device *dev)
 
 	}
 	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
-	pr_info("%s(): @@@@@@ Exit #####\n", __func__);
+
 	return ret;
 }
 
@@ -383,67 +374,22 @@ static int escore_generic_resume(struct device *dev)
 	return ret;
 }
 
-static int escore_prepare(struct device *dev)
-{
-	struct escore_priv *escore = &escore_priv;
-	int ret = 0;
-
-	dev_dbg(dev, "%s()\n", __func__);
-	pr_info("%s(): @@@@@@ Enter #####\n", __func__);
-	if (escore->dev != dev) {
-		dev_dbg(dev, "%s() Invalid device\n", __func__);
-		return 0;
-	}
-
-	if (!es_ready_to_suspend(escore)) {
-		dev_err(dev, "%s() - Not ready for suspend\n", __func__);
-		msleep(10);
-		return -EAGAIN;
-	}
-
-	if (escore->intr_recvd) {
-		dev_err(dev, "%s() - ISR in process\n", __func__);
-		pr_info("%s(): @@@@@@ ISR in process #####\n", __func__);
-		msleep(100);
-		return -EAGAIN;
-	}
-
-	if (escore->disable_codec_irq) {
-		ret = escore->disable_codec_irq(escore);
-		if (ret < 0) {
-			msleep(10);
-			return -EAGAIN;
-		}
-	}
-
-	dev_dbg(dev, "%s() complete %d\n", __func__, ret);
-	pr_info("%s(): @@@@@@ Exit #####\n", __func__);
-	return ret;
-}
-
 static void escore_complete(struct device *dev)
 {
 	struct escore_priv *escore = &escore_priv;
 
 	dev_dbg(dev, "%s()\n", __func__);
-	pr_info("%s(): @@@@@@ Enter #####\n", __func__);
-	if (escore->dev != dev) {
+
+	if (escore->dev != dev)
 		dev_dbg(dev, "%s() Invalid device\n", __func__);
-		return;
-	}
-
-	wake_up_interruptible(&escore->irq_waitq);
-	if (escore->enable_codec_irq)
-		escore->enable_codec_irq(escore);
-	pr_info("%s(): @@@@@@ Exit #####\n", __func__);
+	else
+		wake_up_interruptible(&escore->irq_waitq);
 }
-
 
 const struct dev_pm_ops escore_pm_ops = {
 	.suspend = escore_generic_suspend,
 	.resume = escore_generic_resume,
 	.complete = escore_complete,
-	.prepare = escore_prepare,
 	.runtime_suspend = escore_runtime_suspend,
 	.runtime_resume = escore_runtime_resume,
 	.runtime_idle = escore_runtime_idle,
@@ -456,7 +402,7 @@ void escore_pm_enable(void)
 
 	dev_dbg(escore->dev, "%s()\n", __func__);
 
-	if (escore->pm_enable) {
+	if(escore->pm_enable) {
 		pr_err("%s(): Already Enabled\n", __func__);
 		return;
 	}
@@ -469,9 +415,9 @@ void escore_pm_enable(void)
 	pm_runtime_use_autosuspend(escore->dev);
 	pm_runtime_enable(escore->dev);
 	device_init_wakeup(escore->dev, true);
-	if (pm_runtime_get_sync(escore->dev) >= 0) {
+	if(pm_runtime_get_sync(escore->dev) >= 0) {
 		ret = pm_runtime_put_sync_autosuspend(escore->dev);
-		if (ret < 0) {
+		if (ret < 0){
 			dev_err(escore->dev,
 				"%s() escore PM put failed ret = %d\n",
 				__func__, ret);
@@ -514,6 +460,29 @@ void escore_pm_put_autosuspend(void)
 	ret = pm_runtime_put_sync_autosuspend(escore->dev);
 	if (ret)
 		dev_err(escore->dev, "%s(): fail %d\n", __func__, ret);
+}
+
+int escore_pm_put_sync_suspend(void)
+{
+	struct escore_priv *escore = &escore_priv;
+	int ret;
+
+	dev_dbg(escore->dev, "%s()\n", __func__);
+
+	/* If runtime PM is disabled or when system is in suspend state (when
+	 * system is in suspend state, RPM is disabled by kernel subsystem),
+	 * RPM callbacks should be skipped.
+	 */
+	if (!escore->pm_enable)
+		return 0;
+
+	pm_runtime_mark_last_busy(escore->dev);
+
+	ret = pm_runtime_put_sync_suspend(escore->dev);
+	if (ret)
+		dev_err(escore->dev, "%s(): fail %d\n", __func__, ret);
+
+	return ret;
 }
 
 bool escore_is_probe_error(void)

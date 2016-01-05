@@ -68,14 +68,15 @@ struct escore_priv escore_priv = {
 	.set_streaming = es755_set_streaming,
 	.set_datalogging = es755_set_datalogging,
 	.streamdev.no_more_bit = 0,
-	.default_cvq_mic = ES755_MIC0,
-	.es_vs_route_preset = ES755_MIC0_VS_ROUTE_PRESET,
-	.es_cvs_preset = ES755_MIC0_CVS_PRESET,
+	.default_cvq_mic = ES755_DMIC0,
+	.es_vs_route_preset = ES755_DMIC0_VS_ROUTE_PRESET,
+	.es_cvs_preset = ES755_DMIC0_CVS_PRESET,
 	.es_wdb_max_size = ES755_WDB_MAX_SIZE,
 	.delay.wakeup_to_normal = ES755_DELAY_WAKEUP_TO_NORMAL,
 	.delay.wakeup_to_vs = ES755_DELAY_WAKEUP_TO_VS,
 	.delay.vs_to_normal = ES755_DELAY_VS_TO_NORMAL,
 	.delay.mpsleep_to_normal = ES755_DELAY_MPSLEEP_TO_NORMAL,
+	.delay.vs_streaming_to_vs = ES755_DELAY_VS_STREAMING_TO_VS,
 };
 
 struct snd_soc_dai_driver es755_dai[];
@@ -1249,6 +1250,15 @@ static const struct soc_enum es755_default_cvq_mic_enum =
 			ARRAY_SIZE(es755_default_cvq_mic_texts),
 			es755_default_cvq_mic_texts);
 
+static const char * const es755_voice_recognition_texts[] = {
+	"Stop", "Start",
+};
+
+static const struct soc_enum es755_voice_recognition_enum =
+	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0,
+			ARRAY_SIZE(es755_voice_recognition_texts),
+			es755_voice_recognition_texts);
+
 /* Use for NULL "get" handler */
 static int es755_get_null_control_enum(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
@@ -1365,6 +1375,9 @@ static struct snd_kcontrol_new es755_voice_sense_snd_controls[] = {
 			es755_set_power_saving_mode),
 	SOC_SINGLE_EXT("Audio Focus Enable", SND_SOC_NOPM, 0, 1, 0,
 			escore_get_af_status, escore_put_af_status),
+	SOC_ENUM_EXT("Voice Recognition", es755_voice_recognition_enum,
+			escore_get_voice_recognition_enum,
+			escore_put_voice_recognition_enum),
 };
 
 /* This function must be called with access_lock acquired */
@@ -1715,6 +1728,38 @@ static int es755_get_preset_value(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int es755_put_factory_intr_value(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct escore_priv *escore = &escore_priv;
+	unsigned int value;
+	int rc = 0;
+	u32 cmd;
+	u32 resp;
+	value = ucontrol->value.integer.value[0];
+
+	rc = escore_pm_get_sync();
+	if (rc > -1) {
+		cmd = (ES_GET_FACTORY_INT << 16) | (value & 0xFFFF);
+		rc = escore_cmd_nopm(escore, cmd, &resp);
+		if (rc < 0) {
+			pr_err("%s(): Error %d in trigger dummy interrupt\n",
+				__func__, rc);
+			escore_pm_put_autosuspend();
+			goto out;
+		}
+	}
+
+out:
+	return rc;
+}
+
+static int es755_get_factory_intr_value(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
 static int es755_get_rdb_size(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1931,6 +1976,10 @@ static struct snd_kcontrol_new es755_snd_controls[] = {
 	SOC_SINGLE_EXT("Preset",
 		       ES_PRESET, 0, 65535, 0, es755_get_preset_value,
 		       es755_put_preset_value),
+	SOC_SINGLE_EXT("Trigger factory interrupt",
+		       SND_SOC_NOPM, 0, 65535, 0,
+		       es755_get_factory_intr_value,
+		       es755_put_factory_intr_value),
 	SOC_SINGLE_EXT("ES755 Get Event Status",
 		       SND_SOC_NOPM, 0, 65535, 0, es755_get_event_status, NULL),
 	SOC_SINGLE_EXT("Get RDB data size",
@@ -2328,42 +2377,6 @@ void es755_slim_setup(struct escore_priv *escore_priv)
 	/* back end for RX2 */
 	escore_priv->slim_dai_data[DAI_INDEX(ES_SLIM_3_CAP)].ch_num[0] = 143;
 	escore_priv->slim_dai_data[DAI_INDEX(ES_SLIM_3_CAP)].ch_num[1] = 144;
-}
-
-static int es755_disable_codec_irq(struct escore_priv *escore)
-{
-	u32 cmd;
-	u32 resp;
-	int rc;
-
-	/* Disable interrupt Mask */
-	cmd = (ES_SET_INT_MASK << 16) | ES_DISABLE_CODEC_INT;
-	rc = escore_cmd_locked(escore, cmd, &resp);
-	if (rc < 0)
-		dev_err(escore->dev,
-			"%s(): Error %d in setting interrupt mask\n",
-			__func__, rc);
-	else
-		disable_irq_nosync(gpio_to_irq(escore_priv.pdata->gpiob_gpio));
-	return rc;
-}
-
-static int es755_enable_codec_irq(struct escore_priv *escore)
-{
-	u32 cmd;
-	u32 resp;
-	int rc;
-
-	enable_irq(gpio_to_irq(escore_priv.pdata->gpiob_gpio));
-
-	/* Enable interrupt Mask */
-	cmd = (ES_SET_INT_MASK << 16) | ES_ENABLE_CODEC_INT;
-	rc = escore_cmd_locked(escore, cmd, &resp);
-	if (rc < 0)
-		dev_err(escore->dev,
-			"%s(): Error %d in setting interrupt mask\n",
-			__func__, rc);
-	return rc;
 }
 
 static int es755_config_jack(struct escore_priv *escore)
@@ -2800,7 +2813,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 	struct esxxx_accdet_config accdet_cfg = escore->pdata->accdet_cfg;
 	int sys_intr_resp, value;
 	int rc = 0;
-	static int redetect_hs=1;
+	static int redetect_hs = 1;
 	u8 impd_level;
 	u8 mg_sel_force;
 	u8 mg_select;
@@ -2830,6 +2843,13 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			goto intr_exit;
 		}
 
+		if (ES_FACTORY_INTR_EVENT(sys_intr_resp)) {
+			pr_err("%s(): Factory mode interrupt reported !!\n",
+						__func__);
+			escore_pm_put_autosuspend();
+			goto intr_exit;
+		}
+
 		if (ES_PLUG_EVENT(sys_intr_resp)) {
 
 			/*
@@ -2848,7 +2868,6 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			 * plug-in events even if it is a Duplicate.
 			*/
 			pr_info("%s(): Plug event\n", __func__);
-
 			/* Enable MIC Detection */
 			rc = es755_mic_config(escore);
 			if (rc < 0) {
@@ -2911,11 +2930,11 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				pr_info("%s(): Headset detected\n", __func__);
 
 				if (redetect_hs) {
-					redetect_hs=0;
+					redetect_hs = 0;
 					msleep(escore_priv.hs_delay);
 					pr_debug("%s(): ***Redetect HS MIC with Delay %d\n",
-						__func__,escore_priv.hs_delay);
-					/* redetect_HS */
+						__func__, escore_priv.hs_delay);
+					/* redetect_HS   */
 					rc = es755_mic_config(escore);
 					if (rc < 0) {
 						pr_err("%s(): MIC config fail %d\n",
@@ -2923,7 +2942,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 					}
 					goto intr_exit;
 				} else
-					redetect_hs=1;
+					redetect_hs = 1;
 
 				/* Mic Impedence - 6 */
 				if (impd_level == MIC_IMPEDANCE_LEVEL) {
@@ -2946,6 +2965,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 						es755_vs_presets[ES755_MICHS];
 				escore->es_cvs_preset =
 						es755_cvs_presets[ES755_MICHS];
+				escore->mic_source_change = 1;
 
 				escore->button_config_required = 1;
 				snd_soc_jack_report(escore->jack,
@@ -2960,7 +2980,7 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 			} else {
 				pr_info("%s(): Headphone detected\n",
 						__func__);
-				redetect_hs=1;
+				redetect_hs = 1;
 
 				snd_soc_jack_report(escore->jack,
 					SND_JACK_HEADPHONE,
@@ -3015,8 +3035,13 @@ static int es755_codec_intr(struct notifier_block *self, unsigned long action,
 				es755_vs_presets[escore->default_cvq_mic];
 			escore->es_cvs_preset =
 				es755_cvs_presets[escore->default_cvq_mic];
-
-			escore->button_config_required = 0;
+			/* Headset Unplug detected because
+			 * button_config_required is enabled only when
+			 * Headset is detected */
+			if (escore->button_config_required) {
+				escore->mic_source_change = 1;
+				escore->button_config_required = 0;
+			}
 			snd_soc_jack_report(escore->jack, 0, JACK_DET_MASK);
 
 			/*
@@ -3243,9 +3268,13 @@ repeat:
 	}
 
 irq_exit:
-	escore_pm_put_autosuspend();
+	if (escore->mic_source_change && escore->voice_recognition)
+		escore_pm_put_sync_suspend();
+	else
+		escore_pm_put_autosuspend();
 err_pm_get_sync:
 	escore->intr_recvd = 0;
+	escore->mic_source_change = 0;
 	return IRQ_HANDLED;
 }
 
@@ -3293,16 +3322,19 @@ int es755_core_probe(struct device *dev)
 		pdata = es755_populate_dt_pdata(dev);
 		dev->platform_data = pdata;
 
+		/* Retrieve FW names from DTS if provided */
 		if (of_property_read_string(dev->of_node, "adnc,fw_filename",
 					(const char **)&fw_filename)) {
-			dev_err(escore_priv.dev,
-					"Property adnc,fw_filename missing or invalid, using default\n");
+			dev_err(escore_priv.dev, "%s, %s\n",
+				"Property adnc,fw_filename missing or invalid",
+				"Using default firmware name");
 		}
 
 		if (of_property_read_string(dev->of_node, "adnc,vs_filename",
 					(const char **)&vs_filename)) {
-			dev_err(escore_priv.dev,
-					"Property adnc,vs_filename missing or invalid, using default\n");
+			dev_err(escore_priv.dev, "%s, %s\n",
+				"Property adnc,vs_filename missing or invalid",
+				"Using default firmware name");
 		}
 
 	} else {
@@ -3327,6 +3359,7 @@ int es755_core_probe(struct device *dev)
 	escore_priv.cmd_compl_mode = ES_CMD_COMP_POLL;
 	escore_priv.wait_api_intr = 0;
 	escore_priv.fw_af_filename = fw_af_filename;
+	escore_priv.mic_source_change = 0;
 
 	escore_priv.selected_endpoint = -1;
 	memset(escore_priv.digital_gain, 0, sizeof(escore_priv.digital_gain));
@@ -3482,8 +3515,6 @@ int es755_core_probe(struct device *dev)
 	escore_priv.escore_event_type = ES_NO_EVENT;
 	escore_priv.i2s_dai_data = i2s_dai_data;
 	escore_priv.config_jack = es755_config_jack;
-	escore_priv.disable_codec_irq = es755_disable_codec_irq;
-	escore_priv.enable_codec_irq = es755_enable_codec_irq;
 	escore_priv.non_vs_sleep_state = ES_SET_POWER_STATE_DEEP_SLEEP;
 	if (escore_priv.pri_intf == ES_SLIM_INTF) {
 
@@ -3571,11 +3602,8 @@ int es755_core_probe(struct device *dev)
 		}
 
 		/* Disable the interrupt till needed */
-		if (escore_priv.pdata->gpiob_gpio != -1) {
+		if (escore_priv.pdata->gpiob_gpio != -1)
 			disable_irq(gpio_to_irq(pdata->gpiob_gpio));
-			/* Disable IRQ Wakeup capability */
-			disable_irq_wake(gpio_to_irq(pdata->gpiob_gpio));
-		}
 
 		escore_register_notify(escore_priv.irq_notifier_list,
 				&es755_codec_intr_cb);

@@ -100,14 +100,9 @@
 #define ES_SET_ALGO_PARAM		0x9018
 #define ES_GET_EVENT			0x806D
 #define ES_SET_EVENT_RESP		0x901A
+#define ES_GET_FACTORY_INT		0x8059
 #define ES_ACCDET_CONFIG_CMD		0x9056
 #define ES_SMOOTH_RATE			0x804E
-#define ES_SET_INT_MASK			0x807F
-#define ES_DISABLE_CODEC_INT		0x0000
-/* bits 15:14 are reserved, bit 3 is to enable event for
- * button released and should be enabled only after button
- * press event is found */
-#define ES_ENABLE_CODEC_INT		0x3FF7
 #define ES755_FW_DOWNLOAD_MAX_RETRY	5
 #define ES_EVENT_STATUS_RETRY_COUNT	2
 
@@ -352,8 +347,8 @@ enum {
 	ES_VP_METERS,
 	ES_CMD_COMPL_MODE,
 	ES_FE_STREAMING,
-	ES_CODEC_OUTPUT_RATE,
 	ES_FEIN2_MUX,
+	ES_CODEC_OUTPUT_RATE,
 	ES_API_ADDR_MAX,
 };
 
@@ -416,6 +411,7 @@ enum {
 #define ES_BUTTON_PRESS_EVENT_MASK		(1<<2)
 
 #define ES_OPEN_MICDET_EVENT(value)	((1<<0) & value)
+#define ES_FACTORY_INTR_EVENT(value)	((1<<1) & value)
 enum {
 	ES_SLIM_1_PB = ES_DAI_ID_BASE,
 	ES_SLIM_1_CAP,
