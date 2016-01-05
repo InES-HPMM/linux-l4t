@@ -107,6 +107,8 @@
 					compatible = "realtek,rt5658";
 					reg = <0x1a>;
 					status = "disabled";
+					/* gpio for jack detection */
+					gpios = <&gpio TEGRA_GPIO(E , 6) GPIO_ACTIVE_HIGH>;
 				};
 			};
 		};
@@ -115,6 +117,7 @@
 			compatible = "realtek,rt5658";
 			reg = <0x1a>;
 			status = "disabled";
+			gpios = <&gpio TEGRA_GPIO(E , 6) GPIO_ACTIVE_HIGH>;
 		};
 	};
 
