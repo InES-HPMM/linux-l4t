@@ -6,7 +6,7 @@
  *         Colin Cross <ccross@android.com>
  *         Travis Geiselbrecht <travis@palm.com>
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -322,6 +322,9 @@ static int tegra_fb_blank(int blank, struct fb_info *info)
 	case FB_BLANK_UNBLANK:
 		dev_info(&tegra_fb->ndev->dev, "unblank\n");
 		tegra_dc_enable(dc);
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+		tegra_dc_cursor_resume(dc);
+#endif
 		if (!dc->suspended && dc->blanked &&
 		    !tegra_dc_restore(dc)) {
 			struct tegra_dc_win *win = &tegra_fb->win;
@@ -339,6 +342,9 @@ static int tegra_fb_blank(int blank, struct fb_info *info)
 		if (dc->enabled)
 			tegra_fb->curr_xoffset = -1;
 		dc->blanked = true;
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+		tegra_dc_cursor_suspend(dc);
+#endif
 		tegra_dc_blank(dc, BLANK_ALL);
 		return 0;
 
