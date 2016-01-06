@@ -1,7 +1,7 @@
 /*
  * arch/arm64/boot/dts/tegra210-darcy-p2894-common.dtsi
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,9 +29,9 @@
 #include "tegra210-platforms/tegra210-darcy-power-tree-p2894-0000-a00.dtsi"
 #include "tegra210-platforms/tegra210-pinmux-drive-sdmmc-common.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-comms.dtsi"
-#include "tegra210-platforms/tegra210-foster-e-pwm-fan.dtsi"
+#include "tegra210-platforms/tegra210-darcy-pwm-fan.dtsi"
 #include "tegra210-platforms/tegra210-ers-hdmi-e2190-1100-a00.dtsi"
-#include "tegra210-platforms/tegra210-foster-e-thermal-fan-est.dtsi"
+#include "tegra210-platforms/tegra210-darcy-thermal-fan-est.dtsi"
 #include "tegra210-platforms/tegra210-loki-e-keys-p2530-0032-e00.dtsi"
 #include "tegra210-platforms/tegra210-edp.dtsi"
 #include <dt-bindings/iio/meter/ina3221x.h>

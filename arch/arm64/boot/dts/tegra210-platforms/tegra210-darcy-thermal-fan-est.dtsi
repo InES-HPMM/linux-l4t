@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ */
+
+#include "tegra210-loki-e-thermal-fan-est.dtsi"
+
+/ {
+	thermal_fan_est_shared_data:tfesd {
+		dev1 {
+			dev_data = "CPU-therm";
+			coeffs = <100 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+		};
+	};
+
+	thermal-fan-est {
+		compatible = "thermal-fan-est";
+		shared_data = <&thermal_fan_est_shared_data>;
+		active_trip_temps = <0 60000 67000 78000 135000
+				140000 150000 160000 170000 180000>;
+		active_hysteresis = <0 26000 6000 10000 0
+				0 0 0 0 0>;
+	};
+};
