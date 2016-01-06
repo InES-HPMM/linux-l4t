@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Colin Cross <ccross@android.com>
  *
- * Copyright (C) 2010-2015 NVIDIA Corporation.  All rights reserved.
+ * Copyright (C) 2010-2016 NVIDIA Corporation.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1043,6 +1043,9 @@ static int tegra_i2c_xfer_msg(struct tegra_i2c_dev *i2c_dev,
 			if (time_after(jiffies, timeout)) {
 				dev_warn(i2c_dev->dev,
 					"timeout config_load");
+				if (!i2c_dev->is_interruptable_xfer)
+					spin_unlock_irqrestore(&i2c_dev->fifo_lock,
+								flags);
 				return -ETIMEDOUT;
 			}
 			udelay(2);
