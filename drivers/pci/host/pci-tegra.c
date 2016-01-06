@@ -5,7 +5,7 @@
  * Author: Mike Rapoport <mike@compulab.co.il>
  *
  * Based on NVIDIA PCIe driver
- * Copyright (c) 2008-2015, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2008-2016, NVIDIA Corporation. All rights reserved.
  *
  * Bits taken from arch/arm/mach-dove/pcie.c
  *
@@ -3970,7 +3970,8 @@ static int tegra_pcie_probe_complete(struct tegra_pcie *pcie)
 	 * disable_scx_states(), that will disabled SCx states whenever PCIe
 	 * device is connected.
 	 */
-	disable_scx_states();
+	if (pcie->num_ports)
+		disable_scx_states();
 
 	if (IS_ENABLED(CONFIG_DEBUG_FS))
 		if (pcie->num_ports) {
