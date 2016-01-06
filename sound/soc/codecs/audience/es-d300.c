@@ -524,6 +524,19 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	}
 
 	port = (msg[0] >> 9) & 0x1f;
+
+	/* For BAS-3205, in case of PT_VP route and PCM0 port and 16bits,
+	 * set channel number to 0 for PassIN1 and 2 for PassIN2 */
+	if (PCM0 == port && PASSTHRU_VP == algo_type &&
+	    (SNDRV_PCM_FORMAT_S16_LE == escore->pcm_format ||
+	     SNDRV_PCM_FORMAT_S16_BE == escore->pcm_format)) {
+
+		if (ES_PCM0_0_MUX == reg)
+			channel_ids[algo_type][port].tx_chan_id = 0;
+		else if (ES_PCM0_1_MUX == reg)
+			channel_ids[algo_type][port].tx_chan_id = 2;
+	}
+
 	update_chan_id(&msg[0],	channel_ids[algo_type][port].tx_chan_id);
 	channel_ids[algo_type][port].tx_chan_id++;
 
