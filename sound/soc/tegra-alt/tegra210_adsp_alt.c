@@ -2,7 +2,7 @@
  * tegra210_adsp_alt.c - Tegra ADSP audio driver
  *
  * Author: Sumit Bhattacharya <sumitb@nvidia.com>
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -568,9 +568,11 @@ static int tegra210_adsp_app_init(struct tegra210_adsp *adsp,
 	}
 
 	app->info = nvadsp_app_init(app->desc->handle, NULL);
-	if (!app->info) {
-		dev_err(adsp->dev, "Failed to init app %s(%s).",
-			app->desc->name, app->desc->fw_name);
+	if (IS_ERR_OR_NULL(app->info)) {
+		dev_err(adsp->dev, "Failed to init app %s(%s),"
+			"nvadsp_app_init() returned with error %ld",
+			app->desc->name, app->desc->fw_name, PTR_ERR(app->info));
+		app->info = NULL;
 		return -ENODEV;
 	}
 
