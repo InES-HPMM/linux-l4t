@@ -387,12 +387,6 @@ static int __init ardbeg_wifi_init(void)
 	struct board_info board_info;
 
 	tegra_get_board_info(&board_info);
-	if (of_machine_is_compatible("nvidia,green-arrow") ||
-		of_machine_is_compatible("nvidia,tn8")) {
-		pr_err("%s: DT populated for %d board return\n",
-			__func__, board_info.board_id);
-		return 0;
-	}
 
 	rc = gpio_request(ARDBEG_WLAN_PWR, "wlan_power");
 	if (rc)
