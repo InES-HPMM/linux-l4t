@@ -7111,6 +7111,9 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 		dhd_custom_sysfs_tegra_histogram_stat_netdev = net;
 }
 #endif
+	extern struct net_device *dhd_pno_netdev;
+	if (ifidx == 0)
+		dhd_pno_netdev = net;
 
 	if (err != 0) {
 		DHD_ERROR(("couldn't register the net device [%s], err %d\n", net->name, err));

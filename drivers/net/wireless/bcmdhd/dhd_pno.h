@@ -68,6 +68,7 @@
 #define GSCAN_BG_BAND_MASK             (1 << 0)
 #define GSCAN_A_BAND_MASK              (1 << 1)
 #define GSCAN_DFS_MASK                 (1 << 2)
+#define GSCAN_ACTIVE_CHAN_MASK         (1 << 3)
 #define GSCAN_ABG_BAND_MASK            (GSCAN_A_BAND_MASK | GSCAN_BG_BAND_MASK)
 #define GSCAN_BAND_MASK                (GSCAN_ABG_BAND_MASK | GSCAN_DFS_MASK)
 

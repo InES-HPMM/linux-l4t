@@ -886,6 +886,7 @@
 #define	WLC_BAND_5G		1	/* 5 Ghz */
 #define	WLC_BAND_2G		2	/* 2.4 Ghz */
 #define	WLC_BAND_ALL		3	/* all bands */
+#define WLC_BAND_ACTIVE		8	/* Active channels in respective band only */
 
 /* band range returned by band_range iovar */
 #define WL_CHAN_FREQ_RANGE_2G      0

@@ -43,7 +43,11 @@
 #include <dhd.h>
 #include <dhd_pno.h>
 #include <dhd_dbg.h>
+#include <wl_cfg80211.h>
+#include <wldev_common.h>
 
+#define IS_CHANNEL_RADAR(channel)      (((channel & WL_CHAN_RADAR) || \
+	(channel & WL_CHAN_PASSIVE)) ? true : false)
 #ifdef __BIG_ENDIAN
 #include <bcmendian.h>
 #define htod32(i) (bcmswap32(i))
@@ -411,12 +415,16 @@ _dhd_pno_chan_merge(uint16 *d_chan_list, int *nchan,
 	*nchan = k;
 	return err;
 }
+struct net_device *dhd_pno_netdev;
 static int
 _dhd_pno_get_channels(dhd_pub_t *dhd, uint16 *d_chan_list,
 	int *nchan, uint8 band, bool skip_dfs)
 {
 	int err = BCME_OK;
 	int i, j;
+	u32 channel = 0;
+	bool skip_passive;
+
 	uint32 chan_buf[WL_NUMCHANNELS + 1];
 	wl_uint32_list_t *list;
 	NULL_CHECK(dhd, "dhd is NULL", err);
@@ -430,6 +438,8 @@ _dhd_pno_get_channels(dhd_pub_t *dhd, uint16 *d_chan_list,
 		DHD_ERROR(("failed to get channel list (err: %d)\n", err));
 		goto exit;
 	}
+	skip_passive = (band & WLC_BAND_ACTIVE);
+	band &= ~WLC_BAND_ACTIVE;
 	for (i = 0, j = 0; i < dtoh32(list->count) && i < *nchan; i++) {
 		if (band == WLC_BAND_2G) {
 			if (dtoh32(list->element[i]) > CHANNEL_2G_MAX)
@@ -443,6 +453,18 @@ _dhd_pno_get_channels(dhd_pub_t *dhd, uint16 *d_chan_list,
 		} else { /* All channels */
 			if (skip_dfs && is_dfs(dtoh32(list->element[i])))
 				continue;
+		}
+		if (dhd_pno_netdev && skip_passive) {
+			channel = dtoh32(list->element[i]);
+			err = wldev_iovar_getint(dhd_pno_netdev, "per_chan_info", &channel);
+			if (err < 0) {
+				DHD_ERROR(("%s get 'per_chan_info' failed, error = %d\n", __FUNCTION__, err));
+				goto exit;
+			}
+			if (IS_CHANNEL_RADAR(channel)) {
+				DHD_ERROR(("%s: channel %d is passive - skip\n", __FUNCTION__, dtoh32(list->element[i])));
+				continue;
+			}
 		}
 		d_chan_list[j++] = dtoh32(list->element[i]);
 	}
@@ -1819,9 +1841,11 @@ void * dhd_pno_get_gscan(dhd_pub_t *dhd, dhd_pno_gscan_cmd_cfg_t type,
 					band |= WLC_BAND_2G;
 				if (*gscan_band & GSCAN_A_BAND_MASK)
 					band |= WLC_BAND_5G;
-
+				if (*gscan_band & GSCAN_ACTIVE_CHAN_MASK)
+					band |= WLC_BAND_ACTIVE;
 				err = _dhd_pno_get_channels(dhd, ch_list, &nchan,
-				                          (band & GSCAN_ABG_BAND_MASK),
+				                          (band & GSCAN_ABG_BAND_MASK) |
+				                          (band & GSCAN_ACTIVE_CHAN_MASK),
 				                          !(*gscan_band & GSCAN_DFS_MASK));
 
 				if (err < 0) {
