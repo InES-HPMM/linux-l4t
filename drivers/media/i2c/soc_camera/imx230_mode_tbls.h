@@ -1,7 +1,7 @@
 /*
  * imx230.c - imx230 sensor driver
  *
- * Copyright (c) 2015, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <media/camera_common.h>
-
 #ifndef __IMX230_I2C_TABLES__
 #define __IMX230_I2C_TABLES__
+
+#include <media/camera_common.h>
 
 #define IMX230_TABLE_WAIT_MS	0
 #define IMX230_TABLE_END	1

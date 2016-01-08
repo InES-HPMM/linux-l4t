@@ -1,7 +1,7 @@
 /*
  * imx230.c - imx230 sensor driver
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -66,6 +66,8 @@ struct imx230 {
 	struct i2c_client		*i2c_client;
 	struct v4l2_subdev		*subdev;
 
+	s32				group_hold_prev;
+	bool				group_hold_en;
 	struct regmap			*regmap;
 	struct camera_common_data	*s_data;
 	struct camera_common_pdata	*pdata;
@@ -509,24 +511,23 @@ static struct camera_common_sensor_ops imx230_common_ops = {
 	.read_reg = imx230_read_reg,
 };
 
-static int imx230_set_group_hold(struct imx230 *priv, s32 val)
+static int imx230_set_group_hold(struct imx230 *priv)
 {
 	int err;
-	int gh_en = switch_ctrl_qmenu[val];
+	int gh_prev = switch_ctrl_qmenu[priv->group_hold_prev];
 
-	dev_dbg(&priv->i2c_client->dev,
-		 "%s: val: %d\n", __func__, gh_en);
-
-	if (gh_en == SWITCH_ON) {
+	if (priv->group_hold_en == true && gh_prev == SWITCH_OFF) {
 		err = imx230_write_reg(priv->s_data,
-				       IMX230_GROUP_HOLD_ADDR, 0x1);
+					   IMX230_GROUP_HOLD_ADDR, 0x1);
 		if (err)
 			goto fail;
-	} else if (gh_en == SWITCH_OFF) {
+		priv->group_hold_prev = 1;
+	} else if (priv->group_hold_en == false && gh_prev == SWITCH_ON) {
 		err = imx230_write_reg(priv->s_data,
-				       IMX230_GROUP_HOLD_ADDR, 0x0);
+					   IMX230_GROUP_HOLD_ADDR, 0x0);
 		if (err)
 			goto fail;
+		priv->group_hold_prev = 0;
 	}
 
 	return 0;
@@ -572,6 +573,7 @@ static int imx230_set_gain(struct imx230 *priv, s32 val)
 
 	imx230_get_gain_reg(reg_list, gain);
 	imx230_get_gain_short_reg(reg_list_short, gain);
+	imx230_set_group_hold(priv);
 
 	/* writing long gain */
 	for (i = 0; i < 2; i++) {
@@ -609,6 +611,7 @@ static int imx230_set_frame_length(struct imx230 *priv, s32 val)
 		 "%s: val: %d\n", __func__, frame_length);
 
 	imx230_get_frame_length_regs(reg_list, frame_length);
+	imx230_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err = imx230_write_reg(priv->s_data, reg_list[i].addr,
@@ -638,6 +641,7 @@ static int imx230_set_coarse_time(struct imx230 *priv, s32 val)
 		 "%s: val: %d\n", __func__, coarse_time);
 
 	imx230_get_coarse_time_regs(reg_list, coarse_time);
+	imx230_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err = imx230_write_reg(priv->s_data, reg_list[i].addr,
@@ -683,6 +687,7 @@ static int imx230_set_coarse_time_short(struct imx230 *priv, s32 val)
 		 "%s: val: %d\n", __func__, coarse_time_short);
 
 	imx230_get_coarse_time_short_regs(reg_list, coarse_time_short);
+	imx230_set_group_hold(priv);
 
 	for (i = 0; i < 2; i++) {
 		err  = imx230_write_reg(priv->s_data, reg_list[i].addr,
@@ -963,7 +968,12 @@ static int imx230_s_ctrl(struct v4l2_ctrl *ctrl)
 		err = imx230_set_coarse_time_short(priv, ctrl->val);
 		break;
 	case V4L2_CID_GROUP_HOLD:
-		err = imx230_set_group_hold(priv, ctrl->val);
+		if (switch_ctrl_qmenu[ctrl->val] == SWITCH_ON) {
+			priv->group_hold_en = true;
+		} else {
+			priv->group_hold_en = false;
+			err = imx230_set_group_hold(priv);
+		}
 		break;
 #ifdef IMX230_EEPROM_PRESENT
 	case V4L2_CID_EEPROM_DATA:
@@ -1161,6 +1171,7 @@ static int imx230_probe(struct i2c_client *client,
 	common_data->frmfmt		= &imx230_frmfmt[0];
 	common_data->colorfmt		= camera_common_find_datafmt(
 					  IMX230_DEFAULT_DATAFMT);
+	common_data->ctrls		= priv->ctrls;
 	common_data->power		= &priv->power;
 	common_data->priv		= (void *)priv;
 	common_data->ident		= V4L2_IDENT_IMX230;
