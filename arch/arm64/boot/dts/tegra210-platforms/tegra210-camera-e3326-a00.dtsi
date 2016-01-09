@@ -28,7 +28,7 @@
 
 					port@0 {
 						reg = <0>;
-						csi_in0: endpoint@0 {
+						ov5693_c_csic_in0: endpoint@0 {
 							bus-width = <2>;
 							remote-endpoint = <&ov5693_out0>;
 						};
@@ -267,7 +267,7 @@
 						reg = <0>;
 						ov5693_out0: endpoint {
 							bus-width = <2>;
-							remote-endpoint = <&csi_in0>;
+							remote-endpoint = <&ov5693_c_csic_in0>;
 						};
 					};
 				};

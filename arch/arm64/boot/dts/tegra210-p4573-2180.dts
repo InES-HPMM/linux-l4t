@@ -190,8 +190,6 @@
 		};
 
 		profiles {
-			/delete-node/ ov5693-pcl@2_0036;
-
 			ov10823_A: ov10823-pcl@6_0020 {
 				index = <1>;
 				chipname = "pcl_OV10823_A";
@@ -286,7 +284,11 @@
 					CAMERA_END
 					>;
 			};
+		};
+	};
 
+	camera-pcl {
+		profiles {
 			ov10823-pcl@6_0020 {
 				use_of_node = "yes";
 				dev_name = "ov10823";
@@ -353,5 +355,35 @@
 				cam3sid-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
 			};
 		};
+	};
+
+	plugin-manager {
+		/delete-node/ fragment-e3323@0;
+	};
+
+	host1x {
+		vi {
+			/delete-node/ ports;
+
+			csia@54080838 {
+				/delete-node/ ports;
+			};
+			csic@54081038 {
+				/delete-node/ ports;
+			};
+			csie@54081838 {
+				/delete-node/ ports;
+			};
+		};
+		i2c@546c0000 {
+			/delete-node/ ov5693_c@36;
+			/delete-node/ ov23850_a@10;
+			/delete-node/ lc898212@72;
+		};
+	};
+
+	i2c@7000c000 {
+		/delete-node/ ov23850_c@36;
+		/delete-node/ lc898212@72;
 	};
 };
