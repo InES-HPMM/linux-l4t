@@ -55,6 +55,8 @@
 #define IMX230_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB10_1X10
 #define IMX230_DEFAULT_CLK_FREQ	24000000
 
+#define IMX230_NUM_CROP_REGS	8
+
 struct imx230 {
 	struct camera_common_power_rail	power;
 	int				num_ctrls;
@@ -235,6 +237,37 @@ static inline void imx230_get_gain_short_reg(imx230_reg *regs,
 	(regs + 1)->val = (gain) & 0xff;
 }
 
+static void imx230_get_crop_regs(imx230_reg *regs,
+				struct v4l2_rect *rect)
+{
+	u32 x_start, y_start;
+	u32 x_end, y_end;
+	x_start = rect->left;
+	y_start = rect->top;
+	x_end = x_start + rect->width - 1;
+	y_end = y_start + rect->height - 1;
+
+	regs->addr = IMX230_CROP_X_START_ADDR_MSB;
+	regs->val = (x_start >> 8) & 0xff;
+	(regs + 1)->addr = IMX230_CROP_X_START_ADDR_LSB;
+	(regs + 1)->val = (x_start) & 0xff;
+
+	(regs + 2)->addr = IMX230_CROP_Y_START_ADDR_MSB;
+	(regs + 2)->val = (y_start >> 8) & 0xff;
+	(regs + 3)->addr = IMX230_CROP_Y_START_ADDR_LSB;
+	(regs + 3)->val = (y_start) & 0xff;
+
+	(regs + 4)->addr = IMX230_CROP_X_END_ADDR_MSB;
+	(regs + 4)->val = (x_end >> 8) & 0xff;
+	(regs + 5)->addr = IMX230_CROP_X_END_ADDR_LSB;
+	(regs + 5)->val = (x_end) & 0xff;
+
+	(regs + 6)->addr = IMX230_CROP_Y_END_ADDR_MSB;
+	(regs + 6)->val = (y_end >> 8) & 0xff;
+	(regs + 7)->addr = IMX230_CROP_Y_END_ADDR_LSB;
+	(regs + 7)->val = (y_end) & 0xff;
+}
+
 static int test_mode;
 module_param(test_mode, int, 0644);
 
@@ -413,6 +446,8 @@ static int imx230_set_gain(struct imx230 *priv, s32 val);
 static int imx230_set_frame_length(struct imx230 *priv, s32 val);
 static int imx230_set_coarse_time(struct imx230 *priv, s32 val);
 static int imx230_set_coarse_time_short(struct imx230 *priv, s32 val);
+static int imx230_set_crop_data(struct imx230 *priv, struct v4l2_rect *rect);
+static int imx230_get_crop_data(struct imx230 *priv, struct v4l2_rect *rect);
 
 static int imx230_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -480,8 +515,69 @@ exit:
 	return err;
 }
 
+static int imx230_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct imx230 *priv = (struct imx230 *)s_data->priv;
+	struct v4l2_rect *rect = &crop->c;
+	int err;
+
+	u32 width, height;
+	u32 bottom, right;
+
+	width = s_data->fmt_width;
+	height = s_data->fmt_height;
+
+	if (crop->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	if ((width != rect->width) || (height != rect->height)) {
+		dev_err(&client->dev,
+			"%s: CROP Resolution Mismatch: %dx%d\n",
+			__func__, rect->width, rect->height);
+		return -EINVAL;
+	}
+	if (rect->top < 0 || rect->left < 0) {
+		dev_err(&client->dev,
+			"%s: CROP Bound Error: left:%d, top:%d\n",
+			__func__, rect->left, rect->top);
+		return -EINVAL;
+	}
+	right = rect->left + width - 1;
+	bottom = rect->top + height - 1;
+	if ((right > IMX230_DEFAULT_WIDTH) ||
+		(bottom > IMX230_DEFAULT_HEIGHT)) {
+		dev_err(&client->dev,
+			"%s: CROP Bound Error: right:%d, bottom:%d)\n",
+			__func__, right, bottom);
+		return -EINVAL;
+	}
+	err = imx230_set_crop_data(priv, rect);
+
+	return err;
+}
+
+static int imx230_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct imx230 *priv = (struct imx230 *)s_data->priv;
+	struct v4l2_rect *rect = &crop->c;
+	int err;
+
+	if (crop->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	err = imx230_get_crop_data(priv, rect);
+
+	return err;
+}
+
 static struct v4l2_subdev_video_ops imx230_subdev_video_ops = {
 	.s_stream	= imx230_s_stream,
+	.s_crop		= imx230_s_crop,
+	.g_crop		= imx230_g_crop,
 	.s_mbus_fmt	= camera_common_s_fmt,
 	.g_mbus_fmt	= camera_common_g_fmt,
 	.try_mbus_fmt	= camera_common_try_fmt,
@@ -702,6 +798,71 @@ fail:
 	dev_dbg(&priv->i2c_client->dev,
 		 "%s: COARSE_TIME_SHORT control error\n", __func__);
 	return err;
+}
+
+static int imx230_set_crop_data(struct imx230 *priv, struct v4l2_rect *rect)
+{
+	imx230_reg reg_list_crop[IMX230_NUM_CROP_REGS];
+	int err;
+	int i = 0;
+
+	dev_dbg(&priv->i2c_client->dev,
+		 "%s:  crop->left:%d, crop->top:%d, crop->res: %dx%d\n",
+		 __func__, rect->left, rect->top, rect->width, rect->height);
+
+	imx230_get_crop_regs(reg_list_crop, rect);
+	imx230_set_group_hold(priv);
+
+	for (i = 0; i < IMX230_NUM_CROP_REGS; i++) {
+		err = imx230_write_reg(priv->s_data, reg_list_crop[i].addr,
+			 reg_list_crop[i].val);
+		if (err) {
+			dev_dbg(&priv->i2c_client->dev,
+				"%s: SENSOR_CROP control error\n", __func__);
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static int imx230_get_crop_data(struct imx230 *priv, struct v4l2_rect *rect)
+{
+	imx230_reg reg_list_crop[IMX230_NUM_CROP_REGS];
+	int i, err;
+	int a, b;
+	int right, bottom;
+
+	for (i = 0; i < IMX230_NUM_CROP_REGS; i++) {
+		reg_list_crop[i].addr = (IMX230_CROP_X_START_ADDR_MSB + i);
+		err = imx230_read_reg(priv->s_data, reg_list_crop[i].addr,
+			&reg_list_crop[i].val);
+		if (err) {
+			dev_dbg(&priv->i2c_client->dev,
+				"%s: SENSOR_CROP control error\n", __func__);
+			return err;
+		}
+	}
+
+	a = reg_list_crop[0].val & 0x00ff;
+	b = reg_list_crop[1].val & 0x00ff;
+	rect->left = (a << 8) | b;
+
+	a = reg_list_crop[2].val & 0x00ff;
+	b = reg_list_crop[3].val & 0x00ff;
+	rect->top = (a << 8) | b;
+
+	a = reg_list_crop[4].val & 0x00ff;
+	b = reg_list_crop[5].val & 0x00ff;
+	right = (a << 8) | b;
+	rect->width = right - rect->left + 1;
+
+	a = reg_list_crop[6].val & 0x00ff;
+	b = reg_list_crop[7].val & 0x00ff;
+	bottom = (a << 8) | b;
+	rect->height = bottom - rect->top + 1;
+
+	return 0;
 }
 
 #ifdef IMX230_EEPROM_PRESENT
