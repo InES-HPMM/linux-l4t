@@ -3,7 +3,7 @@
  *
  * Some MM related functionality specific to nvmap.
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -220,6 +220,7 @@ void nvmap_vm_insert_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 		int i;
 
 		vma = vma_list->vma;
+		down_write(&vma->vm_mm->mmap_sem);
 		priv = vma->vm_private_data;
 		if ((offset + size) > (vma->vm_end - vma->vm_start))
 			vm_size = vma->vm_end - vma->vm_start - offset;
@@ -231,7 +232,6 @@ void nvmap_vm_insert_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 			pte_t *pte;
 			spinlock_t *ptl;
 
-			down_write(&vma->vm_mm->mmap_sem);
 			pte = get_locked_pte(vma->vm_mm, vma->vm_start + (i << PAGE_SHIFT), &ptl);
 			if (!pte) {
 				pr_err("nvmap: %s get_locked_pte failed\n", __func__);
@@ -247,8 +247,9 @@ void nvmap_vm_insert_handle(struct nvmap_handle *handle, u32 offset, u32 size)
 			atomic_inc(&page->_count);
 			do_set_pte(vma, vma->vm_start + (i << PAGE_SHIFT), page, pte, true, false);
 			pte_unmap_unlock(pte, ptl);
-			up_write(&vma->vm_mm->mmap_sem);
 		}
+
+		up_write(&vma->vm_mm->mmap_sem);
 	}
 	mutex_unlock(&handle->lock);
 }
