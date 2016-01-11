@@ -1136,7 +1136,7 @@ static void gk20a_pm_shutdown(struct platform_device *pdev)
 {
 #ifdef CONFIG_PM_RUNTIME
 	unsigned long timeout = jiffies +
-		msecs_to_jiffies(GK20A_WAIT_FOR_IDLE_MS);
+		msecs_to_jiffies(5000);
 	int ref_cnt;
 #endif
 	struct gk20a_platform *platform = platform_get_drvdata(pdev);
