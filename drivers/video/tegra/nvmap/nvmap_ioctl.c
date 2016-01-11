@@ -3,7 +3,7 @@
  *
  * User-space interface to nvmap
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -600,9 +600,10 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 			 unsigned long count)
 {
 	ssize_t copied = 0;
-	void *addr;
+	u8 *addr;
 	int ret = 0;
-	struct vm_struct *area;
+	bool use_set_ways_cache_maint = false;
+	struct vm_struct *area = NULL;
 
 	if (!elem_size || !count)
 		return -EINVAL;
@@ -625,10 +626,40 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 		h_offs + h_stride * (count - 1) + elem_size > h->size)
 		return -EINVAL;
 
-	area = alloc_vm_area(PAGE_SIZE, NULL);
-	if (!area)
-		return -ENOMEM;
-	addr = area->addr;
+#ifdef NVMAP_LAZY_VFREE
+	if (!h->heap_pgalloc) {
+#endif
+		area = alloc_vm_area(PAGE_SIZE, NULL);
+		if (!area)
+			return -ENOMEM;
+		addr = area->addr;
+#ifdef NVMAP_LAZY_VFREE
+	} else if (!h->vaddr) {
+		void *vaddr = __nvmap_mmap(h);
+
+		if (!vaddr)
+			return -ENOMEM;
+
+		/*
+		 * we already hold a reference to handle by the time we
+		 * reach here. Drop the extra reference to handle from
+		 * __nvmap_mmap
+		 */
+		nvmap_handle_put(h);
+		addr = h->vaddr + h_offs;
+	} else {
+		addr = h->vaddr + h_offs;
+	}
+#endif
+
+	if (nvmap_can_fast_cache_maint(h, h_offs, h_offs + count*elem_size,
+				NVMAP_CACHE_OP_WB_INV))
+		use_set_ways_cache_maint = true;
+
+	if (is_read && use_set_ways_cache_maint) {
+		inner_flush_cache_all();
+		outer_flush_all();
+	}
 
 	while (count--) {
 		if (h_offs + elem_size > h->size) {
@@ -636,18 +667,34 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 			ret = -EFAULT;
 			break;
 		}
-		if (is_read &&
+		if (!use_set_ways_cache_maint && is_read &&
 		    !(h->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE))
 			__nvmap_do_cache_maint(client, h, h_offs,
 				h_offs + elem_size, NVMAP_CACHE_OP_INV, false);
 
-		ret = rw_handle_page(h, is_read, h_offs, sys_addr,
-				     elem_size, (unsigned long)addr);
+#ifdef NVMAP_LAZY_VFREE
+		if (h->heap_pgalloc && h->vaddr) {
+			int err;
+			if (is_read)
+				err = copy_to_user((void *)sys_addr,
+						addr, elem_size);
+			else
+				err = copy_from_user(addr,
+						(void *)sys_addr, elem_size);
+			if (err)
+				ret = -EFAULT;
+			addr += h_stride;
+		} else
+#endif
+		{
+			ret = rw_handle_page(h, is_read, h_offs, sys_addr,
+					     elem_size, (unsigned long)addr);
+		}
 
 		if (ret)
 			break;
 
-		if (!is_read &&
+		if (!use_set_ways_cache_maint && !is_read &&
 		    !(h->userflags & NVMAP_HANDLE_CACHE_SYNC_AT_RESERVE))
 			__nvmap_do_cache_maint(client, h, h_offs,
 				h_offs + elem_size, NVMAP_CACHE_OP_WB_INV,
@@ -658,7 +705,13 @@ static ssize_t rw_handle(struct nvmap_client *client, struct nvmap_handle *h,
 		h_offs += h_stride;
 	}
 
-	free_vm_area(area);
+	if (copied && !is_read && use_set_ways_cache_maint) {
+		inner_clean_cache_all();
+		outer_clean_all();
+	}
+
+	if (area)
+		free_vm_area(area);
 	return ret ?: copied;
 }
 

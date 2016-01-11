@@ -430,6 +430,8 @@ void inner_clean_cache_all(void);
 void nvmap_clean_cache(struct page **pages, int numpages);
 void nvmap_clean_cache_page(struct page *page);
 void nvmap_flush_cache(struct page **pages, int numpages);
+bool nvmap_can_fast_cache_maint(struct nvmap_handle *h, unsigned long start,
+			  unsigned long end, unsigned int op);
 
 int nvmap_do_cache_maint_list(struct nvmap_handle **handles, u32 *offsets,
 			      u32 *sizes, int op, int nr);

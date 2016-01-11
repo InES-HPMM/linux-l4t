@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/nvmap/nvmap_cache.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -155,7 +155,7 @@ static inline bool fast_cache_maint_outer(unsigned long start,
 #endif
 
 #if defined(CONFIG_NVMAP_CACHE_MAINT_BY_SET_WAYS)
-static inline bool can_fast_cache_maint(struct nvmap_handle *h,
+bool nvmap_can_fast_cache_maint(struct nvmap_handle *h,
 	unsigned long start,
 	unsigned long end, unsigned int op)
 {
@@ -165,7 +165,7 @@ static inline bool can_fast_cache_maint(struct nvmap_handle *h,
 	return true;
 }
 #else
-static inline bool can_fast_cache_maint(struct nvmap_handle *h,
+bool nvmap_can_fast_cache_maint(struct nvmap_handle *h,
 	unsigned long start,
 	unsigned long end, unsigned int op)
 {
@@ -178,7 +178,7 @@ static bool fast_cache_maint(struct nvmap_handle *h,
 	unsigned long end, unsigned int op,
 	bool clean_only_dirty)
 {
-	if (!can_fast_cache_maint(h, start, end, op))
+	if (!nvmap_can_fast_cache_maint(h, start, end, op))
 		return false;
 
 	if (h->userflags & NVMAP_HANDLE_CACHE_SYNC) {
@@ -237,7 +237,7 @@ static int do_cache_maint(struct cache_maint_op *cache_work)
 		return -EFAULT;
 
 	client = h->owner;
-	if (can_fast_cache_maint(h, pstart, pend, op))
+	if (nvmap_can_fast_cache_maint(h, pstart, pend, op))
 		nvmap_stats_inc(NS_CFLUSH_DONE, cache_maint_inner_threshold);
 	else
 		nvmap_stats_inc(NS_CFLUSH_DONE, pend - pstart);
