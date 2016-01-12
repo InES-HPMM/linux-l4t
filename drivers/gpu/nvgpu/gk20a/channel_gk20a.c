@@ -62,6 +62,8 @@ static int channel_gk20a_update_runlist(struct channel_gk20a *c,
 					bool add);
 static void gk20a_free_error_notifiers(struct channel_gk20a *ch);
 
+static void gk20a_channel_clean_up_jobs(struct work_struct *work);
+
 /* allocate GPU channel */
 static struct channel_gk20a *allocate_channel(struct fifo_gk20a *f)
 {
@@ -1034,6 +1036,7 @@ struct channel_gk20a *gk20a_open_new_channel(struct gk20a *g)
 	ch->timeout_debug_dump = true;
 	ch->has_timedout = false;
 	ch->obj_class = 0;
+	ch->clean_up.scheduled = false;
 
 	/* The channel is *not* runnable at this point. It still needs to have
 	 * an address space bound and allocate a gpfifo and grctx. */
@@ -1502,6 +1505,32 @@ static int gk20a_free_priv_cmdbuf(struct channel_gk20a *c,
 	return 0;
 }
 
+static void gk20a_channel_schedule_job_clean_up(struct channel_gk20a *c)
+{
+	mutex_lock(&c->clean_up.lock);
+
+	if (c->clean_up.scheduled) {
+		mutex_unlock(&c->clean_up.lock);
+		return;
+	}
+
+	c->clean_up.scheduled = true;
+	schedule_delayed_work(&c->clean_up.wq, 1);
+
+	mutex_unlock(&c->clean_up.lock);
+}
+
+static void gk20a_channel_cancel_job_clean_up(struct channel_gk20a *c,
+				bool wait_for_completion)
+{
+	if (wait_for_completion)
+		cancel_delayed_work_sync(&c->clean_up.wq);
+
+	mutex_lock(&c->clean_up.lock);
+	c->clean_up.scheduled = false;
+	mutex_unlock(&c->clean_up.lock);
+}
+
 static int gk20a_channel_add_job(struct channel_gk20a *c,
 				 struct gk20a_fence *pre_fence,
 				 struct gk20a_fence *post_fence,
@@ -1554,15 +1583,20 @@ static int gk20a_channel_add_job(struct channel_gk20a *c,
 	return 0;
 }
 
-void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
+static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 {
-	struct vm_gk20a *vm = c->vm;
+	struct channel_gk20a *c = container_of(to_delayed_work(work),
+			struct channel_gk20a, clean_up.wq);
+	struct vm_gk20a *vm;
 	struct channel_gk20a_job *job, *n;
-	struct gk20a_platform *platform = gk20a_get_platform(c->g->dev);
+	struct gk20a_platform *platform;
 
-	trace_gk20a_channel_update(c->hw_chid);
+	c = gk20a_channel_get(c);
+	if (!c)
+		return;
 
-	wake_up(&c->submit_wq);
+	vm = c->vm;
+	platform = gk20a_get_platform(c->g->dev);
 
 	mutex_lock(&c->submit_lock);
 
@@ -1571,6 +1605,8 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 		update_gp_get(c->g, c);
 		check_gp_put(c->g, c);
 	}
+
+	gk20a_channel_cancel_job_clean_up(c, false);
 
 	mutex_lock(&c->jobs_lock);
 	list_for_each_entry_safe(job, n, &c->jobs, list) {
@@ -1626,6 +1662,23 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 
 	if (c->update_fn)
 		schedule_work(&c->update_fn_work);
+
+	gk20a_channel_put(c);
+}
+
+void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
+{
+	c = gk20a_channel_get(c);
+	if (!c)
+		return;
+
+	update_gp_get(c->g, c);
+	wake_up(&c->submit_wq);
+
+	trace_gk20a_channel_update(c->hw_chid);
+	gk20a_channel_schedule_job_clean_up(c);
+
+	gk20a_channel_put(c);
 }
 
 int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
@@ -1961,6 +2014,8 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 	mutex_init(&c->ioctl_lock);
 	mutex_init(&c->jobs_lock);
 	mutex_init(&c->submit_lock);
+	INIT_DELAYED_WORK(&c->clean_up.wq, gk20a_channel_clean_up_jobs);
+	mutex_init(&c->clean_up.lock);
 	INIT_LIST_HEAD(&c->jobs);
 #if defined(CONFIG_GK20A_CYCLE_STATS)
 	mutex_init(&c->cyclestate.cyclestate_buffer_mutex);
@@ -2312,6 +2367,7 @@ int gk20a_channel_suspend(struct gk20a *g)
 			if (ch->update_fn &&
 					work_pending(&ch->update_fn_work))
 				flush_work(&ch->update_fn_work);
+			gk20a_channel_cancel_job_clean_up(ch, true);
 
 			channels_in_use = true;
 
