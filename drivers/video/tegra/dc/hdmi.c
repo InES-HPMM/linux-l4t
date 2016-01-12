@@ -430,6 +430,72 @@ static const struct tegra_hdmi_audio_config
 	return NULL;
 }
 
+struct tegra_hdmi_audio_config tegra_hdmi_audio_config_default[] = {
+	{148500000,	24576,	148500,	24000},
+	{0,		0,	0,	0},
+};
+
+static const struct tegra_hdmi_audio_config
+*tegra_hdmi_get_audio_config_default(unsigned audio_freq, unsigned pix_clock)
+{
+	struct tegra_hdmi_audio_config *table;
+	unsigned cts, N, fs, aval;
+
+	table = tegra_hdmi_audio_config_default;
+
+	/* N values are copied from spec for corresponding freq band */
+	switch (audio_freq) {
+	case AUDIO_FREQ_32K:
+		N = 4096;
+		fs = 32000;
+		aval = 24000;
+		break;
+	case AUDIO_FREQ_44_1K:
+		N = 6272;
+		fs = 44100;
+		aval = 20000;
+		break;
+	case AUDIO_FREQ_48K:
+		N = 6144;
+		fs = 48000;
+		aval = 24000;
+		break;
+	case AUDIO_FREQ_88_2K:
+		N = 12544;
+		fs = 88200;
+		aval = 20000;
+		break;
+	case AUDIO_FREQ_96K:
+		N = 12288;
+		fs = 96000;
+		aval = 24000;
+		break;
+	case AUDIO_FREQ_176_4K:
+		N = 25088;
+		fs = 176400;
+		aval = 20000;
+		break;
+	case AUDIO_FREQ_192K:
+		N = 24576;
+		fs = 192000;
+		aval = 24000;
+		break;
+	default:
+		/* we have non-matching freq band. Try to return default
+		   value instead of null table */
+		return table;
+	}
+
+	/* (Average CTS value) = (fTMDS_clock * N ) / (128 * fS) */
+	cts = ((pix_clock) / (128 * fs)) * N;
+
+	table->pix_clock = pix_clock;
+	table->cts = cts;
+	table->n = N;
+	table->aval = aval;
+
+	return table;
+}
 
 unsigned long tegra_hdmi_readl(struct tegra_dc_hdmi_data *hdmi,
 					     unsigned long reg)
@@ -1571,7 +1637,10 @@ static int tegra_dc_hdmi_setup_audio(struct tegra_dc *dc, unsigned audio_freq,
 		dev_err(&dc->ndev->dev,
 			"hdmi: can't set audio to %d at %d pix_clock",
 			audio_freq, dc->mode.pclk);
-		return -EINVAL;
+		dev_err(&dc->ndev->dev,
+			"hdmi: falling back default configuration");
+		config = tegra_hdmi_get_audio_config_default(audio_freq,
+			dc->mode.pclk);
 	}
 
 	tegra_hdmi_writel(hdmi, 0, HDMI_NV_PDISP_HDMI_ACR_CTRL);
