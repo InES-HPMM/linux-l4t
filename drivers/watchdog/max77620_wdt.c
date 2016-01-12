@@ -201,6 +201,7 @@ static int _max77620_wdt_set_timeout(struct watchdog_device *wdt_dev,
 	}
 
 	wdt->current_timeout = timeout;
+	wdt_dev->timeout = timeout;
 	dev_info(wdt->dev, "Setting WDT timeout %d\n", timeout);
 	return 0;
 }
