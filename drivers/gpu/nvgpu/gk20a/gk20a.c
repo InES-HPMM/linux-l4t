@@ -1134,28 +1134,46 @@ static int gk20a_pm_disable_clk(struct device *dev)
 
 static void gk20a_pm_shutdown(struct platform_device *pdev)
 {
-#ifdef CONFIG_PM_RUNTIME
-	unsigned long timeout = jiffies +
-		msecs_to_jiffies(5000);
-	int ref_cnt;
-#endif
 	struct gk20a_platform *platform = platform_get_drvdata(pdev);
 	int ret = 0;
+	struct gk20a *g = get_gk20a(pdev);
+	struct fifo_gk20a *f = &g->fifo;
+	int chid;
+
+	/* If GPU is already railgated, just prevent more requests, and return */
+	if (platform->is_railgated && platform->is_railgated(pdev)) {
+#ifdef CONFIG_PM_RUNTIME
+		__pm_runtime_disable(&pdev->dev, false);
+#endif
+		return;
+	}
 
 	dev_info(&pdev->dev, "shutting down");
 
+	ret = gk20a_busy(pdev);
+	if (ret)
+		goto fail;
+
+	gk20a_cde_suspend(g);
+
+	for (chid = 0; chid < f->num_channels; chid++) {
+		struct channel_gk20a *ch = &f->channel[chid];
+
+		if (gk20a_channel_get(ch)) {
+			gk20a_channel_abort(ch, true);
+			if (ch->update_fn)
+				cancel_work_sync(&ch->update_fn_work);
+			gk20a_channel_cancel_job_clean_up(ch, true);
+			gk20a_channel_put(ch);
+		}
+	}
+
+	gk20a_idle(pdev);
+
+fail:
 #ifdef CONFIG_PM_RUNTIME
 	/* Prevent more requests by disabling Runtime PM */
 	__pm_runtime_disable(&pdev->dev, false);
-
-	/* Wait until current running requests are finished */
-	while (time_before(jiffies, timeout)) {
-		ref_cnt = atomic_read(&pdev->dev.power.usage_count);
-		if (ref_cnt > 1)
-			msleep(1);
-		else
-			break;
-	}
 #endif
 
 	/* Be ready for rail-gate after this point */
@@ -1163,6 +1181,8 @@ static void gk20a_pm_shutdown(struct platform_device *pdev)
 
 	if (platform->railgate)
 		ret = platform->railgate(pdev);
+
+	dev_info(&pdev->dev, "shut down complete\n");
 }
 
 #ifdef CONFIG_PM

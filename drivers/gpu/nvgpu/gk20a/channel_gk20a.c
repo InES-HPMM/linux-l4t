@@ -1508,7 +1508,7 @@ static void gk20a_channel_schedule_job_clean_up(struct channel_gk20a *c)
 	mutex_unlock(&c->clean_up.lock);
 }
 
-static void gk20a_channel_cancel_job_clean_up(struct channel_gk20a *c,
+void gk20a_channel_cancel_job_clean_up(struct channel_gk20a *c,
 				bool wait_for_completion)
 {
 	if (wait_for_completion)

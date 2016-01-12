@@ -244,6 +244,9 @@ struct channel_gk20a *gk20a_open_new_channel_with_cb(struct gk20a *g,
 		void *update_fn_data);
 void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a);
 
+void gk20a_channel_cancel_job_clean_up(struct channel_gk20a *c,
+				bool wait_for_completion);
+
 int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 				struct nvgpu_gpfifo *gpfifo,
 				struct nvgpu_submit_gpfifo_args *args,
