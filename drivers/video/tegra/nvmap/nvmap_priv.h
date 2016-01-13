@@ -3,7 +3,7 @@
  *
  * GPU memory management driver for Tegra
  *
- * Copyright (c) 2009-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -92,6 +92,7 @@ struct nvmap_vma_list {
 	struct list_head list;
 	struct vm_area_struct *vma;
 	pid_t pid;
+	atomic_t ref;
 };
 
 struct nvmap_carveout_node {
