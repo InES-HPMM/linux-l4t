@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2012-2015, Raydium Semiconductor Corporation.
  * All Rights Reserved.
- * Copyright (C) 2012-2014, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (C) 2012-2016, NVIDIA Corporation.  All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -254,6 +254,7 @@ struct rm_tch_queue_info {
 /*=============================================================================
 	GLOBAL VARIABLES DECLARATION
 =============================================================================*/
+static struct miscdevice raydium_ts_miscdev;
 struct input_dev *g_input_dev;
 struct spi_device *g_spi;
 struct rm31080a_ts_para g_st_ts;
@@ -490,7 +491,8 @@ static void rm_tch_generate_event(struct rm_tch_ts *dev_touch,
 		break;
 	}
 	envp[1] = NULL;
-	kobject_uevent_env(&dev_touch->dev->kobj, KOBJ_CHANGE, envp);
+	kobject_uevent_env(&raydium_ts_miscdev.this_device->kobj,
+		KOBJ_CHANGE, envp);
 }
 
 /*===========================================================================*/
