@@ -356,6 +356,9 @@ static int tegra_fb_blank(int blank, struct fb_info *info)
 		if (!dc->suspended && dc->enabled)
 			tegra_fb->curr_xoffset = -1;
 		tegra_dc_disable(dc);
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+		dc->blanked = true;
+#endif
 		return 0;
 
 	default:
