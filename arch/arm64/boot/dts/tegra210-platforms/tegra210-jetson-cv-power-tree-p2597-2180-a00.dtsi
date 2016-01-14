@@ -199,7 +199,9 @@
 		};
 
 		en_vdd_cam: regulator@5 {
-			gpio = <&tca9539_77 9 1>;
+			gpio = <&tca9539_77 3 0>;
+			vin-supply = <&max77620_sd3>;
+			enable-active-high;
 		};
 
 		vdd_hdmi: regulator@7 {
@@ -306,7 +308,7 @@
 			regulator-min-microvol = <1200000>;
 			regulator-max-microvol = <1200000>;
 			vin-supply = <&vdd_3v3>;
-			gpio = <&tca9539_77 3 1>;
+			gpio = <&tca9539_77 10 0>;
 			enable-active-high;
 		};
 
@@ -317,16 +319,18 @@
 			regulator-min-microvol = <2800000>;
 			regulator-max-microvol = <2800000>;
 			vin-supply = <&vdd_3v3>;
+			gpio = <&gpio TEGRA_GPIO(S, 4) 0>;
 			enable-active-high;
 		};
 
-		en_vdd_cam_1v2_alt: regulator@211 {
+		en_vdd_cam_1v8: regulator@211 {
 			compatible = "regulator-fixed-sync";
 			reg = <211>;
-			regulator-name = "en-vdd-cam-1v2-alt";
-			regulator-min-microvol = <1200000>;
-			regulator-max-microvol = <1200000>;
-			gpio = <&tca9539_77 10 1>;
+			regulator-name = "en-vdd-cam-1v8";
+			regulator-min-microvol = <1800000>;
+			regulator-max-microvol = <1800000>;
+			vin-supply = <&vdd_3v3>;
+			gpio = <&tca9539_77 9 0>;
 			enable-active-high;
 		};
 	};
@@ -404,6 +408,37 @@
 			sdmmc3 {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
 			};
+		};
+	};
+
+	i2c@546c0000 {
+		tca6408_21: tca6408@21 {
+			vcc-supply = <&en_vdd_cam>;
+		};
+	};
+
+	i2c@7000c000 {
+		icm20628@68 {
+			vdd-supply = <&vdd_3v3>;
+			vlogic-supply = <&vdd_3v3>;
+		};
+
+		ak8963@0d {
+			vdd-supply = <&vdd_3v3>;
+			vid-supply = <&vdd_3v3>;
+		};
+
+		bmp280@77 {
+			vddio-supply = <&vdd_3v3>;
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		cm32180@48 {
+			vdd-supply = <&vdd_3v3>;
+		};
+
+		iqs263@44 {
+			vddhi-supply = <&vdd_3v3>;
 		};
 	};
 };
