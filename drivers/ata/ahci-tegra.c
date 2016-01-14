@@ -1,7 +1,7 @@
 /*
  * ahci-tegra.c - AHCI SATA support for TEGRA AHCI device
  *
- * Copyright (c) 2011-2015, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -453,7 +453,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0);
 static int tegra_ahci_remove_one(struct platform_device *pdev);
 static void tegra_ahci_shutdown(struct platform_device *pdev);
 static void tegra_ahci_pad_config(void);
-static void tegra_ahci_put_sata_in_iddq(void);
+static void tegra_ahci_put_sata_in_iddq(struct ata_host *host);
 static void tegra_ahci_iddqlane_config(void);
 
 #ifdef CONFIG_PM
@@ -2456,10 +2456,13 @@ static void tegra_ahci_iddqlane_config(void)
 
 }
 
-static void tegra_ahci_put_sata_in_iddq(void)
+static void tegra_ahci_put_sata_in_iddq(struct ata_host *host)
 {
+	struct tegra_ahci_host_priv *tegra_hpriv;
 	u32 val;
 	u32 dat;
+
+	tegra_hpriv = (struct tegra_ahci_host_priv *)host->private_data;
 
 	/*
 	 * Hw wake up is not needed:
@@ -2470,10 +2473,13 @@ static void tegra_ahci_put_sata_in_iddq(void)
 	 * SATA_PADPHY_IDDQ_OVERRIDE_VALUE=1
 	 */
 
-	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
-	val &= ~(PADPLL_RESET_SWCTL_MASK | PADPLL_RESET_OVERRIDE_VALUE_MASK);
-	val |= (PADPLL_RESET_SWCTL_ON | PADPLL_RESET_OVERRIDE_VALUE_ON);
-	clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+	if (tegra_hpriv->cid != TEGRA_CHIPID_TEGRA21) {
+		val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
+		val &= ~(PADPLL_RESET_SWCTL_MASK |
+			PADPLL_RESET_OVERRIDE_VALUE_MASK);
+		val |= (PADPLL_RESET_SWCTL_ON | PADPLL_RESET_OVERRIDE_VALUE_ON);
+		clk_writel(val, CLK_RST_SATA_PLL_CFG0_REG);
+	}
 
 	/* Wait for time specified in SATA_LANE_IDDQ2_PADPLL_IDDQ */
 	val = clk_readl(CLK_RST_SATA_PLL_CFG1_REG);
@@ -2575,7 +2581,7 @@ static bool tegra_ahci_power_gate(struct ata_host *host)
 		dev_err(host->dev, "** pg: cmds; abort power gating **\n");
 		return false;
 	}
-	tegra_ahci_put_sata_in_iddq();
+	tegra_ahci_put_sata_in_iddq(host);
 
 	/* power off the sata */
 #ifdef CONFIG_PM_GENERIC_DOMAINS_OF
@@ -2757,7 +2763,7 @@ static bool tegra_ahci_pad_suspend(struct ata_host *host)
 		xusb_writel(val, XUSB_PADCTL_IOPHY_MISC_PAD_S0_CTL_1_0);
 	}
 
-	tegra_ahci_put_sata_in_iddq();
+	tegra_ahci_put_sata_in_iddq(host);
 
 	val = clk_readl(CLK_RST_SATA_PLL_CFG0_REG);
 	val |= (SATA_SEQ_PADPLL_PD_INPUT_VALUE |
