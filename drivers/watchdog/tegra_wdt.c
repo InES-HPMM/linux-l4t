@@ -36,6 +36,7 @@
 #include <linux/uaccess.h>
 #include <linux/watchdog.h>
 #include <linux/tegra-soc.h>
+#include <linux/suspend.h>
 
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
@@ -50,6 +51,7 @@ struct tegra_wdt {
 	u32			config;
 	int			irq;
 	unsigned long		status;
+	struct notifier_block	wdt_pm_nb;
 /* Bit numbers for status flags */
 #define WDT_ENABLED		0
 #define WDT_ENABLED_ON_INIT	1
@@ -222,6 +224,22 @@ static const struct watchdog_ops tegra_wdt_ops = {
 	.ref   = tegra_wdt_ref,
 };
 
+static int tegra_pm_notify(struct notifier_block *nb,
+			unsigned long event, void *data)
+{
+	struct tegra_wdt *tegra_wdt;
+
+	tegra_wdt = container_of(nb, struct tegra_wdt, wdt_pm_nb);
+
+	switch (event) {
+	case PM_USERSPACE_FROZEN:
+		__tegra_wdt_ping(tegra_wdt);
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
 #ifdef CONFIG_DEBUG_FS
 
 static int disable_wdt_reset_show(void *data, u64 *val)
@@ -337,6 +355,14 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		return PTR_ERR(tegra_wdt->wdt_timer);
 	}
 
+#ifdef CONFIG_PM
+	/* Register PM notifier*/
+	tegra_wdt->wdt_pm_nb.notifier_call = tegra_pm_notify;
+	ret = register_pm_notifier(&tegra_wdt->wdt_pm_nb);
+	if (ret)
+		return ret;
+#endif
+
 	/* Configure timer source */
 	if ((res_wdt->start & 0xff) < 0x50)
 		tegra_wdt->config = 1 + (res_wdt->start & 0xf) / 8;
@@ -400,6 +426,9 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 
 	tegra_wdt_disable(&tegra_wdt->wdt);
 
+#ifdef CONFIG_PM
+	unregister_pm_notifier(&tegra_wdt->wdt_pm_nb);
+#endif
 	watchdog_unregister_device(&tegra_wdt->wdt);
 	platform_set_drvdata(pdev, NULL);
 	return 0;
