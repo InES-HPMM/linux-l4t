@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/hdmi2.0.c
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION, All rights reserved.
  * Author: Animesh Kishore <ankishore@nvidia.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1497,6 +1497,17 @@ static void tegra_hdmi_hdr_infoframe_update(struct tegra_hdmi *hdmi)
 static void tegra_hdmi_hdr_infoframe(struct tegra_hdmi *hdmi)
 {
 	struct tegra_dc_sor_data *sor = hdmi->sor;
+	u32 val;
+
+	/* set_bits = contains all the bits to be set
+	 * for NV_SOR_HDMI_GENERIC_CTRL reg */
+	u32 set_bits = (NV_SOR_HDMI_GENERIC_CTRL_ENABLE_YES |
+			NV_SOR_HDMI_GENERIC_CTRL_OTHER_DISABLE |
+			NV_SOR_HDMI_GENERIC_CTRL_SINGLE_DISABLE);
+
+	/* read the current value to restore some bit values */
+	val = (tegra_sor_readl(sor, NV_SOR_HDMI_GENERIC_CTRL)
+				& ~set_bits);
 
 	/* disable generic infoframe before configuring */
 	tegra_sor_writel(sor, NV_SOR_HDMI_GENERIC_CTRL, 0);
@@ -1510,11 +1521,11 @@ static void tegra_hdmi_hdr_infoframe(struct tegra_hdmi *hdmi)
 					&hdmi->hdr, sizeof(hdmi->hdr),
 					true);
 
-	/* Send infoframe every frame, checksum hw generated */
-	tegra_sor_writel(sor, NV_SOR_HDMI_GENERIC_CTRL,
-		NV_SOR_HDMI_GENERIC_CTRL_ENABLE_YES |
-		NV_SOR_HDMI_GENERIC_CTRL_OTHER_DISABLE |
-		NV_SOR_HDMI_GENERIC_CTRL_SINGLE_DISABLE);
+	/* set the required bits in NV_SOR_HDMI_GENERIC_CTRL*/
+	val = val | set_bits;
+
+	tegra_sor_writel(sor, NV_SOR_HDMI_GENERIC_CTRL, val);
+
 	return;
 }
 
