@@ -172,8 +172,6 @@ obj-$(CONFIG_TEGRA_GPU_EDP)             += gpu-edp.o
 obj-y					+= asim.o
 obj-y					+= mselect.o
 
-obj-$(CONFIG_TEGRA_WDT_RECOVERY)        += wdt-recovery.o
-
 obj-y					+= tegra_prod.o
 
 obj-y					+= reboot.o

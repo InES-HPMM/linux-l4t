@@ -520,13 +520,6 @@ config TEGRA_PLLM_RESTRICTED
 	  disabled, PLLM is used as a clock source with no restrictions (which
 	  may effectively increase lower limit for core voltage).
 
-config TEGRA_WDT_RECOVERY
-	bool "Enable suspend/resume watchdog recovery mechanism"
-	default n
-	help
-	  Enables watchdog recovery mechanism to protect against
-	  suspend/resume hangs.
-
 config TEGRA_LP2_CPU_TIMER
 	bool
 
