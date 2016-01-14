@@ -77,6 +77,7 @@ obj-$(CONFIG_VIDEO_AS3645A)	+= as3645a.o
 obj-$(CONFIG_VIDEO_SMIAPP_PLL)	+= smiapp-pll.o
 obj-$(CONFIG_VIDEO_AK881X)		+= ak881x.o
 obj-$(CONFIG_VIDEO_IR_I2C)  += ir-kbd-i2c.o
+obj-$(CONFIG_VIDEO_TC358840)	+= tc358840.o
 
 ifneq (,$(filter $(CONFIG_VIDEO_I2C_OV5693),y m))
 	ccflags-y += -I$(srctree)/drivers/media/platform/tegra
