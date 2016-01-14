@@ -56,4 +56,26 @@
 	backlight {
 		status = "disabled";
 	};
+
+	regulators {
+		/* Enable power supply for HDMI extension board */
+
+		/* VDD_SYS_EN */
+		en_vdd_cam: regulator@5 {
+			regulator-boot-on;
+			regulator-always-on;
+		};
+
+		/* CAM_VDD_1V8_EN */
+		en_vdd_cam_1v8: regulator@211 {
+			regulator-boot-on;
+			regulator-always-on;
+		};
+
+		/* CAM_VDD_1V2_EN */
+		en_vdd_cam_1v2: regulator@209 {
+			regulator-boot-on;
+			regulator-always-on;
+		};
+	};
 };
