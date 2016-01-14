@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -50,7 +50,6 @@
 #define OV5693_LENS_VIEW_ANGLE_V	60000	/* _INT2FLOAT_DIVISOR */
 #define OV5693_OTP_BUF_SIZE		16
 #define OV5693_FUSE_ID_SIZE		8
-#define OV5693_WAIT_MS			10
 
 static struct nvc_gpio_init ov5693_gpio[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, GPIOF_OUT_INIT_LOW, "pwrdn", true, true, },
@@ -126,7 +125,6 @@ static struct nvc_imager_static_nvc ov5693_dflt_sdata = {
 };
 
 static const struct reg_8 ov5693_2592x1944_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -393,7 +391,6 @@ static const struct reg_8 ov5693_2592x1944_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1296x972_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -641,7 +638,6 @@ static const struct reg_8 ov5693_1296x972_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1920x1080_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/*, 0xIncluding, 0xsw, 0xreset, 0x*/
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -889,7 +885,6 @@ static const struct reg_8 ov5693_1920x1080_i2c[] = {
 };
 
 static const struct reg_8 ov5693_2592x1458_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/*, 0xIncluding, 0xsw, 0xreset, 0x*/
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1148,7 +1143,6 @@ static const struct reg_8 ov5693_2592x1458_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1280x720_120fps_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1396,7 +1390,6 @@ static const struct reg_8 ov5693_1280x720_120fps_i2c[] = {
 };
 
 static const struct reg_8 ov5693_2592x1944_HDR_24fps_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -1645,7 +1638,6 @@ static const struct reg_8 ov5693_2592x1944_HDR_24fps_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1920x1080_HDR_30fps_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -1894,7 +1886,6 @@ static const struct reg_8 ov5693_1920x1080_HDR_30fps_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1296x972_HDR_30fps_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -2143,7 +2134,6 @@ static const struct reg_8 ov5693_1296x972_HDR_30fps_i2c[] = {
 };
 
 static const struct reg_8 ov5693_1280x720_HDR_60fps_i2c[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -2810,11 +2800,11 @@ static int ov5693_platform_power_on(struct ov5693_power_rail *pw)
 	if (err)
 		goto ov5693_iovdd_fail;
 
-	usleep_range(1, 2);
 	ov5693_gpio_pwrdn(info, 1);
+	usleep_range(2000, 2010);
 	ov5693_gpio_reset(info, 1);
 
-	usleep_range(1000, 1110);
+	usleep_range(1350, 1360);
 
 	return 0;
 
@@ -2841,7 +2831,7 @@ static int ov5693_platform_power_off(struct ov5693_power_rail *pw)
 	usleep_range(21, 25);
 	ov5693_gpio_pwrdn(info, 0);
 	ov5693_gpio_reset(info, 0);
-	usleep_range(1, 2);
+	usleep_range(2000, 2010);
 
 	if (pw->dovdd)
 		regulator_disable(pw->dovdd);

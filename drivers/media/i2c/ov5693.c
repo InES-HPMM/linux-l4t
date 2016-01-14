@@ -1,7 +1,7 @@
 /*
  * ov5693_v4l2.c - ov5693 sensor driver
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -309,10 +309,16 @@ static int ov5693_power_on(struct camera_common_data *s_data)
 	usleep_range(1, 2);
 	if (pw->pwdn_gpio)
 		ov5693_gpio_set(priv, pw->pwdn_gpio, 1);
-	usleep_range(1, 2);
+
+	/* datasheet 2.9: reset requires ~2ms settling time
+	 * a power on reset is generated after core power becomes stable */
+	usleep_range(2000, 2010);
+
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 1);
-	usleep_range(1000, 1110);
+
+	/* datasheet fig 2-9: t3 */
+	usleep_range(1350, 1360);
 
 	pw->state = SWITCH_ON;
 	return 0;
@@ -351,7 +357,9 @@ static int ov5693_power_off(struct camera_common_data *s_data)
 	usleep_range(1, 2);
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 0);
-	usleep_range(1, 2);
+
+	/* datasheet 2.9: reset requires ~2ms settling time*/
+	usleep_range(2000, 2010);
 
 	if (pw->iovdd)
 		regulator_disable(pw->iovdd);

@@ -1,7 +1,7 @@
 /*
  * ov5693_mode_tbls.h - ov5693 sensor mode tables
  *
- * Copyright (c) 2015, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -24,7 +24,6 @@
 #define OV5693_TABLE_WAIT_MS	0
 #define OV5693_TABLE_END	1
 #define OV5693_MAX_RETRIES	3
-#define OV5693_WAIT_MS		10
 
 #define ov5693_reg struct reg_8
 
@@ -42,12 +41,10 @@ static const ov5693_reg tp_colorbars[] = {
 	{0x0600, 0x00},
 	{0x0601, 0x02},
 
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{OV5693_TABLE_END, 0x00}
 };
 
 static const ov5693_reg mode_2592x1944[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -314,7 +311,6 @@ static const ov5693_reg mode_2592x1944[] = {
 };
 
 static const ov5693_reg mode_2592x1458[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -573,7 +569,6 @@ static const ov5693_reg mode_2592x1458[] = {
 };
 
 static const ov5693_reg mode_1296x972[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -821,7 +816,6 @@ static const ov5693_reg mode_1296x972[] = {
 };
 
 static const ov5693_reg mode_1920x1080[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/*, 0xIncluding, 0xsw, 0xreset, 0x*/
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1069,7 +1063,6 @@ static const ov5693_reg mode_1920x1080[] = {
 };
 
 static const ov5693_reg mode_1280x720_120fps[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x3001, 0x0a},
 	{0x3002, 0x80},
@@ -1317,7 +1310,6 @@ static const ov5693_reg mode_1280x720_120fps[] = {
 };
 
 static const ov5693_reg mode_2592x1944_HDR_24fps[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -1566,7 +1558,6 @@ static const ov5693_reg mode_2592x1944_HDR_24fps[] = {
 };
 
 static const ov5693_reg mode_1920x1080_HDR_30fps[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -1815,7 +1806,6 @@ static const ov5693_reg mode_1920x1080_HDR_30fps[] = {
 };
 
 static const ov5693_reg mode_1296x972_HDR_30fps[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
@@ -2064,7 +2054,6 @@ static const ov5693_reg mode_1296x972_HDR_30fps[] = {
 };
 
 static const ov5693_reg mode_1280x720_HDR_60fps[] = {
-	{OV5693_TABLE_WAIT_MS, OV5693_WAIT_MS},
 	{0x0100, 0x00},/* Including sw reset */
 	{0x0103, 0x01},
 	{0x3001, 0x0a},
