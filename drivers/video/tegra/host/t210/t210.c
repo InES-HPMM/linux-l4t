@@ -1,7 +1,7 @@
 /*
  * Tegra Graphics Init for T210 Architecture Chips
  *
- * Copyright (c) 2011-2015, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -202,6 +202,7 @@ struct nvhost_device_data t21_msenc_info = {
 	.actmon_enabled		= true,
 	.firmware_name		= "nvhost_nvenc050.fw",
 	.resource_policy	= RESOURCE_PER_CHANNEL_INSTANCE,
+	.serialize		= true,
 	.bond_out_id		= BOND_OUT_NVENC
 };
 
@@ -237,6 +238,7 @@ struct nvhost_device_data t21_nvdec_info = {
 	.borps_val		= 0x2008,
 	.actmon_enabled		= true,
 	.resource_policy	= RESOURCE_PER_CHANNEL_INSTANCE,
+	.serialize		= true,
 	.bond_out_id		= BOND_OUT_NVDEC,
 };
 
@@ -271,6 +273,7 @@ struct nvhost_device_data t21_nvjpg_info = {
 	.actmon_enabled		= true,
 	.bond_out_id		= BOND_OUT_NVJPG,
 	.resource_policy	= RESOURCE_PER_CHANNEL_INSTANCE,
+	.serialize		= true,
 	.firmware_name		= "nvhost_nvjpg010.fw",
 };
 
@@ -295,6 +298,7 @@ struct nvhost_device_data t21_tsec_info = {
 	.finalize_poweron	= nvhost_tsec_finalize_poweron,
 	.prepare_poweroff	= nvhost_tsec_prepare_poweroff,
 	.resource_policy	= RESOURCE_PER_CHANNEL_INSTANCE,
+	.serialize		= true,
 	.bond_out_id		= BOND_OUT_TSEC,
 };
 
@@ -318,6 +322,7 @@ struct nvhost_device_data t21_tsecb_info = {
 	.finalize_poweron	= nvhost_tsec_finalize_poweron,
 	.prepare_poweroff	= nvhost_tsec_prepare_poweroff,
 	.resource_policy	= RESOURCE_PER_CHANNEL_INSTANCE,
+	.serialize		= true,
 	.bond_out_id		= BOND_OUT_TSEC,
 };
 #ifdef CONFIG_ARCH_TEGRA_VIC
