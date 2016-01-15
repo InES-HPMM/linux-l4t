@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (c) 2010-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -508,7 +508,8 @@ static void tegra_dc_vrr_flip_time(struct tegra_dc *dc)
 	struct timespec time_now;
 	struct tegra_vrr *vrr  = dc->out->vrr;
 
-	if (!vrr) return;
+	if (!vrr || !vrr->capability)
+		return;
 
 	if (vrr->enable) {
 		vrr->lastenable = 1;
@@ -527,7 +528,8 @@ static void tegra_dc_vrr_cancel_vfp(struct tegra_dc *dc)
 {
 	struct tegra_vrr *vrr  = dc->out->vrr;
 
-	if (!vrr) return;
+	if (!vrr || !vrr->capability)
+		return;
 
 	if (vrr->enable) {
 		if (dc->out->type == TEGRA_DC_OUT_DSI)
