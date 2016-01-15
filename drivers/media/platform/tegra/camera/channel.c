@@ -1,7 +1,7 @@
 /*
  * NVIDIA Tegra Video Input Device
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Bryan Wu <pengw@nvidia.com>
  *
@@ -35,8 +35,7 @@
 #include <mach/clk.h>
 #include <mach/io_dpd.h>
 
-#include "vi.h"
-#include "vi_common.h"
+#include "mc_common.h"
 
 void tegra_channel_fmts_bitmap_init(struct tegra_channel *chan,
 				    struct tegra_vi_graph_entity *entity)
@@ -534,17 +533,14 @@ static const struct v4l2_file_operations tegra_channel_fops = {
 	.mmap		= vb2_fop_mmap,
 };
 
-static int tegra_channel_init(struct vi *vi, unsigned int port)
+static int tegra_channel_init(struct tegra_mc_vi *vi, unsigned int port)
 {
 	int ret;
 	struct tegra_channel *chan  = &vi->chans[port];
-	int num_sd = MAX_SUBDEVICES - 1;
 
 	chan->vi = vi;
 	chan->port = port;
 	chan->align = 64;
-	while (num_sd < 0)
-		chan->subdev[num_sd] = NULL;
 	chan->num_subdevs = 0;
 
 	/* Init video format */
@@ -627,10 +623,6 @@ vb2_init_error:
 
 static int tegra_channel_cleanup(struct tegra_channel *chan)
 {
-	int num_sd = MAX_SUBDEVICES - 1;
-
-	while (num_sd < 0)
-		chan->subdev[num_sd] = NULL;
 	video_unregister_device(&chan->video);
 
 	v4l2_ctrl_handler_free(&chan->ctrl_handler);
@@ -642,12 +634,12 @@ static int tegra_channel_cleanup(struct tegra_channel *chan)
 	return 0;
 }
 
-int tegra_vi_channels_init(struct vi *vi)
+int tegra_vi_channels_init(struct tegra_mc_vi *vi)
 {
 	unsigned int i;
 	int ret;
 
-	for (i = 0; i < ARRAY_SIZE(vi->chans); i++) {
+	for (i = 0; i < vi->num_channels; i++) {
 		ret = tegra_channel_init(vi, i);
 		if (ret < 0) {
 			dev_err(vi->dev, "channel %d init failed\n", i);
@@ -657,12 +649,12 @@ int tegra_vi_channels_init(struct vi *vi)
 	return 0;
 }
 
-int tegra_vi_channels_cleanup(struct vi *vi)
+int tegra_vi_channels_cleanup(struct tegra_mc_vi *vi)
 {
 	unsigned int i;
 	int ret;
 
-	for (i = 0; i < ARRAY_SIZE(vi->chans); i++) {
+	for (i = 0; i < vi->num_channels; i++) {
 		ret = tegra_channel_cleanup(&vi->chans[i]);
 		if (ret < 0) {
 			dev_err(vi->dev, "channel %d cleanup failed\n", i);
@@ -671,4 +663,3 @@ int tegra_vi_channels_cleanup(struct vi *vi)
 	}
 	return 0;
 }
-
