@@ -106,6 +106,14 @@ static void tegra_channel_fmts_bitmap_init(struct tegra_channel *chan)
 						chan->fmtinfo->bpp;
 		chan->format.sizeimage = chan->format.bytesperline *
 						chan->format.height;
+		if (0 == bitmap_weight(chan->fmts_bitmap, MAX_FORMAT_NUM)) {
+			pixel_format_index =
+				tegra_core_get_idx_by_code(
+					V4L2_MBUS_FMT_SRGGB10_1X10);
+			if (pixel_format_index >= 0)
+				bitmap_set(chan->fmts_bitmap,
+					   pixel_format_index, 1);
+		}
 	}
 }
 
