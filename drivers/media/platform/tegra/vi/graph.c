@@ -1,7 +1,7 @@
 /*
  * NVIDIA Media controller graph management
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Bryan Wu <pengw@nvidia.com>
  *
@@ -179,7 +179,7 @@ static int tegra_vi_graph_build_links(struct vi *vi)
 	do {
 		/* Get the next endpoint and parse its link. */
 		next = of_graph_get_next_endpoint(node, ep);
-		if (next == NULL)
+		if (next == NULL || !of_device_is_available(next))
 			break;
 
 		of_node_put(ep);
@@ -349,7 +349,8 @@ static int tegra_vi_graph_parse_one(struct vi *vi,
 
 		/* Skip entities that we have already processed. */
 		if (remote == vi->dev->of_node ||
-		    tegra_vi_graph_find_entity(vi, remote)) {
+			tegra_vi_graph_find_entity(vi, remote) ||
+			!of_device_is_available(remote)) {
 			of_node_put(remote);
 			continue;
 		}
