@@ -2,7 +2,7 @@
  *  linux/drivers/mmc/host/sdhci.c - Secure Digital Host Controller Interface driver
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
- *  Copyright (C) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ *  Copyright (C) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1495,7 +1495,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	if ((cmd->opcode == MMC_SWITCH) &&
 		(((cmd->arg >> 16) & EXT_CSD_SANITIZE_START)
 		== EXT_CSD_SANITIZE_START))
-		timeout = 100;
+		timeout = 600;
 	else
 		timeout = 30;
 
