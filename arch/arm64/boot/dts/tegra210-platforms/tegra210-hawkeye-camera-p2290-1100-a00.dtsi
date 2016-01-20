@@ -75,6 +75,7 @@
 				pwdn-gpios = <&gpio CAM0_PWDN GPIO_ACTIVE_LOW>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
+				has-eeprom = <1>;
 
 				/**
 				* Generic formula to calculate different parameters.
