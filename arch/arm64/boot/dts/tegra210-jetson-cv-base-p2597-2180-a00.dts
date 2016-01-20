@@ -991,7 +991,7 @@
 			};
 		};
 	};
-
+/*
 	camera-pcl {
 		profiles {
 			ov5693-pcl@2_0036 {
@@ -1005,7 +1005,7 @@
 			};
 		};
 	};
-
+*/
 	serial@70006300 {
 		dma-names = "tx";
 	};

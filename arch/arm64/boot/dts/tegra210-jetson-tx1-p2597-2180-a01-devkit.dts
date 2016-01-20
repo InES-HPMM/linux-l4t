@@ -53,8 +53,8 @@
 		};
 	};
 
-	/* /dev/i2c-3: Note the shift of 1! */
-	i2c4: i2c@7000c700 {
+	/* /dev/i2c-6: Note the shift of 1! */
+	i2c7: i2c@546c0000 {
 		/* HDMI IN A (4K) */
 		tc358840xbg@0f {
 			compatible = "toshiba,tc358840xbg";
@@ -148,9 +148,53 @@
 		};
 	};
 
+	pinmux@700008d4 {
+		common {
+			/*
+			 * Pull down the INT pin of the TC358840 (HDMI IN A) while
+			 * in reset in order to set i2c address 0x0F.
+			 */
+			cam1_pwdn_ps7 {
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_DOWN>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+
+			/*
+			 * Pull up the INT pin of the TC358840 (HDMI IN B) while
+			 * in reset in order to set i2c address 0x1F.
+			 */
+			cam2_pwdn_pt0 {
+				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
+				nvidia,pull = <TEGRA_PIN_PULL_UP>;
+				nvidia,tristate = <TEGRA_PIN_DISABLE>;
+			};
+		};
+	};
+
 	host1x {
 		vi {
 			compatible = "nvidia,tegra124-vi2";
+			//reg = <0x0 0x54080000 0x0 0x800>;
+			interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
+			status = "okay";
+			//clocks = <&tegra_car TEGRA210_CLK_VI>,<&tegra_car TEGRA210_CLK_CSI>,<&tegra_car TEGRA210_CLK_PLL_C>;
+			clocks = <&tegra_car TEGRA210_CLK_ID_VI>,
+				 <&tegra_car TEGRA210_CLK_ID_CSI>,
+				 <&tegra_car TEGRA210_CLK_ID_CSUS>,
+				 <&tegra_car TEGRA210_CLK_ID_ISP>,
+				 <&tegra_car TEGRA210_CLK_ID_PLL_C>,
+				 <&tegra_car TEGRA210_CLK_ID_CILAB>,
+				 <&tegra_car TEGRA210_CLK_ID_CILCD>,
+				 <&tegra_car TEGRA210_CLK_ID_CILE>,
+				 <&tegra_car TEGRA210_CLK_ID_VI_SENSOR>,
+				 <&tegra_car TEGRA210_CLK_ID_VI_SENSOR2>;
+			clock-names = "vi", "csi", "csus", "isp", "pll_d",
+				      "cilab", "cilcd", "cile", "vi_sensor",
+				      "vi_sensor2";
+			//resets = <&tegra_car 20>;
+			//reset-names = "vi";
+
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 
 			#address-cells = <1>;
