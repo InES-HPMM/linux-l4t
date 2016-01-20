@@ -4,7 +4,7 @@
  * HDMI library support functions for Nvidia Tegra processors.
  *
  * Copyright (C) 2012-2013 Google - http://www.google.com/
- * Copyright (C) 2013-2015 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (C) 2013-2016 NVIDIA CORPORATION. All rights reserved.
  * Authors:	John Grossman <johngro@google.com>
  * Authors:	Mike J. Chen <mjchen@google.com>
  *
@@ -102,6 +102,12 @@ static void hdmi_state_machine_set_state_l(int target_state, int resched_time)
 		target_state, state_names[target_state]);
 	work_state.state = target_state;
 
+	/* If virtual edid is active, schedule immediately. However, keep
+	 * the possible negative value to maintain the transition behavior.
+	 */
+	if (work_state.hdmi->dc->vedid && resched_time > 0)
+		resched_time = 0;
+
 	/* If the pending_hpd_evt flag is already set, don't bother to
 	 * reschedule the state machine worker.  We should be able to assert
 	 * that there is a worker callback already scheduled, and that it is
@@ -175,6 +181,17 @@ static void hdmi_state_machine_handle_hpd_l(int cur_hpd)
  ************************************************************/
 static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi)
 {
+	/* If the hotplug_state is controlled by the hotplug debug node,
+	 * the value of dc->connected is changed directly. This affects
+	 * the behavior of this function, as the state machine does not
+	 * expect dc->connected to be changed externally. In that case,
+	 * use a cached value which is only modified by the state machine.
+	 */
+	bool was_connected;
+	if (hdmi->dc->out->hotplug_state == TEGRA_HPD_STATE_NORMAL)
+		was_connected = hdmi->dc->connected;
+	else
+		was_connected = hdmi->connected_cache;
 #ifdef CONFIG_SWITCH
 	switch_set_state(&hdmi->audio_switch, 0);
 	pr_info("%s: audio_switch 0\n", __func__);
@@ -182,18 +199,22 @@ static void hdmi_disable_l(struct tegra_dc_hdmi_data *hdmi)
 	pr_info("%s: hpd_switch 0\n", __func__);
 #endif
 	tegra_nvhdcp_set_plug(hdmi->nvhdcp, 0);
-	if (hdmi->dc->connected) {
+	if (was_connected) {
 		pr_info("HDMI from connected to disconnected\n");
 		tegra_dc_disable(hdmi->dc);
 	}
 	hdmi->dc->connected = false;
+	hdmi->connected_cache = false;
 #ifdef CONFIG_ADF_TEGRA
 	tegra_adf_process_hotplug_disconnected(hdmi->dc->adf);
 #else
 	tegra_fb_update_monspecs(hdmi->dc->fb, NULL, NULL, NULL);
 #endif
 #ifdef CONFIG_TEGRA_DC_EXTENSIONS
-	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id, false);
+	if (was_connected)
+		tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id, false);
+	else
+		pr_info("%s: skipping redundant disconnect\n", __func__);
 #endif
 }
 
@@ -294,6 +315,7 @@ static void handle_check_edid_l(struct tegra_dc_hdmi_data *hdmi)
 	pr_info("Display connected, hpd_switch 1\n");
 #endif
 	hdmi->dc->connected = true;
+	hdmi->connected_cache = true;
 
 #ifdef CONFIG_TEGRA_DC_EXTENSIONS
 	tegra_dc_ext_process_hotplug(hdmi->dc->ndev->id, true);

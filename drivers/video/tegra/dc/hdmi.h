@@ -6,7 +6,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2014, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -277,6 +277,8 @@ struct tegra_dc_hdmi_data {
 	bool				audio_inject_null;
 
 	bool				dvi;
+
+	bool				connected_cache;
 };
 
 #define HDMI_VENDOR_VERSION 0x01
