@@ -48,6 +48,7 @@ struct gpio_info {
 struct gpio_extcon_platform_data {
 	const char *name;
 	unsigned long debounce;
+	unsigned long wait_for_gpio_scan;
 	unsigned long irq_flags;
 	struct gpio_info *gpios;
 	int n_gpio;
@@ -64,7 +65,7 @@ struct gpio_extcon_info {
 	struct delayed_work work;
 	unsigned long debounce_jiffies;
 	struct timer_list timer;
-	int timer_to_work_jiffies;
+	int gpio_scan_work_jiffies;
 	spinlock_t lock;
 	int *gpio_curr_state;
 	struct gpio_extcon_platform_data *pdata;
@@ -72,7 +73,7 @@ struct gpio_extcon_info {
 	int cable_detect_jiffies;
 };
 
-static void gpio_extcon_work(struct work_struct *work)
+static void gpio_extcon_scan_work(struct work_struct *work)
 {
 	int state = 0;
 	int cstate = -1;
@@ -111,7 +112,7 @@ static void gpio_extcon_notifier_timer(unsigned long _data)
 	if (!wake_lock_active(&gpex->wake_lock))
 		wake_lock_timeout(&gpex->wake_lock, gpex->cable_detect_jiffies);
 
-	schedule_delayed_work(&gpex->work, gpex->timer_to_work_jiffies);
+	schedule_delayed_work(&gpex->work, gpex->gpio_scan_work_jiffies);
 }
 
 static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
@@ -183,6 +184,13 @@ static struct gpio_extcon_platform_data *of_get_platform_data(
 		pdata->cable_detect_delay = pval;
 	else
 		pdata->cable_detect_delay = EXTCON_GPIO_STATE_WAKEUP_TIME;
+
+	ret = of_property_read_u32(np, "extcon-gpio,wait-for-gpio-scan", &pval);
+	if (!ret)
+		pdata->wait_for_gpio_scan = pval;
+	else
+		pdata->wait_for_gpio_scan = 100;
+
 
 	pdata->n_out_cables = of_property_count_strings(np,
 					"extcon-gpio,out-cable-names");
@@ -258,7 +266,8 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	gpex->edev.name = pdata->name;
 	gpex->edev.dev.parent = &pdev->dev;
 	gpex->debounce_jiffies = msecs_to_jiffies(pdata->debounce);
-	gpex->timer_to_work_jiffies = msecs_to_jiffies(100);
+	gpex->gpio_scan_work_jiffies = msecs_to_jiffies(
+						pdata->wait_for_gpio_scan);
 	gpex->edev.supported_cable = pdata->out_cable_name;
 	gpex->cable_detect_jiffies =
 			msecs_to_jiffies(pdata->cable_detect_delay);
@@ -284,7 +293,7 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	if (ret < 0)
 		return ret;
 
-	INIT_DELAYED_WORK(&gpex->work, gpio_extcon_work);
+	INIT_DELAYED_WORK(&gpex->work, gpio_extcon_scan_work);
 	setup_timer(&gpex->timer, gpio_extcon_notifier_timer,
 			(unsigned long)gpex);
 
@@ -311,7 +320,7 @@ static int gpio_extcon_probe(struct platform_device *pdev)
 	device_wakeup_enable(gpex->dev);
 
 	/* Perform initial detection */
-	gpio_extcon_work(&gpex->work.work);
+	gpio_extcon_scan_work(&gpex->work.work);
 	return 0;
 
 err:
@@ -353,7 +362,7 @@ static int gpio_extcon_resume(struct device *dev)
 		for (i = 0; i < gpex->pdata->n_gpio; ++i)
 			disable_irq_wake(gpex->pdata->gpios[i].irq);
 	}
-	gpio_extcon_work(&gpex->work.work);
+	gpio_extcon_scan_work(&gpex->work.work);
 
 	return 0;
 }
