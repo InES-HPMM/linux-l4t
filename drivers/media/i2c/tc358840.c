@@ -176,26 +176,41 @@ static void i2c_wr(struct v4l2_subdev *sd, u16 reg, u8 *values, u32 n)
 {
 	struct tc358840_state *state = to_state(sd);
 	struct i2c_client *client = state->i2c_client;
+	const uint8_t chunk_size = 8; /* # of bytes to be transmitted at once */
+	uint32_t wr_idx = 0;
 	int err, i;
 	struct i2c_msg msg;
-	u8 data[2 + n];
+	u8 data[2 + chunk_size];
 
 	msg.addr = client->addr;
 	msg.buf = data;
-	msg.len = 2 + n;
 	msg.flags = 0;
 
-	data[0] = reg >> 8;
-	data[1] = reg & 0xff;
+	/*
+	 * WORKAROUND
+	 * On the TX1, the i2c connected to the camera sensor is newly included
+	 * in the VI block and cotrolled by Host1x. Thus, a new driver exists,
+	 * which is not capable of sending i2c messages larger than ca. 16
+	 * bytes. This workaround splits messages into small chunks (8 Bytes).
+	 * Otherwise, Host Read errors will occur. 
+	 */
+	while (wr_idx < n) {
+		for (i = 0; i < chunk_size && (i + wr_idx) < n; i++)
+			data[2 + i] = values[wr_idx + i];
 
-	for (i = 0; i < n; i++)
-		data[2 + i] = values[i];
+		msg.len = 2 + i;
 
-	err = i2c_transfer(client->adapter, &msg, 1);
-	if (err != 1) {
-		v4l2_err(sd, "%s: writing register 0x%x from 0x%x failed\n",
-			__func__, reg, client->addr);
-		return;
+		data[0] = (reg + wr_idx ) >> 8;
+		data[1] = (reg + wr_idx ) & 0xff;
+
+		wr_idx += i;
+
+		err = i2c_transfer(client->adapter, &msg, 1);
+		if (err != 1) {
+			v4l2_err(sd, "%s: writing register 0x%x from 0x%x failed\n",
+				__func__, reg, client->addr);
+			return;
+		}
 	}
 
 	if (debug < 3)
