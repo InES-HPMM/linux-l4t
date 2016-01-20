@@ -41,7 +41,7 @@ obj-$(CONFIG_VIDEO_SAMSUNG_S5P_TV)	+= s5p-tv/
 obj-$(CONFIG_VIDEO_SAMSUNG_S5P_G2D)	+= s5p-g2d/
 obj-$(CONFIG_VIDEO_SAMSUNG_EXYNOS_GSC)	+= exynos-gsc/
 
-obj-$(CONFIG_VIDEO_TEGRA_VI2)		+= tegra-vi2.o
+obj-$(CONFIG_VIDEO_TEGRA_VI2_AD)	+= tegra-vi2.o
 
 obj-$(CONFIG_BLACKFIN)                  += blackfin/
 
