@@ -204,7 +204,6 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"XV", "XV", 994}, /* Universal if Country code is unknown or empty */
 	{"US", "Q2", 87},  /* input ISO "US" to : Q2 regrev 87 */
 	{"CA", "CA", 996}, /* input ISO "CA" to : CA regrev 996 */
-	{"IN", "Q2", 87},  /* input ISO "IN" to : Q2 regrev 87 */
 	{"SG", "SG", 998}, /* input ISO "SG" to : SG regrev 998 */
 	{"JP", "JP", 993}, /* input ISO "JP" to : JP regrev 993 */
 	{"KR", "KR", 993}, /* input ISO "KR" to : KR regrev 993 */
