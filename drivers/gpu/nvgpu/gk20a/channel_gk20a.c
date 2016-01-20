@@ -1583,16 +1583,18 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 	if (!c)
 		return;
 
+	if (!c->g->power_on) { /* shutdown case */
+		gk20a_channel_put(c);
+		return;
+	}
+
 	vm = c->vm;
 	platform = gk20a_get_platform(c->g->dev);
 
 	mutex_lock(&c->submit_lock);
 
-	if (c->g->power_on) {
-		/* gp_put check needs to be done inside submit lock */
-		update_gp_get(c->g, c);
-		check_gp_put(c->g, c);
-	}
+	/* gp_put check needs to be done inside submit lock */
+	check_gp_put(c->g, c);
 
 	gk20a_channel_cancel_job_clean_up(c, false);
 
@@ -1661,6 +1663,11 @@ void gk20a_channel_update(struct channel_gk20a *c, int nr_completed)
 	c = gk20a_channel_get(c);
 	if (!c)
 		return;
+
+	if (!c->g->power_on) { /* shutdown case */
+		gk20a_channel_put(c);
+		return;
+	}
 
 	update_gp_get(c->g, c);
 	wake_up(&c->submit_wq);
