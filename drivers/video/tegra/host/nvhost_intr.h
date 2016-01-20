@@ -77,6 +77,18 @@ enum nvhost_intr_action {
 
 struct nvhost_intr;
 
+struct nvhost_waitlist {
+	struct list_head list;
+	struct kref refcount;
+	u32 thresh;
+	enum nvhost_intr_action action;
+	atomic_t state;
+	struct timespec isr_recv;
+	void *data;
+	int count;
+	wait_queue_head_t wq;
+};
+
 struct nvhost_intr_syncpt {
 	struct nvhost_intr *intr;
 	u8 id;
