@@ -3,7 +3,7 @@
  *
  * structure declarations for nvmem and nvmap user-space ioctls
  *
- * Copyright (c) 2009-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2009-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,7 +124,8 @@ enum {
 enum {
 	NVMAP_PAGES_UNRESERVE = 0,
 	NVMAP_PAGES_RESERVE,
-	NVMAP_INSERT_PAGES_ON_UNRESERVE
+	NVMAP_INSERT_PAGES_ON_UNRESERVE,
+	NVMAP_PAGES_ZAP_AND_CLEAN,
 };
 
 struct nvmap_create_handle {
