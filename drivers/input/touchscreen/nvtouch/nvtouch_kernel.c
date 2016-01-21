@@ -132,7 +132,9 @@ struct nvtouch_kernel_state {
 
 	u32 enable_calibration;
 	u32 enable_calibration_debug;
-	u32 enable_noise_tuning;
+
+	u32 tune_debug;
+	u32 tune_param;
 
 	struct nvtouch_events vendor_events;
 
@@ -439,6 +441,7 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 	struct nvtouch_data_frame *data_frame;
 	struct nvtouch_ioctl_data *params;
 	int wait_count;
+	u32 in_tune_param;
 
 	if (copy_from_user(&g_state_kernel.ioctl_data_update,
 			(void __user *)arg, _IOC_SIZE(cmd))) {
@@ -522,6 +525,10 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 
 	g_state_kernel.sample_gpfifo.getp++;
 
+	in_tune_param = (params->driver_config &
+			NVTOUCH_CONFIG_TUNE_PARAM_MASK) >>
+			NVTOUCH_CONFIG_TUNE_PARAM_SHIFT;
+
 	/* copy debugfs params */
 	params->trace_mode = g_state_kernel.trace_mode;
 	params->driver_config = g_state_kernel.driver_mode;
@@ -540,6 +547,13 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 		params->driver_config &=
 			~NVTOUCH_CONFIG_ENABLE_CALIBRATION;
 
+	if (g_state_kernel.tune_debug)
+		params->driver_config |=
+			NVTOUCH_CONFIG_TUNE_DEBUG;
+	else
+		params->driver_config &=
+			~NVTOUCH_CONFIG_TUNE_DEBUG;
+
 	if (g_state_kernel.enable_calibration_debug)
 		params->driver_config |=
 			NVTOUCH_CONFIG_ENABLE_CALIBRATION_DEBUG;
@@ -547,16 +561,17 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 		params->driver_config &=
 			~NVTOUCH_CONFIG_ENABLE_CALIBRATION_DEBUG;
 
-	if (g_state_kernel.enable_noise_tuning)
-		params->driver_config |=
-			NVTOUCH_CONFIG_ENABLE_NOISE_TUNING;
-	else
-		params->driver_config &=
-			~NVTOUCH_CONFIG_ENABLE_NOISE_TUNING;
-
 	params->driver_config |= (g_state_kernel.report_mode <<
 			NVTOUCH_CONFIG_REPORT_MODE_SHIFT) &
 			NVTOUCH_CONFIG_REPORT_MODE_MASK;
+
+	if (g_state_kernel.tune_debug) {
+		params->driver_config |= (g_state_kernel.tune_param <<
+				NVTOUCH_CONFIG_TUNE_PARAM_SHIFT) &
+				NVTOUCH_CONFIG_TUNE_PARAM_MASK;
+	} else {
+		g_state_kernel.tune_param = in_tune_param;
+	}
 
 	return copy_to_user((void __user *)arg,
 			params, _IOC_SIZE(cmd));
@@ -1241,8 +1256,9 @@ static int __init nvtouch_cdev_init(void)
 
 	g_state_kernel.enable_calibration = 1;
 	g_state_kernel.enable_calibration_debug = 1;
-	g_state_kernel.enable_noise_tuning = 1;
 
+	g_state_kernel.tune_debug = 0;
+	g_state_kernel.tune_param = 119;
 
 #ifdef NVTOUCH_DEBUG
 	g_state_kernel.debug_dfs = debugfs_create_dir("nvtouch", NULL);
@@ -1262,7 +1278,9 @@ static int __init nvtouch_cdev_init(void)
 
 	EXPOSE_VALUE_U32(g_state_kernel.enable_calibration);
 	EXPOSE_VALUE_U32(g_state_kernel.enable_calibration_debug);
-	EXPOSE_VALUE_U32(g_state_kernel.enable_noise_tuning);
+
+	EXPOSE_VALUE_U32(g_state_kernel.tune_debug);
+	EXPOSE_VALUE_U32(g_state_kernel.tune_param);
 #endif
 	g_state_kernel.pm_active_to_lp_timeout_ms = 3000;
 	g_state_kernel.pm_active_to_idle_timeout_ms = 20;
