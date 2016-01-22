@@ -1,7 +1,7 @@
 /*
  * xhci-tegra.c - Nvidia xHCI host controller driver
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -3222,6 +3222,7 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 	int ret = 0;
 	int pad;
 	int partition_id;
+	u32 usbcmd;
 
 	must_have_sync_lock(tegra);
 
@@ -3352,6 +3353,10 @@ tegra_xhci_host_partition_elpg_exit(struct tegra_xhci_hcd *tegra)
 				__func__, ret);
 		goto out;
 	}
+
+	usbcmd = xhci_readl(xhci, &xhci->op_regs->command);
+	usbcmd |= CMD_EIE;
+	xhci_writel(xhci, usbcmd, &xhci->op_regs->command);
 
 	update_remote_wakeup_ports(tegra);
 
@@ -3826,6 +3831,10 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 	int err = 0;
 	u32 host_ports = get_host_controlled_ports(tegra);
 	unsigned long flags;
+	int num_ports = HCS_MAX_PORTS(xhci->hcs_params1);
+	u32 usbcmd;
+	int i;
+	u32 portsc;
 
 	mutex_lock(&tegra->sync_lock);
 
@@ -3856,6 +3865,27 @@ static int tegra_xhci_bus_suspend(struct usb_hcd *hcd)
 
 	if (!(tegra->usb2_rh_suspend && tegra->usb3_rh_suspend))
 		goto done; /* one of the root hubs is still working */
+
+	spin_lock_irqsave(&xhci->lock, flags);
+	usbcmd = xhci_readl(xhci, &xhci->op_regs->command);
+	usbcmd &= ~CMD_EIE;
+	xhci_writel(xhci, usbcmd, &xhci->op_regs->command);
+	for (i = 0; i < num_ports; i++) {
+		portsc = xhci_read_portsc(xhci, i);
+		if ((portsc & PORT_PE) && (portsc & PORT_PLS_MASK) != XDEV_U3) {
+			usbcmd = xhci_readl(xhci, &xhci->op_regs->command);
+			usbcmd |= CMD_EIE;
+			xhci_writel(xhci, usbcmd, &xhci->op_regs->command);
+
+			spin_unlock_irqrestore(&xhci->lock, flags);
+
+			xhci_info(xhci, "%s: port not in suspended state\n",
+				__func__);
+			err = -EBUSY;
+			goto xhci_bus_suspend_failed;
+		}
+	}
+	spin_unlock_irqrestore(&xhci->lock, flags);
 
 	spin_lock_irqsave(&tegra->lock, flags);
 	tegra->hc_in_elpg = true;
