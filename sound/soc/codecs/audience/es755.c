@@ -1805,6 +1805,15 @@ static int es755_get_hs_delay_value(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int es755_get_select_endpoint(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct escore_priv *escore = &escore_priv;
+
+	ucontrol->value.integer.value[0] = escore->selected_endpoint;
+	return 0;
+}
+
 static int es755_put_select_endpoint(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
@@ -1842,7 +1851,8 @@ static int es755_put_digital_gain(struct snd_kcontrol *kcontrol,
 	unsigned int val   = e->values[ucontrol->value.enumerated.item[0]];
 	unsigned int mask  = e->mask;
 
-	pr_debug("%s: Set digital gain 0x%x.\n", __func__, val);
+	pr_debug("%s: Endpoint %d Set digital gain 0x%x.\n", __func__,
+		escore->selected_endpoint, val);
 
 	if (ucontrol->value.enumerated.item[0] > (e->max - 1)) {
 		dev_err(escore_priv.dev, "%s(): Enum exceed the maximum!\n",
@@ -1989,7 +1999,7 @@ static struct snd_kcontrol_new es755_snd_controls[] = {
 			   escore_get_streaming_mode,
 			   escore_put_streaming_mode),
 	SOC_ENUM_EXT("Select Endpoint", es755_path_id_enum,
-			   NULL,
+			   es755_get_select_endpoint,
 			   es755_put_select_endpoint),
 	SOC_ENUM_EXT("Set Digital Gain", digital_gain_enum,
 			   es755_get_digital_gain,
