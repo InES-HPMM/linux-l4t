@@ -5,7 +5,7 @@
  * Copyright (C) 2011 Texas Instruments, Inc.
  * Copyright (C) 2011 Google, Inc.
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -83,6 +83,8 @@
 #define LOGGER_COMPLETE_TIMEOUT	5000 /* in ms */
 
 #define MIN_ADSP_FREQ 51200000lu /* in Hz */
+
+#define DUMP_BUFF 128
 
 struct nvadsp_debug_log {
 	struct device		*dev;
@@ -943,6 +945,34 @@ err:
 	return ret;
 }
 
+static void dump_adsp_logs(void)
+{
+	int i = 0;
+	char buff[DUMP_BUFF] = { };
+	int buff_iter = 0;
+	char last_char;
+	struct nvadsp_debug_log *logger = &priv.logger;
+	struct device *dev = &priv.pdev->dev;
+	char *ptr = logger->debug_ram_rdr;
+
+	dev_err(dev, "Dumping ADSP logs ........\n");
+
+	for (i = 0; i < logger->debug_ram_sz; i++) {
+		last_char = *(ptr + i);
+		if ((last_char != EOT) && (last_char != 0)) {
+			if ((last_char == '\n') || (last_char == '\r') ||
+					(buff_iter == DUMP_BUFF)) {
+				dev_err(dev, "[ADSP OS] %s\n", buff);
+				memset(buff, 0, sizeof(buff));
+				buff_iter = 0;
+			} else {
+				buff[buff_iter++] = last_char;
+			}
+		}
+	}
+	dev_err(dev, "End of ADSP log dump  .....\n");
+}
+
 int nvadsp_os_start(void)
 {
 	struct nvadsp_drv_data *drv_data;
@@ -982,7 +1012,10 @@ int nvadsp_os_start(void)
 #ifdef CONFIG_PM_RUNTIME
 		pm_runtime_put_sync(&priv.pdev->dev);
 #endif
+		dev_err(dev, "adsp failed to boot with ret = %d\n", ret);
+		dump_adsp_logs();
 		goto unlock;
+
 	}
 	priv.os_running = drv_data->adsp_os_running = true;
 	drv_data->adsp_os_suspended = false;
@@ -1178,6 +1211,10 @@ int nvadsp_os_suspend(void)
 	ret = __nvadsp_os_suspend();
 	if (!ret)
 		priv.os_running = drv_data->adsp_os_running = false;
+	else {
+		dev_err(&priv.pdev->dev, "suspend failed with %d\n", ret);
+		dump_adsp_logs();
+	}
 unlock:
 	mutex_unlock(&priv.os_run_lock);
 end:
@@ -1193,6 +1230,7 @@ static void nvadsp_os_restart(struct work_struct *work)
 	struct device *dev = &data->pdev->dev;
 
 	disable_irq(wdt_virq);
+	dump_adsp_logs();
 	nvadsp_os_stop();
 
 	if (tegra_agic_irq_is_active(INT_ADSP_WDT)) {
