@@ -2099,6 +2099,21 @@ bool tegra_phy_get_lane_rdet(u8 lane_num)
 		data = data &
 			XUSB_PADCTL_UPHY_MISC_PAD_P1_CTL1_AUX_TX_RDET_STATUS;
 		break;
+	case 2:
+		data = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL1);
+		data = data &
+			XUSB_PADCTL_UPHY_MISC_PAD_P2_CTL1_AUX_TX_RDET_STATUS;
+		break;
+	case 3:
+		data = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL1);
+		data = data &
+			XUSB_PADCTL_UPHY_MISC_PAD_P3_CTL1_AUX_TX_RDET_STATUS;
+		break;
+	case 4:
+		data = readl(pad_base + XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL1);
+		data = data &
+			XUSB_PADCTL_UPHY_MISC_PAD_P4_CTL1_AUX_TX_RDET_STATUS;
+		break;
 	default:
 		return 0;
 	}

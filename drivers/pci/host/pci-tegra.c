@@ -365,7 +365,7 @@ static struct of_device_id tegra_pcie_pd[] = {
 #endif
 
 #if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-static u32 rp_to_lane_map[] = {1, 0};
+static u32 rp_to_lane_map[2][4] = { {1, 2, 3, 4}, {0} };
 #endif
 
 struct tegra_pcie_soc_data {
@@ -1753,6 +1753,17 @@ static void tegra_pcie_port_disable(struct tegra_pcie_port *port)
 	afi_writel(port->pcie, data, AFI_PCIE_CONFIG);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static bool get_rdet_status(u32 index)
+{
+	u32 i = 0;
+	bool flag = 0;
+	for (i = 0; i < ARRAY_SIZE(rp_to_lane_map[index]); i++)
+		flag |= tegra_phy_get_lane_rdet(rp_to_lane_map[index][i]);
+	return flag;
+}
+#endif
+
 /*
  * FIXME: If there are no PCIe cards attached, then calling this function
  * can result in the increase of the bootup time as there are big timeout
@@ -1765,6 +1776,10 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 	unsigned long value;
 
 	PR_FUNC_LINE;
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+	if (!get_rdet_status(port->index))
+		return false;
+#endif
 	do {
 		unsigned int timeout = TEGRA_PCIE_LINKUP_TIMEOUT;
 
@@ -1774,15 +1789,6 @@ static bool tegra_pcie_port_check_link(struct tegra_pcie_port *port)
 				return true;
 			usleep_range(1000, 2000);
 		} while (--timeout);
-#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
-		if (tegra_phy_get_lane_rdet(
-				rp_to_lane_map[port->index]))
-			goto retry;
-		else
-			return false;
-
-retry:
-#endif
 		dev_info(port->pcie->dev, "link %u down, retrying\n",
 					port->index);
 		tegra_pcie_port_reset(port);
@@ -2074,7 +2080,12 @@ static void tegra_pcie_check_ports(struct tegra_pcie *pcie)
 	/* Wait for clock to latch (min of 100us) */
 	udelay(100);
 	tegra_periph_reset_deassert(pcie->pcie_xclk);
-
+	/* at this point in time, there is no end point which would
+	 * take more than 20 msec for root port to detect receiver and
+	 * set AUX_TX_RDET_STATUS bit. This would bring link up checking
+	 * time from its current value (around 200ms) to flat 20ms
+	 */
+	msleep(20);
 	list_for_each_entry_safe(port, tmp, &pcie->ports, list) {
 		if (tegra_pcie_port_check_link(port)) {
 			port->status = 1;
