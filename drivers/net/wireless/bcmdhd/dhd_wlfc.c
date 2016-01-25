@@ -2891,6 +2891,11 @@ dhd_wlfc_transfer_packets(void *data)
 			continue;
 		}
 
+		if (ctx->FIFO_credit[ac] < 3) {
+			DHD_EVENT(("Avoid pkt processing if credit is low (<3)\n"));
+			continue;
+		}
+
 		tx_map |= (1 << ac);
 		single_ac = ac + 1;
 		while (FALSE == dhdp->proptxstatus_txoff) {
