@@ -2258,8 +2258,11 @@ void __init tegra21x_init_dvfs(void)
 	int cpu_max_freq_index = 0;
 	int cpu_lp_max_freq_index = 0;
 	bool darcy_sku = false;
+	bool joint_xpu_rail = false;
 
 #ifdef CONFIG_OF
+	joint_xpu_rail = of_property_read_bool(of_chosen,
+					"nvidia,tegra-joint_xpu_rail");
 	darcy_sku = of_machine_is_compatible("nvidia,darcy");
 #endif
 #ifndef CONFIG_TEGRA_CORE_DVFS
@@ -2318,7 +2321,7 @@ void __init tegra21x_init_dvfs(void)
 	tegra_dvfs_init_rails(tegra21_dvfs_rails,
 		ARRAY_SIZE(tegra21_dvfs_rails));
 
-	if (darcy_sku) {
+	if (darcy_sku && joint_xpu_rail) {
 		pr_info("tegra_dvfs: CPU-GPU realtionship for Darcy SKU\n");
 		/* Add DVFS relationships */
 		tegra_dvfs_add_relationships(tegra21_dvfs_relationships,

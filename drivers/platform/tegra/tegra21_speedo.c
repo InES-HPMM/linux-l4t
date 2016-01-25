@@ -174,7 +174,7 @@ static void rev_sku_to_speedo_ids(int rev, int sku, int speedo_rev)
 		/* fall thru for a01 part and Darcy*/
 	case 0x87:
 		if (a02) {
-			cpu_speedo_id = 6;
+			cpu_speedo_id = joint_xpu_rail ? 6 : 2;
 			soc_speedo_id = 0;
 			gpu_speedo_id = 1;
 			threshold_index = 0;
