@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host Interrupt Management
  *
- * Copyright (c) 2010-2015, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2010-2016, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -83,7 +83,6 @@ struct nvhost_intr_syncpt {
 	struct mutex lock;
 	struct list_head wait_head;
 	char thresh_irq_name[12];
-	struct kthread_work work;
 	struct timespec isr_recv;
 	struct work_struct low_prio_work;
 	struct list_head low_prio_handlers[NVHOST_INTR_LOW_PRIO_COUNT];
@@ -94,8 +93,6 @@ struct nvhost_intr {
 	struct mutex mutex;
 	int general_irq;
 	int syncpt_irq;
-	struct task_struct *wq_kthread;
-	struct kthread_worker wq_worker;
 	u32 intstatus;
 	void (*host_isr[32])(u32, void*);
 	void *host_isr_priv[32];
