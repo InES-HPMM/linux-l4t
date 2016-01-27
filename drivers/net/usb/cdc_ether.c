@@ -490,6 +490,7 @@ static const struct driver_info rmnet_info = {
 #define DELL_VENDOR_ID		0x413C
 #define REALTEK_VENDOR_ID	0x0bda
 #define SAMSUNG_VENDOR_ID       0x04e8
+#define NVIDIA_VENDOR_ID	0x0955
 
 static const struct usb_device_id	products [] = {
 /*
@@ -697,6 +698,20 @@ static const struct usb_device_id	products [] = {
 /* Samsung USB Ethernet Adapters */
 {
 	USB_DEVICE_AND_INTERFACE_INFO(SAMSUNG_VENDOR_ID, 0xa101, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* RTL8153 */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(REALTEK_VENDOR_ID, 0x8153, USB_CLASS_COMM,
+			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
+	.driver_info = 0,
+},
+
+/* Nvidia USB Ethernet */
+{
+	USB_DEVICE_AND_INTERFACE_INFO(NVIDIA_VENDOR_ID, 0x09ff, USB_CLASS_COMM,
 			USB_CDC_SUBCLASS_ETHERNET, USB_CDC_PROTO_NONE),
 	.driver_info = 0,
 },
