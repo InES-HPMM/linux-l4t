@@ -359,8 +359,8 @@ void tegra_vi_channel_work(struct work_struct *work)
 {
 	struct tegra_vi_channel *chan =
 		container_of(work, struct tegra_vi_channel, work);
+	uint8_t syncpt = 5; /* VI_CSI_PPA_FRAME_START */
 	int err;
-
 
 	mutex_lock(&chan->lock);
 
@@ -375,7 +375,17 @@ void tegra_vi_channel_work(struct work_struct *work)
 	vi_writel(1, &chan->vi_regs->single_shot);
 
 	/* Wait for SOF */
-	err = tegra_vi_channel_wait_for(chan, 9 + chan->id);
+	switch (chan->id) {
+	case 0: syncpt = 5; /* VI_CSI_PPA_FRAME_START */
+		break;
+	case 1: syncpt = 13; /* VI_CSI_PPC_FRAME_START */
+		break;
+	case 2: syncpt = 21; /* VI_CSI_PPE_FRAME_START */
+		break;
+	default:
+		pr_err("%s(): Error: undefined chan->id (%d)\n", __func__, chan->id);
+	}
+	err = tegra_vi_channel_wait_for(chan, syncpt);
 	if (err)
 		goto stop_vi;
 
@@ -391,7 +401,19 @@ void tegra_vi_channel_work(struct work_struct *work)
 		struct tegra_vi_buffer *done_buffer;
 
 		/* Wait for the write ACK */
-		err = tegra_vi_channel_wait_for(chan, 6 + chan->id);
+		switch (chan->id) {
+		case 0: syncpt = 7; /* VI_MWA_ACK_DONE */
+			break;
+		case 1: syncpt = 15; /* VI_MWC_ACK_DONE */
+			break;
+		case 2: syncpt = 23; /* VI_MWE_ACK_DONE */
+			break;
+		default:
+			pr_err("%s(): Error: undefined chan->id (%d). "
+				"Guessing: MWA\n", __func__, chan->id);
+			syncpt = 7;
+		}
+		err = tegra_vi_channel_wait_for(chan, syncpt);
 		if (err) {
 			tegra_vi_channel_print_errors(chan);
 			break;
