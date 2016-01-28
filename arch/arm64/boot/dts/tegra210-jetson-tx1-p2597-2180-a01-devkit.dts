@@ -186,7 +186,7 @@
 				 <&tegra_car TEGRA210_CLK_ID_CSI>,
 				 <&tegra_car TEGRA210_CLK_ID_CSUS>,
 				 <&tegra_car TEGRA210_CLK_ID_ISP>,
-				 <&tegra_car TEGRA210_CLK_ID_PLL_C>,
+				 <&tegra_car TEGRA210_CLK_ID_PLL_D>,
 				 <&tegra_car TEGRA210_CLK_ID_CILAB>,
 				 <&tegra_car TEGRA210_CLK_ID_CILCD>,
 				 <&tegra_car TEGRA210_CLK_ID_CILE>,
@@ -195,10 +195,8 @@
 			clock-names = "vi", "csi", "csus", "isp", "pll_d",
 				      "cilab", "cilcd", "cile", "vi_sensor",
 				      "vi_sensor2";
-			//resets = <&tegra_car 20>;
-			//reset-names = "vi";
 
-			avdd_dsi_csi-supply = <&max77620_gpio7>;
+			avdd_dsi_csi-supply = <&max77620_ldo0>;
 
 			#address-cells = <1>;
 			#size-cells = <0>;
