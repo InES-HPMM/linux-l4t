@@ -172,7 +172,7 @@ module_param(cur_default, int, S_IRUGO | S_IWUSR);
 static int ignore_poke;
 
 int do_poke_blanked_console;
-int console_blanked = 1;	/* console is blank initially */
+int console_blanked;
 
 static int vesa_blank_mode; /* 0:none 1:suspendV 2:suspendH 3:powerdown */
 static int vesa_off_interval;
