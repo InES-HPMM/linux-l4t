@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -843,18 +843,60 @@ static int tegra210_pg_unpowergate_partition(int id)
 
 static int tegra210_pg_powergate_clk_off(int id)
 {
+	struct powergate_partition_info *partition =
+				&tegra210_pg_partition_info[id];
+	int ret = 0;
+
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegra1xx_powergate_partition_with_clk_off(id,
-			&tegra210_pg_partition_info[id]);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
+	mutex_lock(&partition->pg_mutex);
+
+	if (--partition->refcount > 0)
+		goto exit_unlock;
+
+	if ((partition->refcount < 0) || !tegra_powergate_is_powered(id)) {
+		WARN(1, "Partition %s already powergated, refcount and status mismatch\n",
+		     partition->name);
+		goto exit_unlock;
+	}
+
+	ret = tegra1xx_powergate_partition_with_clk_off(id, partition);
+
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
+
+	return ret;
 }
 
 static int tegra210_pg_unpowergate_clk_on(int id)
 {
+	struct powergate_partition_info *partition =
+				&tegra210_pg_partition_info[id];
+	int ret = 0;
+
 	BUG_ON(TEGRA_IS_GPU_POWERGATE_ID(id));
 
-	return tegra1xx_unpowergate_partition_with_clk_on(id,
-			&tegra210_pg_partition_info[id]);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 1, 0);
+	mutex_lock(&partition->pg_mutex);
+
+	if (partition->refcount++ > 0)
+		goto exit_unlock;
+
+	if (tegra_powergate_is_powered(id)) {
+		WARN(1, "Partition %s is already unpowergated, refcount and status mismatch\n",
+		     partition->name);
+		goto exit_unlock;
+	}
+
+	ret = tegra1xx_unpowergate_partition_with_clk_on(id, partition);
+
+exit_unlock:
+	mutex_unlock(&partition->pg_mutex);
+	trace_powergate(__func__, tegra210_pg_get_name(id), id, 0, ret);
+
+	return ret;
 }
 
 static spinlock_t *tegra210_pg_get_lock(void)
@@ -905,9 +947,12 @@ static int tegra210_pg_init_refcount(void)
 		(tegra_powergate_is_powered(TEGRA_POWERGATE_DISB) ? 1 : 0) +
 		(tegra_powergate_is_powered(TEGRA_POWERGATE_VE) ? 1 : 0);
 
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
-	tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBA))
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBA);
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBB))
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBB);
+	if (tegra_powergate_is_powered(TEGRA_POWERGATE_XUSBC))
+		tegra_powergate_partition(TEGRA_POWERGATE_XUSBC);
 
 	return 0;
 }
@@ -976,7 +1021,7 @@ static int __init tegra210_disable_boot_partitions(void)
 		if (tegra210_pg_partition_info[i].disable_after_boot &&
 			(i != TEGRA_POWERGATE_GPU)) {
 			pr_info("    %s\n", tegra210_pg_partition_info[i].name);
-			tegra_powergate_partition(i);
+			tegra_powergate_partition_with_clk_off(i);
 		}
 
 	return 0;
