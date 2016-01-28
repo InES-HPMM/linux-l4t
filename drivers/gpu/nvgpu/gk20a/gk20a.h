@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -474,6 +474,8 @@ struct gk20a {
 
 	u32 gr_idle_timeout_default;
 	u32 timeouts_enabled;
+
+	struct mutex poweroff_lock;
 
 	bool slcg_enabled;
 	bool blcg_enabled;
