@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -199,13 +199,15 @@
 			gpio-open-drain;
 		};
 
-		usb_vbus3: regulator@16 {
+		vdd_3v3_eth: regulator@16 {
 			compatible = "regulator-fixed-sync";
 			reg = <16>;
-			regulator-name = "usb-vbus3";
-			regulator-min-microvolt = <5000000>;
-			regulator-max-microvolt = <5000000>;
+			regulator-name = "vdd-3v3-eth-a02";
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
 			gpio = <&gpio TEGRA_GPIO(D, 4) 0>;
+			regulator-always-on;
+			regulator-boot-on;
 			enable-active-high;
 			gpio-open-drain;
 		};
@@ -258,10 +260,8 @@
 	};
 
 	xusb@70090000 {
-		usb_vbus0-supply = <&battery_reg>;
-		usb_vbus1-supply = <&battery_reg>;
+		usb_vbus0-supply = <&usb_vbus1>;
 		usb_vbus2-supply = <&usb_vbus2>;
-		usb_vbus3-supply = <&usb_vbus3>;
 		hvdd_usb-supply = <&vdd_3v3>;
 		avdd_pll_utmip-supply = <&max77620_sd3>;
 		vddio_hsic-supply = <&max77620_ldo0>;
@@ -278,7 +278,7 @@
         };
 
 	xotg {
-		usb_vbus-supply = <&battery_reg>;
+		usb_vbus-supply = <&usb_vbus1>;
 	};
 
 	xusb_padctl {
