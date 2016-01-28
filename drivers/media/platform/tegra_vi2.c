@@ -685,7 +685,7 @@ void tegra_vi_input_enable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
 	/* Only enable the second PHY if there is more than 2 lanes */
 	if (input->cil_regs[1] && input->csi_lanes > 2)
 		val |= 1 << input->phy_shift[1];
-	vi_writel(val, &vi2->phy_regs->cil_command);
+	vi_writel(val, &vi2->phy_regs[input->id]->cil_command);
 }
 
 void tegra_vi_input_disable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
@@ -700,7 +700,7 @@ void tegra_vi_input_disable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
 	/* Only disable the second PHY if there is more than 2 lanes */
 	if (input->cil_regs[1] && input->csi_lanes > 2)
 		val |= 2 << input->phy_shift[1];
-	vi_writel(val, &vi2->phy_regs->cil_command);
+	vi_writel(val, &vi2->phy_regs[input->id]->cil_command);
 
 	if (input->cil_regs[1])
 		vi_writel(0x7, &input->cil_regs[1]->pad_config0);
@@ -751,7 +751,7 @@ int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 
 	vi_writel((0xa << 26) | (0x2 << 24) | BIT(4), &regs->ctrl);
 	vi_writel(0xFFFF0000, &regs->status);
-	vi_writel(0x0000001F, &regs->clk_status);
+	vi_writel(0x0000007F, &regs->clk_status);
 
 	/* Enable VCLAMP */
 	vi_writel(BIT(0), &regs->pad_cfg0);
@@ -989,11 +989,9 @@ static int tegra_vi_channel_set_format(
 	/* Find the channel source */
 	switch(input->id) {
 	case INPUT_CSI_A:
-		src = 0;
-		break;
 	case INPUT_CSI_B:
 	case INPUT_CSI_C:
-		src = 1;
+		src = 0;
 		break;
 	case INPUT_PATTERN_GENERATOR:
 		src = chan->id;
@@ -1277,27 +1275,26 @@ static int tegra_vi_sensors_complete(struct v4l2_async_notifier *notifier)
 {
 	struct tegra_vi2 *vi2 =
 		container_of(notifier, struct tegra_vi2, sd_notifier);
-	unsigned int inputs = 0;
+	struct device *dev = vi2->v4l2_dev.dev;
 	int c, i;
 
-	/* Create a bitmap of the sensors */
-	for (i = 0; i < ARRAY_SIZE(vi2->input); i++) {
+	/*
+	 * Simple assignment:
+	 * Cam A/B -> Channel 0 (CSI-PPA)
+	 * Cam C/D -> Channel 1 (CSI1-PPA)
+	 * Cam E/F -> Channel 2 (CSI2-PPA)
+	 */
+	for (c = 0, i = 0; c < ARRAY_SIZE(vi2->channel); c++, i++) {
 		if (vi2->input[i].sensor)
-			inputs |= BIT(i);
-	}
-
-	if (inputs == 0)
-		return -ENODEV;
-
-	/* Assign them to the inputs, if none left use the previous one */
-	for (c = 0; c < ARRAY_SIZE(vi2->channel); c++) {
-		if (inputs) {
-			i = __ffs(inputs);
+		{
+			dev_info(dev, "Mapping input %d to channel %d\n",
+				i, c);
 			vi2->channel[c].input_id = i;
-			inputs &= ~BIT(i);
-		} else {
-			vi2->channel[c].input_id =
-				vi2->channel[c - 1].input_id;
+		}
+		else
+		{
+			dev_info(dev, "No sensor bound to input %d\n", i);
+			vi2->channel[c].input_id = INPUT_NONE;
 		}
 	}
 
@@ -1345,21 +1342,23 @@ static int tegra_vi_input_init(struct platform_device *pdev,
 		input->cil_clk = devm_clk_get(&pdev->dev, "cilab");
 		break;
 	case INPUT_CSI_B:
-		input->cil_regs[0] = vi2->base + 0x994;
-		input->cil_regs[1] = vi2->base + 0x9c8;
+		input->cil_regs[0] = vi2->base + 0x112c;
+		input->cil_regs[1] = vi2->base + 0x1160;
 		input->mbus_caps = V4L2_MBUS_CSI2_LANES | \
 			V4L2_MBUS_CSI2_CHANNELS | \
 			V4L2_MBUS_CSI2_CLOCK;
-		input->phy_shift[0] = 16;
-		input->phy_shift[1] = 24;
+		input->phy_shift[0] = 0;
+		input->phy_shift[1] = 8;
 		input->cil_clk = devm_clk_get(&pdev->dev, "cilcd");
 		break;
 	case INPUT_CSI_C:
-		input->cil_regs[0] = vi2->base + 0xa08;
-		input->mbus_caps = V4L2_MBUS_CSI2_1_LANE | \
+		input->cil_regs[0] = vi2->base + 0x192c;
+		input->cil_regs[1] = vi2->base + 0x1960;
+		input->mbus_caps = V4L2_MBUS_CSI2_LANES | \
 			V4L2_MBUS_CSI2_CHANNELS | \
 			V4L2_MBUS_CSI2_CLOCK;
-		input->phy_shift[0] = 28;
+		input->phy_shift[0] = 0;
+		input->phy_shift[1] = 8;
 		input->cil_clk = devm_clk_get(&pdev->dev, "cile");
 		break;
 	default:
@@ -1392,14 +1391,21 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id)
 		strcpy(chan->vdev.name, "VI A");
 		chan->vi_regs = vi2->base + 0x100;
 		chan->mipi_regs = vi2->base + 0x838;
-		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0xa68);
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x9c4);
 		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor");
 		break;
 	case 1:
-		strcpy(chan->vdev.name, "VI B");
-		chan->vi_regs = vi2->base + 0x200;
-		chan->mipi_regs = vi2->base + 0x86c;
-		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0xa9c);
+		strcpy(chan->vdev.name, "VI C");
+		chan->vi_regs = vi2->base + 0x300;
+		chan->mipi_regs = vi2->base + 0x1038;
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x11c4);
+		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor");
+		break;
+	case 2:
+		strcpy(chan->vdev.name, "VI E");
+		chan->vi_regs = vi2->base + 0x500;
+		chan->mipi_regs = vi2->base + 0x1838;
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x19c4);
 		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor2");
 		break;
 	default:
@@ -1587,8 +1593,14 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	}
 
 	vi2->vi_regs = vi2->base;
-	vi2->phy_regs = vi2->base + 0x908;
-	vi2->misc_regs = vi2->base + 0xAD0;
+	vi2->phy_regs[0] = vi2->base + 0x908;
+	vi2->phy_regs[1] = vi2->base + 0x1108;
+	vi2->phy_regs[2] = vi2->base + 0x1908;
+
+	vi2->misc_regs[0] = vi2->base + 0xA2C;
+	vi2->misc_regs[1] = vi2->base + 0x122C;
+	vi2->misc_regs[2] = vi2->base + 0x1A2C;
+
 	vi2->cal_regs = devm_ioremap_nocache(&pdev->dev, cal_regs.start,
 					cal_regs.end + 1 - cal_regs.start);
 	if (IS_ERR(vi2->cal_regs)) {

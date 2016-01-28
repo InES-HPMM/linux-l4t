@@ -56,13 +56,12 @@ struct tegra_vi_regs {
 	u32 vi_sw_reset;
 	u32 cg_ctrl;
 	/* 0xBC */
-	u32 padding7[10];
-	/* 0xE4 */
+	u32 padding7[8];
+	/* 0xDC */
 	u32 vi_mmcif_fifoctrl;
 	u32 timeout_wcoal_vi;
-	u32 padding8;
-	/* 0xF0 */
-	u32 cfg_dvfs;
+	/* 0xE8 */
+	u32 cfg_dvfs[2];
 };
 
 struct tegra_reg64 {
@@ -139,15 +138,15 @@ struct tegra_mipi_cil_regs {
 };
 
 struct tegra_mipi_misc_regs {
-	/* 0xAD0 */
+	/* 0xA2C */
 	u32 dpcm_ctrl_a;
 	u32 dpcm_ctrl_b;
-	/* 0xAD8 */
+	/* 0xA34 */
 	u32 padding0[4];
-	/* 0xAE8 */
+	/* 0xA44 */
 	u32 stall_counter;
 	u32 readonly_status;
-	/* 0xAF0 */
+	/* 0xA4C */
 	u32 sw_status_reset;
 	u32 clken_override;
 	u32 debug_control;
@@ -162,9 +161,9 @@ struct tegra_mipi_cal_regs {
 	u32 clk_status;
 	/* 0x10 */
 	u32 padding0;
-	u32 data_config[11];
-	/* 0x40 */
-	u32 padding1[6];
+	u32 data_config[13];
+	/* 0x48 */
+	u32 padding1[4];
 	/* 0x58 */
 	u32 pad_cfg0;
 	u32 pad_cfg1;
@@ -279,17 +278,17 @@ struct tegra_vi2 {
 	void __iomem *base;
 
 	struct tegra_vi_regs __iomem *vi_regs;
-	struct tegra_mipi_phy_regs *phy_regs;
-	struct tegra_mipi_misc_regs *misc_regs;
+	struct tegra_mipi_phy_regs *phy_regs[3];
+	struct tegra_mipi_misc_regs *misc_regs[3];
 	/* TODO: Move that to a separate device */
 	struct tegra_mipi_cal_regs *cal_regs;
 
-	struct tegra_vi_channel channel[2];
+	struct tegra_vi_channel channel[3];
 	struct tegra_vi_input input[3];
 
 	struct v4l2_device v4l2_dev;
 
-	struct v4l2_async_subdev* asd[3];
+	struct v4l2_async_subdev* asd[6];
 	struct v4l2_async_notifier sd_notifier;
 
 	struct clk *vi_clk;
