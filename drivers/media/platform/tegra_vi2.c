@@ -15,6 +15,7 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/completion.h>
+#include <linux/bug.h>
 
 #include <mach/powergate.h>
 #include <mach/io_dpd.h>
@@ -85,8 +86,13 @@ static int tegra_vi_input_get_csi_params(
 	struct tegra_vi_input *input, int *csi_lanes, int *csi_channel,
 	bool *continuous_clk);
 
-/* List of all supported pixel formats along with the MBUS format
- * they support. The MBUS format are order by preference, so we
+static struct device_dma_parameters dma_parameters = {
+	.max_segment_size = UINT_MAX,
+	.segment_boundary_mask = 0xffffffff,
+};
+
+/* List of all supported pixel formats along with the MBUS formats
+ * they support. The MBUS formats are ordered by preference, so we
  * always start with MBUS format with the same bit depth, then
  * the formats that would reduce the bit depth, then those
  * that would increase it.
@@ -145,7 +151,6 @@ static const struct tegra_formats tegra_formats[] = {
 			TEGRA_MBUS_FORMATS_YUV422,
 		},
 	},
-
 	{
 		.v4l2 = V4L2_PIX_FMT_UYVY,
 		.nv = 202,
@@ -201,6 +206,59 @@ static const struct tegra_formats tegra_formats[] = {
 	},
 };
 
+static bool tegra_vi_field_is_interlaced(enum v4l2_field field)
+{
+	switch (field) {
+	case V4L2_FIELD_INTERLACED:
+	case V4L2_FIELD_SEQ_TB:
+	case V4L2_FIELD_SEQ_BT:
+	case V4L2_FIELD_INTERLACED_TB:
+	case V4L2_FIELD_INTERLACED_BT:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static int tegra_vi_fill_pix_format(struct v4l2_pix_format *pf,
+				const struct v4l2_mbus_framefmt *framefmt)
+{
+	enum v4l2_field field;
+	bool interlaced;
+
+	/* Check for a sane resolution */
+	if (!framefmt->height || !framefmt->width)
+		return -EINVAL;
+
+	/* Convert the field format */
+	switch (framefmt->field) {
+	case V4L2_FIELD_ANY:
+	case V4L2_FIELD_NONE:
+		interlaced = false;
+		break;
+	case V4L2_FIELD_INTERLACED:
+	case V4L2_FIELD_SEQ_TB:
+	case V4L2_FIELD_SEQ_BT:
+	case V4L2_FIELD_INTERLACED_TB:
+	case V4L2_FIELD_INTERLACED_BT:
+		interlaced = true;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/* With interlaced try to return the requested field format */
+	if (interlaced)
+		field = tegra_vi_field_is_interlaced(pf->field) ?
+			pf->field : V4L2_FIELD_INTERLACED_TB;
+	else
+		field = V4L2_FIELD_NONE;
+
+	v4l2_fill_pix_format(pf, framefmt);
+	pf->field = field;
+
+	return v4l2_pix_format_set_sizeimage(pf);
+}
 
 static int mbus_format_to_tegra_data_type(enum v4l2_mbus_pixelcode mbus)
 {
@@ -288,7 +346,7 @@ static int tegra_vi_channel_g_input(
 		err = -EINVAL;
 	mutex_unlock(&chan->lock);
 
-	return 0;
+	return err;
 }
 
 static int tegra_format_support_mbus(
@@ -339,18 +397,22 @@ static int tegra_vi_sensor_support_mbus(
 	return 0;
 }
 
-static int tegra_vi_channel_update_sensor_formats(struct tegra_vi_channel *chan)
+static int tegra_vi_channel_update_sensor_formats(
+	struct tegra_vi_channel *chan, struct tegra_vi_input *input)
 {
-	struct v4l2_subdev *sensor = chan->input->sensor;
+	struct v4l2_subdev *sensor = input->sensor;
 	enum v4l2_mbus_pixelcode code;
 	unsigned long mask = 0;
 	unsigned index = 0;
 	int i, f, m;
 
+	/* Make sure the mask is large enough */
+	BUILD_BUG_ON(ARRAY_SIZE(tegra_formats) > BITS_PER_LONG);
+
 	/* Get all output formats that can be used */
-	if (chan->input->use_count > 1) {
+	if (input->use_count > 1) {
 		chan->formats_count = tegra_formats_match_mbus(
-			chan->input->mbusfmt, &mask);
+			input->framefmt.code, &mask);
 	} else {
 		chan->formats_count = 0;
 		while (!v4l2_subdev_call(sensor, video, enum_mbus_fmt,
@@ -419,13 +481,60 @@ static u32 tegra_vi_channel_find_format_for_mbus(
 	return best_fmt ? best_fmt->v4l2 : 0;
 }
 
+static int tegra_vi_input_enable(struct tegra_vi_input *input)
+{
+	int err;
+
+	/* Nothing to do if it is already running */
+	if (input->use_count > 0) {
+		input->use_count++;
+		return 0;
+	}
+
+	/* Enable the CIL clock and power the sensor */
+	if (input->cil_clk) {
+		err = clk_prepare_enable(input->cil_clk);
+		if (err)
+			return err;
+	}
+
+	err = v4l2_subdev_call(input->sensor, core, s_power, 1);
+	if (err && err != -ENOIOCTLCMD) {
+		if (input->cil_clk)
+			clk_disable_unprepare(input->cil_clk);
+		return err;
+	}
+
+	input->use_count++;
+	return 0;
+}
+
+static void tegra_vi_input_disable(struct tegra_vi_input *input)
+{
+	if (input->use_count <= 0)
+		return;
+
+	input->use_count--;
+
+	/* Nothing to do if there is still another user */
+	if (input->use_count > 0)
+		return;
+
+	/* Disable the sensor power and CIL clock */
+	v4l2_subdev_call(input->sensor, core, s_power, 0);
+	if (input->cil_clk)
+		clk_disable_unprepare(input->cil_clk);
+
+	memset(&input->framefmt, 0, sizeof(input->framefmt));
+}
+
 static int tegra_vi_channel_set_input(
 	struct tegra_vi_channel *chan, enum tegra_vi_input_id i)
 {
 	struct video_device *vdev = &chan->vdev;
 	struct tegra_vi2 *vi2 =
 		container_of(vdev->v4l2_dev, struct tegra_vi2, v4l2_dev);
-	struct v4l2_mbus_framefmt framefmt;
+	struct v4l2_mbus_framefmt framefmt = {};
 	struct v4l2_pix_format pf = {};
 	struct tegra_vi_input *input;
 	int err;
@@ -457,37 +566,17 @@ static int tegra_vi_channel_set_input(
 			return 0;
 		}
 
-		/* Disable the clock if that's the last use */
-		if (chan->input == &chan->tpg) {
-			/* When using the TPG we need to clock the CSI
-			   block using PLL D.
-			*/
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					TEGRA_CLK_MIPI_CSI_OUT_ENB, 1);
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					 TEGRA_CLK_PLLD_CSI_OUT_ENB, 0);
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					 TEGRA_CLK_PLLD_DSI_OUT_ENB, 0);
-			clk_disable_unprepare(vi2->pll_d_clk);
-		} else if (chan->input->use_count == 1) {
-			v4l2_subdev_call(chan->input->sensor, core,
-					s_power, 0);
-			if (chan->input->cil_clk)
-				clk_disable_unprepare(chan->input->cil_clk);
-			chan->input->mbusfmt = 0;
-		}
-		chan->input->use_count--;
+		tegra_vi_input_disable(chan->input);
+
 		mutex_unlock(&chan->input->lock);
 
 		chan->input = NULL;
-	}
-
-	if (!input) {
-		chan->input = NULL;
 		memset(&chan->pixfmt, 0, sizeof(chan->pixfmt));
 		chan->formats_count = 0;
-		return 0;
 	}
+
+	if (!input)
+		return 0;
 
 	/* Set the new input */
 	mutex_lock(&input->lock);
@@ -498,85 +587,76 @@ static int tegra_vi_channel_set_input(
 		return -ENODEV;
 	}
 
-	/* Enable the clock if we are the first user */
-	if (input == &chan->tpg) {
-		err = clk_prepare_enable(vi2->pll_d_clk);
-		if (!err) {
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					TEGRA_CLK_PLLD_DSI_OUT_ENB, 1);
-			tegra_clk_cfg_ex(vi2->pll_d_clk,
-					TEGRA_CLK_MIPI_CSI_OUT_ENB, 0);
-		}
-	} else if (input->use_count == 0) {
-		err = clk_prepare_enable(input->cil_clk);
-		if (!err) {
-			err = v4l2_subdev_call(input->sensor, core, s_power, 1);
-			if (err == -ENOIOCTLCMD)
-				err = 0;
-		}
-	} else
-		err = 0;
-
+	err = tegra_vi_input_enable(input);
 	if (err) {
 		mutex_unlock(&input->lock);
 		return err;
 	}
 
-	input->use_count++;
-	chan->input = input;
-	chan->input_id = input->id;
-
 	/* Build the list of formats supported by the sensor */
-	tegra_vi_channel_update_sensor_formats(chan);
+	tegra_vi_channel_update_sensor_formats(chan, input);
 
-	/* Clear the current format */
+	/* Clear the current channel format */
 	memset(&chan->pixfmt, 0, sizeof(chan->pixfmt));
-	input->mbusfmt = 0;
 
 	if (chan->formats_count <= 0) {
 		dev_warn(&vdev->dev,
 			"Input set to %d but no format available\n", i);
-		mutex_unlock(&input->lock);
-		return 0;
+		err = -EINVAL;
+		goto disable_input;
 	}
 
-	/* Try to get the current format from the sensor */
-	err = v4l2_subdev_call(chan->input->sensor, video,
-			g_mbus_fmt, &framefmt);
-	if (err) {
-		framefmt.width = 0xFFFFFFFF;
-		framefmt.height = 0xFFFFFFFF;
-		framefmt.code = chan->formats[0].mbus[0];
-		framefmt.field = V4L2_FIELD_NONE;
-		// TODO colorspace
-
-		err = v4l2_subdev_call(chan->input->sensor, video,
-				try_mbus_fmt, &framefmt);
+	/* Get the frame format */
+	if (input->use_count > 1) {
+		framefmt = input->framefmt;
+	} else {
+		/* Try to get the current format from the sensor */
+		err = v4l2_subdev_call(input->sensor, video,
+				g_mbus_fmt, &framefmt);
 		if (err) {
-			dev_err(&vdev->dev,
-				"Failed to try default sensor format\n");
-			mutex_unlock(&input->lock);
-			return err;
+			framefmt.width = 0xFFFFFFFF;
+			framefmt.height = 0xFFFFFFFF;
+			framefmt.code = chan->formats[0].mbus[0];
+			framefmt.field = V4L2_FIELD_NONE;
+
+			err = v4l2_subdev_call(input->sensor, video,
+					try_mbus_fmt, &framefmt);
+			if (err) {
+				dev_err(&vdev->dev,
+					"Failed to try default sensor format\n");
+				goto disable_input;
+			}
 		}
 	}
+
+	chan->input = input;
+	chan->input_id = input->id;
 
 	/* Now find the best format that support this mbus format */
 	v4l2_fill_pix_format(&pf, &framefmt);
 	pf.pixelformat =
 		tegra_vi_channel_find_format_for_mbus(chan, framefmt.code);
-	/* Fallback on the first format if none has been found */
-	if (!pf.pixelformat)
-		pf.pixelformat = chan->formats[0].v4l2;
+	/* Abort if none has been found */
+	if (!pf.pixelformat) {
+		dev_warn(&vdev->dev, "Failed to find format for input %d\n", i);
+		err = -EINVAL;
+		goto disable_input;
+	}
 
 	err = tegra_vi_channel_set_format(chan, &pf);
-	if (err)
+	if (err) {
 		dev_warn(&vdev->dev, "Failed to set format for input %d\n", i);
+		goto disable_input;
+	}
 
 	mutex_unlock(&input->lock);
 
 	return 0;
+
+disable_input:
+	tegra_vi_input_disable(input);
+	mutex_unlock(&input->lock);
+	return err;
 }
 
 static int tegra_vi_channel_s_input(
@@ -640,10 +720,10 @@ static const struct tegra_formats *tegra_vi_channel_get_format(
 	return NULL;
 }
 
-void tegra_vi_input_enable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
+void tegra_vi_input_start(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
 {
 	u32 ctrl0 = 0x46;
-	u32 val;
+	u32 cfg0;
 
 	/* Nothing to do if there is no CIL */
 	if (!input->cil_regs[0])
@@ -654,41 +734,41 @@ void tegra_vi_input_enable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
 		ctrl0 |= BIT(6);
 
 	/* Enable the clock and lanes */
-	val = input->csi_lanes > 1 ? 0 : 2;
+	cfg0 = input->csi_lanes > 1 ? 0 : 2;
 
 	/* Dual blocks should use the first clock */
 	if (input->cil_regs[1] && input->csi_lanes > 2)
-		val |= 1 << 16;
+		cfg0 |= 1 << 16;
 
 	vi_writel(0, &input->cil_regs[0]->interrupt_mask);
-	vi_writel(val, &input->cil_regs[0]->pad_config0);
+	vi_writel(cfg0, &input->cil_regs[0]->pad_config0);
 	vi_writel(ctrl0, &input->cil_regs[0]->cil_control0);
 
 	if (input->cil_regs[1]) {
 		/* Always disable the second block */
-		val = 7;
+		cfg0 = 7;
 
 		/* Enable clock and lane 2 */
 		/* TODO: Check if the clock is needed here */
 		if (input->csi_lanes > 2)
-			val &= ~(BIT(2) | BIT(0));
+			cfg0 &= ~(BIT(2) | BIT(0));
 		if (input->csi_lanes > 3)
-			val &= ~BIT(1);
+			cfg0 &= ~BIT(1);
 
 		vi_writel(0, &input->cil_regs[1]->interrupt_mask);
-		vi_writel(val, &input->cil_regs[1]->pad_config0);
+		vi_writel(cfg0, &input->cil_regs[1]->pad_config0);
 		vi_writel(ctrl0, &input->cil_regs[1]->cil_control0);
 	}
 
 	/* Always enable the first PHY */
-	val = 1 << input->phy_shift[0];
+	cfg0 = 1 << input->phy_shift[0];
 	/* Only enable the second PHY if there is more than 2 lanes */
 	if (input->cil_regs[1] && input->csi_lanes > 2)
-		val |= 1 << input->phy_shift[1];
-	vi_writel(val, &vi2->phy_regs[input->id]->cil_command);
+		cfg0 |= 1 << input->phy_shift[1];
+	vi_writel(cfg0, &vi2->phy_regs[input->id]->cil_command);
 }
 
-void tegra_vi_input_disable(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
+void tegra_vi_input_stop(struct tegra_vi2 *vi2, struct tegra_vi_input *input)
 {
 	u32 val;
 
@@ -715,6 +795,7 @@ int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 	struct clk *clk = clk_get_sys("mipi-cal", NULL);
 	struct clk *clk72mhz = clk_get_sys("clk72mhz", NULL);
 	unsigned cal_channel = input->id * 2;
+	unsigned noise_flt;
 	int i, try = 100;
 	u32 val;
 	int err;
@@ -749,7 +830,7 @@ int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 
 	mutex_lock(&vi2->lock);
 
-	vi_writel((0xa << 26) | (0x2 << 24) | BIT(4), &regs->ctrl);
+	vi_writel((0xA << 26) | (0x2 << 24) | BIT(4), &regs->ctrl);
 	vi_writel(0xFFFF0000, &regs->status);
 	vi_writel(0x0000007F, &regs->clk_status);
 
@@ -780,18 +861,26 @@ int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 		vi_writel(BIT(21), &regs->clk_config[cal_channel + 1]);
 	}
 
-	/* Clear the status and start the calibration process */
-	vi_writel((0xa << 26) | (0x2 << 24) | BIT(4) | BIT(0), &regs->ctrl);
 
 	err = -ETIMEDOUT;
-	while (try > 0) {
-		msleep(1);
-		val = readl(&regs->status);
-		if (!(val & BIT(0)) && (val & BIT(16))) {
-			err = 0;
-			break;
+	for (noise_flt = 10; err && noise_flt <= 15; noise_flt++) {
+		/* Clear the status and start the calibration process */
+		vi_writel((noise_flt << 26) | (0x3 << 24) | BIT(4) | BIT(0), &regs->ctrl);
+
+		for (try = 1000; try > 0; try--) {
+			msleep(1);
+			val = readl(&regs->status);
+			if (!(val & BIT(0)) && (val & BIT(16))) {
+				err = 0;
+				break;
+			}
 		}
-		try--;
+
+		if (err) {
+			vi_writel((0xA << 26) | (0x2 << 24) | BIT(4), &regs->ctrl);
+			vi_writel(0xFFFF0000, &regs->status);
+			vi_writel(0x0000001F, &regs->clk_status);
+		}
 	}
 
 	if (!err)
@@ -857,6 +946,17 @@ static int tegra_vi_input_get_csi_params(
 	int mbus_flags;
 	int err;
 
+	/* If the input is already in use copy the current settings */
+	if (input->use_count > 1) {
+		if (csi_lanes)
+			*csi_lanes = input->csi_lanes;
+		if (csi_channel)
+			*csi_channel = input->csi_channel;
+		if (continuous_clk)
+			*continuous_clk = input->csi_clk_continuous;
+		return 0;
+	}
+
 	/* Get mbus format flags */
 	err = tegra_vi_input_get_mbus_flags(input, &mbus_flags);
 	if (err)
@@ -909,13 +1009,6 @@ static int tegra_vi_channel_get_mbus_framefmt(struct tegra_vi_channel *chan,
 	int err = -EINVAL;
 	unsigned i;
 
-	/* Check for a sane resolution */
-	if (!pf->height || !pf->width) {
-		dev_err(&vdev->dev, "Format has a bad resolution: %ux%u\n",
-			pf->width, pf->height);
-		return -EINVAL;
-	}
-
 	/* Get the tegra format from the output pixelformat */
 	fmt = tegra_vi_channel_get_format(chan, pf->pixelformat);
 	if (!fmt) {
@@ -925,23 +1018,31 @@ static int tegra_vi_channel_get_mbus_framefmt(struct tegra_vi_channel *chan,
 	}
 
 	/* Then convert to an mbus frame format */
-	memset(framefmt, 0, sizeof(*framefmt));
-	v4l2_fill_mbus_format(framefmt, pf, 0);
+	if (chan->input->use_count > 1) {
+		*framefmt = chan->input->framefmt;
+	} else {
+		memset(framefmt, 0, sizeof(*framefmt));
+		v4l2_fill_mbus_format(framefmt, pf, 0);
 
-	/* And get the first accepted frame format */
-	for (i = 0; err && fmt->mbus[i]; i++) {
-		framefmt->code = fmt->mbus[i];
-		err = v4l2_subdev_call(chan->input->sensor, video,
-				try_mbus_fmt, framefmt);
+		/* And get the first accepted frame format */
+		for (i = 0; err && fmt->mbus[i]; i++) {
+			framefmt->code = fmt->mbus[i];
+			err = v4l2_subdev_call(chan->input->sensor, video,
+					try_mbus_fmt, framefmt);
+		}
+
+		if (err) {
+			dev_err(&vdev->dev, "Failed to get a supported bus format\n");
+			return err;
+		}
 	}
 
+	/* Check that the mbus format is acceptable and fill pf */
+	err = tegra_vi_fill_pix_format(pf, framefmt);
 	if (err) {
-		dev_err(&vdev->dev, "Failed to get a supported bus format\n");
+		dev_err(&vdev->dev, "Got invalid bus format\n");
 		return err;
 	}
-
-	v4l2_fill_pix_format(pf, framefmt);
-	pf->sizeimage = 0;
 
 	if (nv_fmt)
 		*nv_fmt = fmt->nv;
@@ -979,6 +1080,7 @@ static int tegra_vi_channel_set_format(
 	struct video_device *vdev = &chan->vdev;
 	int src, nv_mbus, nv_fmt, line_size;
 	struct v4l2_mbus_framefmt framefmt;
+	unsigned int interlaced;
 	int err;
 
 	if (input == NULL) {
@@ -1009,7 +1111,7 @@ static int tegra_vi_channel_set_format(
 		return err;
 	}
 
-	/* Set the sensor mbus format */
+	/* Set the sensor mbus format if this is the first open */
 	if (input->use_count == 1) {
 		struct v4l2_mbus_framefmt ffmt = framefmt;
 
@@ -1021,6 +1123,8 @@ static int tegra_vi_channel_set_format(
 				ffmt.width, ffmt.height, ffmt.code);
 			return err;
 		}
+		/* Store the effective format */
+		chan->input->framefmt = framefmt;
 	}
 
 	/* Get the nvidia type for this bus format */
@@ -1055,10 +1159,24 @@ static int tegra_vi_channel_set_format(
 		break;
 	case 44: /* RAW12 */
 		line_size = framefmt.width / 2 * 3;
+		break;
 	default:
 		dev_err(&vdev->dev, "Failed to get memory bus line size\n");
 		return -EINVAL;
 	}
+
+	/* Return the effective settings */
+	err = tegra_vi_fill_pix_format(pf, &framefmt);
+	if (err) {
+		dev_err(&vdev->dev, "Got invalid bus format\n");
+		return err;
+	}
+
+	/* And store them to allow get */
+	chan->pixfmt = *pf;
+
+	/* Check if the format is interlaced */
+	interlaced = tegra_vi_field_is_interlaced(pf->field);
 
 	/* We must allow bad frames to be able to return buffers
 	 * on errors. */
@@ -1066,7 +1184,7 @@ static int tegra_vi_channel_set_format(
 
 	/* Reset the pixel parser and sensor logic */
 	vi_writel(1, &chan->mipi_regs->sensor_reset);
-	vi_writel(0xf003, &chan->mipi_regs->pp_command);
+	vi_writel(0xF003, &chan->mipi_regs->pp_command);
 	vi_writel(0, &chan->mipi_regs->sensor_reset);
 
 	/* Configure the pixel parser */
@@ -1089,28 +1207,20 @@ static int tegra_vi_channel_set_format(
 	vi_writel(0, &chan->mipi_regs->expected_frame);
 
 	/* Setup the number of lanes */
-	vi_writel((input->csi_lanes - 1) | (0x3F << 16), &chan->mipi_regs->control);
+	vi_writel((input->csi_lanes - 1) | (0x3F << 16),
+		&chan->mipi_regs->control);
 
 	/* Setup the output format with MEM output */
 	vi_writel((nv_fmt << 16) | BIT(0), &chan->vi_regs->image_def);
 	/* Bus format */
-	vi_writel(nv_mbus | (input->csi_channel << 8),
+	vi_writel(nv_mbus | (input->csi_channel << 8) | (interlaced << 12),
 		&chan->vi_regs->image_dt);
 	/* Line size on the memory bus rounded up to the next word */
 	vi_writel((line_size + 1) & ~1,
 		&chan->vi_regs->image_size_wc);
 	/* Resolution */
-	vi_writel((framefmt.height << 16) | framefmt.width,
+	vi_writel(((framefmt.height >> interlaced) << 16) | framefmt.width,
 		&chan->vi_regs->image_size);
-
-	/* Return the effective settings */
-	v4l2_fill_pix_format(pf, &framefmt);
-	// DIRTY WORKAROUND
-	pf->sizeimage = 2*1920*1080;
-
-	/* And store them to allow get */
-	chan->pixfmt = *pf;
-	input->mbusfmt = framefmt.code;
 
 	return 0;
 }
@@ -1157,6 +1267,52 @@ static int tegra_vi_channel_g_fmt_vid_cap(
 	mutex_unlock(&chan->lock);
 
 	return 0;
+}
+
+static int tegra_vi_channel_cropcap(
+	struct file *file, void *__fh, struct v4l2_cropcap *cc)
+{
+	struct video_device *vdev = video_devdata(file);
+	struct tegra_vi_channel *chan =
+		container_of(vdev, struct tegra_vi_channel, vdev);
+	int err;
+
+	if (cc->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	mutex_lock(&chan->lock);
+
+	if (!chan->input) {
+		mutex_unlock(&chan->lock);
+		return -ENODEV;
+	}
+
+	mutex_lock(&chan->input->lock);
+
+	if (!chan->input->sensor) {
+		mutex_unlock(&chan->input->lock);
+		mutex_unlock(&chan->lock);
+		return -ENODEV;
+	}
+
+	/* Fill with default values */
+	cc->bounds.left = 0;
+	cc->bounds.top = 0;
+	cc->bounds.width = chan->pixfmt.width;
+	cc->bounds.height = chan->pixfmt.height;
+	cc->defrect = cc->bounds;
+	cc->pixelaspect.numerator = 1;
+	cc->pixelaspect.denominator = 1;
+
+	/* Allow the sensor to override */
+	err = v4l2_subdev_call(chan->input->sensor, video, cropcap, cc);
+	if (err == -ENOIOCTLCMD)
+		err = 0;
+
+	mutex_unlock(&chan->input->lock);
+	mutex_unlock(&chan->lock);
+
+	return err;
 }
 
 static int tegra_vi_channel_open(struct file *file)
@@ -1214,12 +1370,16 @@ static const struct v4l2_ioctl_ops tegra_vi_channel_ioctl_ops = {
 	.vidioc_try_fmt_vid_cap		= tegra_vi_channel_try_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap		= tegra_vi_channel_g_fmt_vid_cap,
 	.vidioc_s_fmt_vid_cap		= tegra_vi_channel_s_fmt_vid_cap,
+	.vidioc_cropcap			= tegra_vi_channel_cropcap,
 	.vidioc_reqbufs			= vb2_ioctl_reqbufs,
 	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
 	.vidioc_prepare_buf		= vb2_ioctl_prepare_buf,
 	.vidioc_querybuf		= vb2_ioctl_querybuf,
 	.vidioc_qbuf			= vb2_ioctl_qbuf,
 	.vidioc_dqbuf			= vb2_ioctl_dqbuf,
+	.vidioc_expbuf			= vb2_ioctl_expbuf,
+	.vidioc_prepare_buf		= vb2_ioctl_prepare_buf,
+	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
 	.vidioc_streamon		= vb2_ioctl_streamon,
 	.vidioc_streamoff		= vb2_ioctl_streamoff,
 	.vidioc_log_status		= v4l2_ctrl_log_status,
@@ -1236,6 +1396,43 @@ static const struct v4l2_file_operations tegra_vi_channel_fops = {
 	.mmap           = vb2_fop_mmap,
 	.unlocked_ioctl	= video_ioctl2,
 };
+
+static void tegra_vi_channel_event(struct tegra_vi_channel *chan,
+				struct v4l2_event *ev)
+{
+	switch(ev->type) {
+	/* Handle source change like an EOS for now */
+	case V4L2_EVENT_SOURCE_CHANGE:
+	case V4L2_EVENT_EOS:
+		chan->should_stop = true;
+		break;
+	}
+}
+
+static void tegra_vi_notify(struct v4l2_subdev *sd,
+			unsigned int notification, void *arg)
+{
+	struct tegra_vi2 *vi2 =
+		container_of(sd->v4l2_dev, struct tegra_vi2, v4l2_dev);
+	int i;
+
+	/* We are only interrested in event notifications */
+	if (notification != V4L2_DEVICE_NOTIFY_EVENT)
+		return;
+
+	for (i = 0; i < ARRAY_SIZE(vi2->channel); i++) {
+		struct tegra_vi_channel *chan = &vi2->channel[i];
+
+		mutex_lock(&chan->lock);
+		if (chan->input) {
+			mutex_lock(&chan->input->lock);
+			if (chan->input->sensor == sd)
+				tegra_vi_channel_event(chan, arg);
+			mutex_unlock(&chan->input->lock);
+		}
+		mutex_unlock(&chan->lock);
+	}
+}
 
 static int tegra_vi_sensor_bound(struct v4l2_async_notifier *notifier,
 				struct v4l2_subdev *subdev,
@@ -1305,13 +1502,8 @@ static void tegra_vi_sensor_unbind(struct v4l2_async_notifier *notifier,
 				struct v4l2_subdev *subdev,
 				struct v4l2_async_subdev *asd)
 {
-	struct tegra_vi2 *vi2 =
-		container_of(notifier, struct tegra_vi2, sd_notifier);
 	struct tegra_vi_input *input =
 		container_of(asd, struct tegra_vi_input, asd);
-
-	dev_info(vi2->v4l2_dev.dev,
-		"Unbinding sensor from input %d\n", input->id);
 
 	mutex_lock(&input->lock);
 
@@ -1332,7 +1524,7 @@ static int tegra_vi_input_init(struct platform_device *pdev,
 
 	switch (id) {
 	case INPUT_CSI_A:
-		input->cil_regs[0] = vi2->base + 0x92c;
+		input->cil_regs[0] = vi2->base + 0x92C;
 		input->cil_regs[1] = vi2->base + 0x960;
 		input->mbus_caps = V4L2_MBUS_CSI2_LANES | \
 			V4L2_MBUS_CSI2_CHANNELS | \
@@ -1342,7 +1534,7 @@ static int tegra_vi_input_init(struct platform_device *pdev,
 		input->cil_clk = devm_clk_get(&pdev->dev, "cilab");
 		break;
 	case INPUT_CSI_B:
-		input->cil_regs[0] = vi2->base + 0x112c;
+		input->cil_regs[0] = vi2->base + 0x112C;
 		input->cil_regs[1] = vi2->base + 0x1160;
 		input->mbus_caps = V4L2_MBUS_CSI2_LANES | \
 			V4L2_MBUS_CSI2_CHANNELS | \
@@ -1352,7 +1544,7 @@ static int tegra_vi_input_init(struct platform_device *pdev,
 		input->cil_clk = devm_clk_get(&pdev->dev, "cilcd");
 		break;
 	case INPUT_CSI_C:
-		input->cil_regs[0] = vi2->base + 0x192c;
+		input->cil_regs[0] = vi2->base + 0x192C;
 		input->cil_regs[1] = vi2->base + 0x1960;
 		input->mbus_caps = V4L2_MBUS_CSI2_LANES | \
 			V4L2_MBUS_CSI2_CHANNELS | \
@@ -1391,21 +1583,21 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id)
 		strcpy(chan->vdev.name, "VI A");
 		chan->vi_regs = vi2->base + 0x100;
 		chan->mipi_regs = vi2->base + 0x838;
-		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x9c4);
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x9C4);
 		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor");
 		break;
 	case 1:
 		strcpy(chan->vdev.name, "VI C");
 		chan->vi_regs = vi2->base + 0x300;
 		chan->mipi_regs = vi2->base + 0x1038;
-		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x11c4);
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x11C4);
 		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor");
 		break;
 	case 2:
 		strcpy(chan->vdev.name, "VI E");
 		chan->vi_regs = vi2->base + 0x500;
 		chan->mipi_regs = vi2->base + 0x1838;
-		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x19c4);
+		chan->tpg.sensor = tegra_tpg_init(pdev, vi2->base + 0x19C4);
 		chan->sensor_clk = devm_clk_get(&pdev->dev, "vi_sensor2");
 		break;
 	default:
@@ -1470,13 +1662,10 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id)
 	chan->vdev.ioctl_ops = &tegra_vi_channel_ioctl_ops;
 	chan->vdev.v4l2_dev = &vi2->v4l2_dev;
 	chan->vdev.queue = q;
-	/* TODO: Implement release if needed */
 	chan->vdev.release = video_device_release_empty;
 	INIT_LIST_HEAD(&chan->capture);
-	INIT_WORK(&chan->work, tegra_vi_channel_work);
 	mutex_init(&chan->lock);
 	spin_lock_init(&chan->vq_lock);
-	init_completion(&chan->streaming_completion);
 
 	chan->syncpt_id = nvhost_get_syncpt_client_managed(chan->vdev.name);
 
@@ -1516,15 +1705,15 @@ static void tegra_vi_channel_reset(struct tegra_vi_channel *chan, bool reset)
 	if (reset)
 		vi_writel(0, &chan->vi_regs->image_dt);
 	vi_writel(reset ? 1 : 0, &chan->mipi_regs->sensor_reset);
-	vi_writel(reset ? 0x1f : 0, &chan->vi_regs->sw_reset);
+	vi_writel(reset ? 0x1F : 0, &chan->vi_regs->sw_reset);
 }
 
 static int tegra_vi2_probe(struct platform_device *pdev)
 {
 	static struct resource cal_regs = {
 		.flags = IORESOURCE_MEM,
-		.start = 0x700e3000,
-		.end = 0x700e3000 + 0x00000100 - 1,
+		.start = 0x700E3000,
+		.end = 0x700E3000 + 0x00000100 - 1,
 	};
 	struct device_node *np = NULL;
 	struct tegra_vi2 *vi2;
@@ -1540,6 +1729,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	while ((np = v4l2_of_get_next_endpoint(pdev->dev.of_node, np))) {
 		struct v4l2_async_subdev *asd;
 		struct device_node *port;
+		struct device_node *ep;
 		struct device_node *sd;
 		u32 reg;
 
@@ -1562,14 +1752,17 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		ep = of_parse_phandle(np, "remote-endpoint", 0);
+		if (!ep || !of_device_is_available(ep)) {
+			of_node_put(np);
+			continue;
+		}
+
 		sd = v4l2_of_get_remote_port_parent(np);
 		of_node_put(np);
 
-		if (!sd) {
-			dev_warn(&pdev->dev,
-				"Failed to get remote port of port %u\n", reg);
+		if (!sd || !of_device_is_available(sd))
 			continue;
-		}
 
 		asd->match_type = V4L2_ASYNC_MATCH_OF;
 		asd->match.of.node = sd;
@@ -1633,28 +1826,26 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		return PTR_ERR(vi2->isp_clk);
 	}
 
-	vi2->pll_d_clk = devm_clk_get(&pdev->dev, "pll_d");
-	if (IS_ERR(vi2->pll_d_clk)) {
-		dev_err(&pdev->dev, "Failed to get PLLD clock\n");
-		return PTR_ERR(vi2->pll_d_clk);
-	}
-
 	vi2->csi_reg = devm_regulator_get(&pdev->dev, "avdd_dsi_csi");
 	if (IS_ERR(vi2->csi_reg)) {
 		dev_err(&pdev->dev, "Failed to get CSI regulator\n");
 		return PTR_ERR(vi2->csi_reg);
 	}
 
-	vi2->wq = create_workqueue(DRV_NAME);
-	if (!vi2->wq)
-		return -ENOMEM;
+	/* The default DMA segment size is 64K, however we need more
+	 * as video buffer are much larger. If we have an IOMMU it
+	 * shouldn't be a problem to support such large segments, so
+	 * apply the DMA parameters if none have been set yet.
+	 */
+	if (device_is_iommuable(&pdev->dev) && !pdev->dev.dma_parms)
+		pdev->dev.dma_parms = &dma_parameters;
 
 	mutex_init(&vi2->lock);
 
 	err = regulator_enable(vi2->csi_reg);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable CSI regulator\n");
-		goto destroy_workqueue;
+		return err;
 	}
 
 	err = clk_prepare_enable(vi2->vi_clk);
@@ -1689,6 +1880,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISA);
 	tegra_unpowergate_partition(TEGRA_POWERGATE_DISB);
 
+	vi2->v4l2_dev.notify = tegra_vi_notify;
 	err = v4l2_device_register(&pdev->dev, &vi2->v4l2_dev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to register V4L2 device\n");
@@ -1742,6 +1934,7 @@ powergate_partition:
 	tegra_powergate_partition(TEGRA_POWERGATE_DISA);
 	tegra_powergate_partition(TEGRA_POWERGATE_SOR);
 	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
+	clk_disable_unprepare(vi2->csus_clk);
 disable_isp_clk:
 	clk_disable_unprepare(vi2->isp_clk);
 disable_csi_clk:
@@ -1750,13 +1943,11 @@ disable_vi_clk:
 	clk_disable_unprepare(vi2->vi_clk);
 regulator_disable:
 	WARN_ON(regulator_disable(vi2->csi_reg));
-destroy_workqueue:
-	destroy_workqueue(vi2->wq);
 	return err;
 }
 
 static const struct of_device_id tegra_vi2_of_match[] = {
-	{ .compatible = "nvidia,tegra124-vi2" },
+	{ .compatible = "nvidia,tegra210-vi2" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, tegra_vi2_of_match);

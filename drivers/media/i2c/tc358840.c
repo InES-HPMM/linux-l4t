@@ -38,6 +38,7 @@
 
 #include <linux/v4l2-dv-timings.h>
 #include <media/v4l2-subdev.h>
+#include <media/v4l2-event.h>
 #include <media/soc_camera.h>
 
 #include <media/tc358840.h>
@@ -1160,6 +1161,10 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 {
 	struct tc358840_state *state = to_state(sd);
 	struct v4l2_dv_timings timings;
+	struct v4l2_event ev = {
+		.type = V4L2_EVENT_EOS,
+		.u.src_change.changes = 0,
+	};
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
@@ -1171,7 +1176,14 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 	} else {
 		/* TODO: Replace with v4l2_... for newer Kernels */
 		if (!v4l_match_dv_timings(&state->timings, &timings, 0))
+		{
 			enable_stream(sd, false);
+		}
+		else
+		{
+			ev.type = V4L2_EVENT_SOURCE_CHANGE;
+			ev.u.src_change.changes = V4L2_EVENT_SRC_CH_RESOLUTION;
+		}
 
 		/* Printing timings is not supported in Kernel version 3.10 */
 		v4l2_dbg(1, debug, sd, "%s: Format changed. New Format\n",
@@ -1182,7 +1194,7 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 #endif
 	}
 
-	v4l2_subdev_notify(sd, TC358840_FMT_CHANGE, NULL);
+	v4l2_subdev_notify(sd, V4L2_DEVICE_NOTIFY_EVENT, &ev);
 }
 
 static void tc358840_init_interrupts(struct v4l2_subdev *sd)
@@ -1965,6 +1977,8 @@ static struct v4l2_subdev_video_ops tc358840_subdev_video_ops = {
 static struct v4l2_subdev_core_ops tc358840_subdev_core_ops = {
 	.g_chip_ident = tc358840_g_chip_ident,
 	.s_power = tc358840_s_power,
+	.subscribe_event = v4l2_src_change_event_subdev_subscribe,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 	/* TODO: Make the IRQ externally available */
 #if 0
 	.interrupt_service_routine = tc358840_isr,

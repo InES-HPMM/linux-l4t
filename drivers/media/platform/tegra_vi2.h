@@ -15,7 +15,7 @@
 
 struct platform_device;
 struct mutex;
-struct work;
+struct task_struct;
 
 struct tegra_vi_regs {
 	/* 0x00 */
@@ -178,6 +178,7 @@ struct tegra_vi_buffer {
 
 	unsigned num_planes;
 	dma_addr_t addr[3];
+	dma_addr_t bf_addr[3];
 	int stride[3];
 };
 
@@ -227,7 +228,8 @@ struct tegra_vi_input {
 	unsigned csi_channel;
 	bool csi_clk_continuous;
 
-	u32 mbusfmt;
+	/* The currently used frame format */
+	struct v4l2_mbus_framefmt framefmt;
 };
 
 /* Pixel processing channel */
@@ -256,7 +258,8 @@ struct tegra_vi_channel {
 	struct vb2_queue vb;
 	void *vb2_alloc_ctx;
 
-	struct work_struct work;
+	struct task_struct *work_th;
+	bool should_stop;
 
 	/* Lock for the buffer list */
 	spinlock_t vq_lock;
@@ -264,9 +267,7 @@ struct tegra_vi_channel {
 	struct tegra_vi_buffer *active_buffer;
 	struct tegra_vi_buffer *pending_buffer;
 	unsigned long sequence;
-
-	bool streaming;
-	struct completion streaming_completion;
+	unsigned long missed_buffer;
 
 	int syncpt_id;
 
@@ -288,19 +289,17 @@ struct tegra_vi2 {
 
 	struct v4l2_device v4l2_dev;
 
-	struct v4l2_async_subdev* asd[6];
+	struct v4l2_async_subdev* asd[3];
 	struct v4l2_async_notifier sd_notifier;
 
 	struct clk *vi_clk;
 	struct clk *csi_clk;
 	struct clk *csus_clk;
 	struct clk *isp_clk;
-	struct clk *pll_d_clk;
 
 	struct regulator *csi_reg;
 
 	struct mutex lock;
-	struct workqueue_struct *wq;
 };
 
 struct v4l2_subdev *tegra_tpg_init(
@@ -309,14 +308,14 @@ struct v4l2_subdev *tegra_tpg_init(
 int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 			struct tegra_vi_input *input);
 
-void tegra_vi_input_enable(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
-void tegra_vi_input_disable(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
+void tegra_vi_input_start(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
+void tegra_vi_input_stop(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
+
+int v4l2_pix_format_set_sizeimage(struct v4l2_pix_format *pf);
 
 extern const struct vb2_ops tegra_vi_qops;
 
-void tegra_vi_channel_work(struct work_struct *work);
-
-#if 0
+#ifdef CONFIG_VIDEO_ADV_DEBUG
 #define vi_writel(v, p) do { \
 	pr_info("VI2 REG WRITE: 0x%08lx to 0x%03lx\n", (unsigned long)(v), \
 		(unsigned long)(p) & 0xFFF);			      \
