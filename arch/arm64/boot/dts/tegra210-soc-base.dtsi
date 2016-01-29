@@ -1370,7 +1370,6 @@
 			  0x82000000 0 0x13000000 0x0 0x13000000 0 0x0d000000   /* non-prefetchable memory (208 MiB) */
 			  0xc2000000 0 0x20000000 0x0 0x20000000 0 0x20000000>; /* prefetchable memory (512 MiB) */
 
-		iommus = <&smmu TEGRA_SWGROUP_AFI>;
 		status = "disabled";
 
 		pci@1,0 {
