@@ -849,8 +849,8 @@ static void get_usb_calib_data(int pad, u32 *hs_curr_level_pad,
 	u32 usb_calib_ext = tegra_fuse_readl(FUSE_USB_CALIB_EXT_0);
 	/* RPD_CTRL			= USB_CALIB_EXT[4:0] */
 
-	pr_info("usb_calib0 = 0x%08x\n", usb_calib0);
-	pr_info("usb_calib_ext = 0x%08x\n", usb_calib_ext);
+	pr_debug("usb_calib0 = 0x%08x\n", usb_calib0);
+	pr_debug("usb_calib_ext = 0x%08x\n", usb_calib_ext);
 
 	*hs_curr_level_pad = (usb_calib0 >>
 		((!pad) ? 0 : ((6 * (pad + 1)) - 1))) & 0x3f;
@@ -1056,17 +1056,17 @@ void xusb_ss_pad_init(int pad, int port_map, u32 cap)
 	/* read and print xusb prod settings for the SS pad */
 	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_2_0(pad));
 	val &= XUSB_PADCTL_UPHY_USB3_ECTL_2_0_RX_CTLE_MASK;
-	pr_info("xusb_prod port%d RX_CTLE = 0x%lx\n", pad, val);
+	pr_debug("xusb_prod port%d RX_CTLE = 0x%lx\n", pad, val);
 
 	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_3_0(pad));
-	pr_info("xusb_prod port%d RX_DFE = 0x%lx\n", pad, val);
+	pr_debug("xusb_prod port%d RX_DFE = 0x%lx\n", pad, val);
 
 	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_4_0(pad));
 	val &= XUSB_PADCTL_UPHY_USB3_ECTL_4_0_RX_CDR_CTRL_MASK;
-	pr_info("xusb_prod port%d RX_CDR_CTRL = 0x%lx\n", pad, val >> 16);
+	pr_debug("xusb_prod port%d RX_CDR_CTRL = 0x%lx\n", pad, val >> 16);
 
 	val = readl(pad_base + XUSB_PADCTL_UPHY_USB3_ECTL_6_0(pad));
-	pr_info("xusb_prod port%d RX_EQ_CTRL_H = 0x%lx\n", pad, val);
+	pr_debug("xusb_prod port%d RX_EQ_CTRL_H = 0x%lx\n", pad, val);
 #endif
 }
 EXPORT_SYMBOL_GPL(xusb_ss_pad_init);
