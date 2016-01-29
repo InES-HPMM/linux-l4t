@@ -5,7 +5,7 @@
 GCOV_PROFILE := y
 
 omap2cam-objs	:=	omap24xxcam.o omap24xxcam-dma.o
-tegra-vi2-objs	:=	tegra_vi2.o tegra_vidq.o tegra_tpg.o
+tegra-vi2-objs	:=	tegra_vi2.o tegra_vi2_vidq.o tegra_vi2_tpg.o
 
 obj-$(CONFIG_VIDEO_VINO) += indycam.o
 obj-$(CONFIG_VIDEO_VINO) += vino.o
