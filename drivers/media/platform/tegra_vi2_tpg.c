@@ -10,6 +10,8 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 
+#include <mach/clk.h>
+
 #include <media/v4l2-common.h>
 #include <media/v4l2-subdev.h>
 
@@ -31,6 +33,7 @@ struct tegra_tpg {
 	struct v4l2_subdev sd;
 	struct tegra_tpg_regs __iomem *regs;
 	struct v4l2_mbus_framefmt fmt;
+	struct clk *pll_d_clk;
 	unsigned mode;
 	bool auto_inc;
 };
@@ -42,6 +45,34 @@ struct tegra_tpg {
 #define TPG_MAX_WIDTH 1280
 #define TPG_MAX_HEIGHT 720
 #endif
+
+static int tegra_tpg_s_power(struct v4l2_subdev *sd, int enable)
+{
+	struct tegra_tpg *tpg = v4l2_get_subdevdata(sd);
+	int err = 0;
+
+	if (enable) {
+		err = clk_prepare_enable(tpg->pll_d_clk);
+		if (!err) {
+			tegra_clk_cfg_ex(tpg->pll_d_clk,
+					TEGRA_CLK_PLLD_CSI_OUT_ENB, 1);
+			tegra_clk_cfg_ex(tpg->pll_d_clk,
+					TEGRA_CLK_PLLD_DSI_OUT_ENB, 1);
+			tegra_clk_cfg_ex(tpg->pll_d_clk,
+					TEGRA_CLK_MIPI_CSI_OUT_ENB, 0);
+		}
+	} else {
+		tegra_clk_cfg_ex(tpg->pll_d_clk,
+				TEGRA_CLK_MIPI_CSI_OUT_ENB, 1);
+		tegra_clk_cfg_ex(tpg->pll_d_clk,
+				TEGRA_CLK_PLLD_DSI_OUT_ENB, 0);
+		tegra_clk_cfg_ex(tpg->pll_d_clk,
+				TEGRA_CLK_PLLD_CSI_OUT_ENB, 0);
+		clk_disable_unprepare(tpg->pll_d_clk);
+	}
+
+	return err;
+}
 
 static int tegra_tpg_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 				enum v4l2_mbus_pixelcode *code)
@@ -109,7 +140,7 @@ static int tegra_tpg_g_mbus_config(
 	cfg->type = V4L2_MBUS_CSI2;
 	cfg->flags = V4L2_MBUS_CSI2_4_LANE |
 		V4L2_MBUS_CSI2_CHANNEL_0 |
-		V4L2_MBUS_CSI2_CONTINUOUS_CLOCK;
+		V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
 
 	return 0;
 }
@@ -118,6 +149,11 @@ static int tegra_tpg_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct tegra_tpg *tpg = v4l2_get_subdevdata(sd);
 	u32 mode = (tpg->mode & 3) << 2;
+
+	if (!enable) {
+		writel(0, &tpg->regs->ctrl);
+		return 0;
+	}
 
 	if (tpg->auto_inc)
 		mode |= BIT(1);
@@ -141,6 +177,10 @@ static int tegra_tpg_s_stream(struct v4l2_subdev *sd, int enable)
 	return 0;
 }
 
+static const struct v4l2_subdev_core_ops tegra_tpg_core_ops = {
+	.s_power = tegra_tpg_s_power,
+};
+
 static const struct v4l2_subdev_video_ops tegra_tpg_video_ops = {
 	.enum_mbus_fmt = tegra_tpg_enum_mbus_fmt,
 	.try_mbus_fmt = tegra_tpg_try_mbus_fmt,
@@ -151,6 +191,7 @@ static const struct v4l2_subdev_video_ops tegra_tpg_video_ops = {
 };
 
 static const struct v4l2_subdev_ops tegra_tpg_ops = {
+	.core = &tegra_tpg_core_ops,
 	.video = &tegra_tpg_video_ops,
 };
 
@@ -162,6 +203,12 @@ struct v4l2_subdev *tegra_tpg_init(
 	tpg = devm_kzalloc(&pdev->dev, sizeof(*tpg), GFP_KERNEL);
 	if (!tpg)
 		return ERR_PTR(-ENOMEM);
+
+	tpg->pll_d_clk = devm_clk_get(&pdev->dev, "pll_d");
+	if (IS_ERR(tpg->pll_d_clk)) {
+		dev_err(&pdev->dev, "Failed to get PLLD clock\n");
+		return ERR_CAST(tpg->pll_d_clk);
+	}
 
 	v4l2_subdev_init(&tpg->sd, &tegra_tpg_ops);
 	tpg->sd.owner = THIS_MODULE;
