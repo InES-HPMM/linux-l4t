@@ -177,7 +177,7 @@
 
 	host1x {
 		vi {
-			compatible = "nvidia,tegra124-vi2";
+			compatible = "nvidia,tegra210-vi2";
 			//reg = <0x0 0x54080000 0x0 0x800>;
 			interrupts = <GIC_SPI 69 IRQ_TYPE_LEVEL_HIGH>;
 			status = "okay";
@@ -186,15 +186,13 @@
 				 <&tegra_car TEGRA210_CLK_ID_CSI>,
 				 <&tegra_car TEGRA210_CLK_ID_CSUS>,
 				 <&tegra_car TEGRA210_CLK_ID_ISP>,
-				 <&tegra_car TEGRA210_CLK_ID_PLL_D>,
 				 <&tegra_car TEGRA210_CLK_ID_CILAB>,
 				 <&tegra_car TEGRA210_CLK_ID_CILCD>,
 				 <&tegra_car TEGRA210_CLK_ID_CILE>,
 				 <&tegra_car TEGRA210_CLK_ID_VI_SENSOR>,
 				 <&tegra_car TEGRA210_CLK_ID_VI_SENSOR2>;
-			clock-names = "vi", "csi", "csus", "isp", "pll_d",
-				      "cilab", "cilcd", "cile", "vi_sensor",
-				      "vi_sensor2";
+			clock-names = "vi", "csi", "csus", "isp", "cilab",
+				      "cilcd", "cile", "vi_sensor", "vi_sensor2";
 
 			avdd_dsi_csi-supply = <&max77620_ldo0>;
 
