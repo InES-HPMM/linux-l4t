@@ -1,0 +1,38 @@
+/*
+ * arch/arm64/boot/dts/tegra210-jetson-cv-p2597-2180-a00-sharp-4k-edp.dts
+ *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
+
+/ {
+	host1x {
+		sor {
+			status = "okay";
+			 panel-s-edp-uhdtv-15-6 {
+				status = "okay";
+			};
+		};
+
+		dpaux {
+			status = "okay";
+		};
+	};
+
+	backlight {
+		panel-s-edp-uhdtv-15-6-bl {
+			status = "okay";
+		};
+	};
+};
