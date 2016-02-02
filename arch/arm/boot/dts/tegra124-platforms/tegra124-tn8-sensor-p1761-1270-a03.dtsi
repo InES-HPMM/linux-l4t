@@ -42,12 +42,22 @@
 			compatible = "capella,cm3217";
 			reg = <0x10>;
 			vdd-supply = <&palmas_smps9>;
-			light_threshold_lo = <4>;
-			light_threshold_hi = <4>;
-			light_uncalibrated_lo = <20>;
-			light_calibrated_lo = <100>;
-			light_uncalibrated_hi = <130000>;
-			light_calibrated_hi = <1821000>;
+			light_dynamic_resolution_index_limit_low = <0>;
+			light_dynamic_resolution_index_limit_high = <3>;
+			light_lux_maximum = <3000000>;
+			light_report_count = <2>;
+			light_threshold_lo = <0>;
+			light_threshold_hi = <1>;
+			light_nld_thr_i_hi_0 = <40>;
+			light_nld_thr_i_lo_1 = <18>;
+			light_nld_thr_i_hi_1 = <55>;
+			light_nld_thr_i_lo_2 = <24>;
+			light_nld_thr_i_hi_2 = <50>;
+			light_nld_thr_i_lo_3 = <23>;
+			light_uncalibrated_lo = <60>;
+			light_uncalibrated_hi = <1845>;
+			light_calibrated_lo = <8900>;
+			light_calibrated_hi = <312000>;
 		};
 
 		ltr659@23 {
