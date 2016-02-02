@@ -28,6 +28,8 @@
 				port@0 {
 					reg = <0>;
 					e3326_vi_in0: endpoint {
+						csi-port = <2>;
+						bus-width = <2>;
 						remote-endpoint = <&e3326_ov5693_out0>;
 					};
 				};
