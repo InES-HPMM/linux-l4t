@@ -1,7 +1,7 @@
 /*
  * imx214.c - imx214 sensor driver
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1189,6 +1189,7 @@ static int imx214_probe(struct i2c_client *client,
 	priv->s_data			= common_data;
 	priv->subdev			= &common_data->subdev;
 	priv->subdev->dev		= &client->dev;
+	priv->s_data->dev		= &client->dev;
 
 	err = imx214_power_get(priv);
 	if (err)
