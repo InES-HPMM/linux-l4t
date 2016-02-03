@@ -195,6 +195,10 @@ static int nvhost_vi_slcg_handler(struct notifier_block *nb,
 	struct nvhost_device_data *pdata =
 		container_of(nb, struct nvhost_device_data,
 			toggle_slcg_notifier);
+	struct vi *tegra_vi = (struct vi *)pdata->private_data;
+
+	if (tegra_vi->mc_vi.pg_mode)
+		return NOTIFY_OK;
 
 	clk = clk_get(&pdata->pdev->dev, "pll_d");
 	if (IS_ERR(clk))
@@ -286,6 +290,12 @@ static int vi_probe(struct platform_device *dev)
 	if (err)
 		goto vi_probe_fail;
 
+	if (!pdata->aperture[0]) {
+		dev_err(&dev->dev, "%s: failed to map register base\n",
+				__func__);
+		return -ENXIO;
+	}
+
 	/* create workqueue for mfi callback */
 	tegra_vi->vi_workqueue = alloc_workqueue("vi_workqueue",
 					WQ_HIGHPRI | WQ_UNBOUND, 1);
@@ -359,6 +369,12 @@ static int vi_probe(struct platform_device *dev)
 	if (err)
 		goto camera_unregister;
 
+	err = tegra_csi_init(&tegra_vi->csi, dev);
+	if (err)
+		goto vi_mc_init_error;
+
+	tegra_vi->mc_vi.csi = &tegra_vi->csi;
+	tegra_vi->mc_vi.reg = tegra_vi->reg;
 	err = tegra_vi_media_controller_init(&tegra_vi->mc_vi, dev);
 	if (err)
 		goto vi_mc_init_error;
