@@ -44,10 +44,22 @@
 			reg = <0x48>;
 			vdd-supply = <&vdd_3v3>;		/* P2297 Flex Cable	*/
 			gpio_irq = <&gpio TEGRA_GPIO(X, 3) GPIO_ACTIVE_LOW>;
-			light_uncalibrated_lo = <1>;
-			light_calibrated_lo = <150>;
-			light_uncalibrated_hi = <95000>;
-			light_calibrated_hi = <1750000>;
+			cm32180_dynamic_resolution_index_limit_low = <0>;
+			cm32180_dynamic_resolution_index_limit_high = <3>;
+			cm32180_lux_maximum = <3000000>;
+			light_report_count = <2>;
+			light_threshold_lo = <0>;
+			light_threshold_hi = <1>;
+			cm32180_nld_thr_i_hi_0 = <2625>;
+			cm32180_nld_thr_i_lo_1 = <1310>;
+			cm32180_nld_thr_i_hi_1 = <4025>;
+			cm32180_nld_thr_i_lo_2 = <2005>;
+			cm32180_nld_thr_i_hi_2 = <3800>;
+			cm32180_nld_thr_i_lo_3 = <1850>;
+			light_uncalibrated_lo = <730>;
+			light_uncalibrated_hi = <24810>;
+			light_calibrated_lo = <8400>;
+			light_calibrated_hi = <310000>;
 		};
 
 		ltr659ps@23 {
