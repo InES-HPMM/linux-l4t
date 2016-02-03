@@ -931,6 +931,10 @@ int rtc_timer_start(struct rtc_device *rtc, struct rtc_timer* timer,
 			ktime_t expires, ktime_t period)
 {
 	int ret = 0;
+
+	if (unlikely(rtc->system_shutting))
+		return -ESHUTDOWN;
+
 	mutex_lock(&rtc->ops_lock);
 	if (timer->enabled)
 		rtc_timer_remove(rtc, timer);
@@ -953,6 +957,10 @@ int rtc_timer_start(struct rtc_device *rtc, struct rtc_timer* timer,
 int rtc_timer_cancel(struct rtc_device *rtc, struct rtc_timer* timer)
 {
 	int ret = 0;
+
+	if (unlikely(rtc->system_shutting))
+		return -ESHUTDOWN;
+
 	mutex_lock(&rtc->ops_lock);
 	if (timer->enabled)
 		rtc_timer_remove(rtc, timer);
