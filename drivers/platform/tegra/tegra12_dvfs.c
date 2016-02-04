@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra12_dvfs.c
  *
- * Copyright (c) 2012-2015 NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2016 NVIDIA CORPORATION. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1319,6 +1319,40 @@ static int __init set_atomtv_gpu_dvfs_data(unsigned long max_freq,
 	return 0;
 }
 
+/*
+ * Find maximum GPU frequency that can be reached at minimum voltage across all
+ * temperature ranges.
+ */
+static unsigned long __init find_gpu_fmax_at_vmin(
+	struct dvfs *gpu_dvfs, int thermal_ranges, int freqs_num)
+{
+	int i, j;
+	unsigned long fmax = ULONG_MAX;
+
+	/*
+	 * For voltage scaling row in each temperature range, as well as peak
+	 * voltage row find maximum frequency at lowest voltage, and return
+	 * minimax. On Tegra12 all GPU DVFS thermal dependencies are integrated
+	 * into thermal DVFS table (i.e., there is no separate thermal floors
+	 * applied in the rail level). Hence, returned frequency specifies max
+	 * frequency safe at minimum voltage across all temperature ranges.
+	 */
+	for (j = 0; j < thermal_ranges; j++) {
+		for (i = 1; i < freqs_num; i++) {
+			if (gpu_millivolts[j][i] > gpu_millivolts[j][0])
+				break;
+		}
+		fmax = min(fmax, gpu_dvfs->freqs[i - 1]);
+	}
+
+	for (i = 1; i < freqs_num; i++) {
+		if (gpu_peak_millivolts[i] > gpu_peak_millivolts[0])
+			break;
+	}
+	fmax = min(fmax, gpu_dvfs->freqs[i - 1]);
+
+	return fmax;
+}
 
 static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	struct gpu_cvb_dvfs *d, struct dvfs *gpu_dvfs, int *max_freq_index)
@@ -1456,6 +1490,10 @@ static int __init set_gpu_dvfs_data(unsigned long max_freq,
 	gpu_dvfs->process_id = d->process_id;
 	gpu_dvfs->freqs_mult = d->freqs_mult;
 	gpu_dvfs->dvfs_rail->nominal_millivolts = d->max_mv;
+
+	/*Populate gpu fmax at vmin*/
+	gpu_dvfs->fmax_at_vmin_safe_t = d->freqs_mult *
+			find_gpu_fmax_at_vmin(gpu_dvfs, thermal_ranges, i);
 
 	*max_freq_index = i - 1;
 
