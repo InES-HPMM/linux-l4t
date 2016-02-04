@@ -1,7 +1,7 @@
 /*
  * drivers/usb/phy/tegra11x_usb_phy.c
  *
- * Copyright (c) 2012-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2012-2016 NVIDIA Corporation. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -109,7 +109,7 @@
 #define   UTMIP_XCVR_HSSLEW_MSB(x)		(((x) & 0x7f) << 25)
 #define   UTMIP_XCVR_HSSLEW_LSB(x)		(((x) & 0x3) << 4)
 #define   UTMIP_XCVR_MAX_OFFSET		0x10
-#define   UTMIP_XCVR_SETUP_MAX_VALUE	0x7f
+#define   UTMIP_XCVR_SETUP_MAX_VALUE	0x3f
 #define   UTMIP_XCVR_SETUP_MIN_VALUE	0
 #define   XCVR_SETUP_MSB_CALIB(x) ((x) >> 4)
 
