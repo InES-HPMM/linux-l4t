@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ardbeg-sdhci.c
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -186,6 +186,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.tap_delay = 0,
+	.power_off_rail = true,
 	.trim_delay = 0x2,
 	.ddr_clk_limit = 41000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
@@ -199,6 +200,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.tap_delay = 0,
+	.power_off_rail = true,
 	.trim_delay = 0x3,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.calib_3v3_offsets = 0x7676,
@@ -212,6 +214,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x4,
+	.power_off_rail = true,
 	.trim_delay = 0x4,
 	.is_ddr_trim_delay = true,
 	.ddr_trim_delay = 0x0,
