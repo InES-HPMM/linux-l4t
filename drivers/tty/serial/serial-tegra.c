@@ -3,7 +3,7 @@
  *
  * High-speed serial driver for NVIDIA Tegra SoCs
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -675,6 +675,7 @@ static void tegra_uart_rx_dma_complete(void *args)
 	int rx_level = 0;
 	struct dma_tx_state state;
 	enum dma_status status;
+	struct dma_async_tx_descriptor *prev_rx_dma_desc;
 
 	spin_lock_irqsave(&u->lock, flags);
 	async_tx_ack(tup->rx_dma_desc);
@@ -685,6 +686,7 @@ static void tegra_uart_rx_dma_complete(void *args)
 		dev_info(tup->uport.dev, "RX DMA is in progress\n");
 		goto done;
 	}
+	prev_rx_dma_desc = tup->rx_dma_desc;
 
 	/* Deactivate flow control to stop sender */
 	if (tup->rts_active)
@@ -708,6 +710,7 @@ static void tegra_uart_rx_dma_complete(void *args)
 		tty_kref_put(tty);
 	}
 	tegra_uart_start_rx_dma(tup);
+	async_tx_ack(prev_rx_dma_desc);
 
 	/* Activate flow control to start transfer */
 	if (tup->enable_rx_buffer_throttle) {
@@ -726,6 +729,7 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 	struct tty_port *port = &tup->uport.state->port;
 	int count;
 	int rx_level = 0;
+	struct dma_async_tx_descriptor *prev_rx_dma_desc;
 
 	/* Deactivate flow control to stop sender */
 	if (tup->rts_active)
@@ -733,7 +737,7 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 
 	dmaengine_terminate_all(tup->rx_dma_chan);
 	dmaengine_tx_status(tup->rx_dma_chan,  tup->rx_cookie, &state);
-	async_tx_ack(tup->rx_dma_desc);
+	prev_rx_dma_desc = tup->rx_dma_desc;
 	count = tup->rx_bytes_requested - state.residue;
 
 	/* If we are here, DMA is stopped */
@@ -754,6 +758,7 @@ static void tegra_uart_handle_rx_dma(struct tegra_uart_port *tup)
 		tty_kref_put(tty);
 	}
 	tegra_uart_start_rx_dma(tup);
+	async_tx_ack(prev_rx_dma_desc);
 
 	if (tup->enable_rx_buffer_throttle) {
 		if ((rx_level <= 70) && tup->rts_active)
