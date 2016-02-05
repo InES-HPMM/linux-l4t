@@ -966,12 +966,12 @@ static long pvr2_v4l2_ioctl(struct file *file,
 	}
 
 	/* check priority */
-	switch (cmd) {
-	case VIDIOC_S_CTRL:
-	case VIDIOC_S_STD:
-	case VIDIOC_S_INPUT:
-	case VIDIOC_S_TUNER:
-	case VIDIOC_S_FREQUENCY:
+	switch (_IOC_NR(cmd)) {
+	case _IOC_NR(VIDIOC_S_CTRL):
+	case _IOC_NR(VIDIOC_S_STD):
+	case _IOC_NR(VIDIOC_S_INPUT):
+	case _IOC_NR(VIDIOC_S_TUNER):
+	case _IOC_NR(VIDIOC_S_FREQUENCY):
 		ret = v4l2_prio_check(&vp->prio, fh->prio);
 		if (ret)
 			return ret;

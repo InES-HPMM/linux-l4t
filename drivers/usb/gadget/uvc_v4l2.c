@@ -167,9 +167,9 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	struct uvc_video *video = &uvc->video;
 	int ret = 0;
 
-	switch (cmd) {
+	switch (_IOC_NR(cmd)) {
 	/* Query capabilities */
-	case VIDIOC_QUERYCAP:
+	case _IOC_NR(VIDIOC_QUERYCAP):
 	{
 		struct v4l2_capability *cap = arg;
 
@@ -184,7 +184,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Get & Set format */
-	case VIDIOC_G_FMT:
+	case _IOC_NR(VIDIOC_G_FMT):
 	{
 		struct v4l2_format *fmt = arg;
 
@@ -194,7 +194,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return uvc_v4l2_get_format(video, fmt);
 	}
 
-	case VIDIOC_S_FMT:
+	case _IOC_NR(VIDIOC_S_FMT):
 	{
 		struct v4l2_format *fmt = arg;
 
@@ -205,7 +205,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Buffers & streaming */
-	case VIDIOC_REQBUFS:
+	case _IOC_NR(VIDIOC_REQBUFS):
 	{
 		struct v4l2_requestbuffers *rb = arg;
 
@@ -220,24 +220,24 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		break;
 	}
 
-	case VIDIOC_QUERYBUF:
+	case _IOC_NR(VIDIOC_QUERYBUF):
 	{
 		struct v4l2_buffer *buf = arg;
 
 		return uvc_query_buffer(&video->queue, buf);
 	}
 
-	case VIDIOC_QBUF:
+	case _IOC_NR(VIDIOC_QBUF):
 		if ((ret = uvc_queue_buffer(&video->queue, arg)) < 0)
 			return ret;
 
 		return uvc_video_pump(video);
 
-	case VIDIOC_DQBUF:
+	case _IOC_NR(VIDIOC_DQBUF):
 		return uvc_dequeue_buffer(&video->queue, arg,
 			file->f_flags & O_NONBLOCK);
 
-	case VIDIOC_STREAMON:
+	case _IOC_NR(VIDIOC_STREAMON):
 	{
 		int *type = arg;
 
@@ -259,7 +259,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return 0;
 	}
 
-	case VIDIOC_STREAMOFF:
+	case _IOC_NR(VIDIOC_STREAMOFF):
 	{
 		int *type = arg;
 
@@ -270,7 +270,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 	}
 
 	/* Events */
-	case VIDIOC_DQEVENT:
+	case _IOC_NR(VIDIOC_DQEVENT):
 	{
 		struct v4l2_event *event = arg;
 
@@ -291,7 +291,7 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return ret;
 	}
 
-	case VIDIOC_SUBSCRIBE_EVENT:
+	case _IOC_NR(VIDIOC_SUBSCRIBE_EVENT):
 	{
 		struct v4l2_event_subscription *sub = arg;
 
@@ -301,10 +301,10 @@ uvc_v4l2_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 		return v4l2_event_subscribe(&handle->vfh, arg, 2, NULL);
 	}
 
-	case VIDIOC_UNSUBSCRIBE_EVENT:
+	case _IOC_NR(VIDIOC_UNSUBSCRIBE_EVENT):
 		return v4l2_event_unsubscribe(&handle->vfh, arg);
 
-	case UVCIOC_SEND_RESPONSE:
+	case _IOC_NR(UVCIOC_SEND_RESPONSE):
 		ret = uvc_send_response(uvc, arg);
 		break;
 
