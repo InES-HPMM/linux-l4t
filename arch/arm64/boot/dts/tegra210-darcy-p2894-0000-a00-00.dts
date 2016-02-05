@@ -52,8 +52,10 @@
                 status = "okay";
         };
 
-	wifi-tuning {
-		sku = "darcy_a00";
+	bcmdhd_wlan {
+		fw_path = "/system/vendor/firmware/fw_bcmdhd.bin";
+		nv_path = "/system/etc/nvram_darcy_a00.txt";
+		tuned_nv_path = "/system/etc/nvram_darcy_a00.txt";
 	};
 
 	chosen {

@@ -271,6 +271,9 @@
 	};
 
 	bcmdhd_wlan {
+		fw_path = "/system/vendor/firmware/fw_bcmdhd.bin";
+		nv_path = "/system/etc/nvram_foster_e_4354.txt";
+		tuned_nv_path = "/system/etc/nvram_foster_e_antenna_tuned_4354.txt";
 		country_code_map {
 			CC1 {
 				iso_abbrev = "XV";
