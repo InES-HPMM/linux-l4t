@@ -150,6 +150,70 @@ static ssize_t state_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t connect_show(struct device *dev, struct device_attribute *attr,
+			  char *buf)
+{
+	int i, count = 0;
+	struct extcon_dev *edev = dev_get_drvdata(dev);
+
+	if (edev->print_state) {
+		int ret = edev->print_state(edev, buf);
+
+		if (ret >= 0)
+			return ret;
+		/* Use default if failed */
+	}
+
+	if (edev->max_supported == 0)
+		return sprintf(buf, "%u\n", edev->state);
+
+	for (i = 0; i < SUPPORTED_CABLE_MAX; i++) {
+		if (!edev->supported_cable[i])
+			break;
+		if (edev->state & BIT(i))
+			count += sprintf(buf + count, "%s\n",
+					edev->supported_cable[i]);
+	}
+
+	if (!count)
+		count += sprintf(buf + count, "none\n");
+
+	return count;
+}
+
+static ssize_t connect_store(struct device *dev, struct device_attribute *attr,
+			   const char *buf, size_t count)
+{
+	int i;
+	ssize_t ret = -EINVAL;
+	struct extcon_dev *edev = dev_get_drvdata(dev);
+
+	if (!edev->max_supported) {
+		dev_info(dev, "No cable supported\n");
+		return count;
+	}
+
+	if (!strncmp(buf, "none", count - 1))
+		ret = extcon_set_state(edev, 0);
+
+	for (i = 0; i < SUPPORTED_CABLE_MAX; i++) {
+		if (!edev->supported_cable[i])
+			break;
+		if (!strncmp(buf, edev->supported_cable[i], count - 1)) {
+			ret = extcon_set_state(edev, BIT(i));
+			break;
+		}
+	}
+
+	if (ret < 0) {
+		dev_err(dev, "Cable %s connection failed: %d\n", buf, (int)ret);
+		return ret;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(connect);
+
 static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
@@ -573,6 +637,7 @@ static struct device_attribute extcon_attrs[] = {
 	__ATTR_RO(name),
 	__ATTR(uevent_in_suspend, S_IRUGO | S_IWUSR,
 	       uevent_in_suspend_show, uevent_in_suspend_store),
+	__ATTR(connect, S_IRUGO | S_IWUSR, connect_show, connect_store),
 	__ATTR_NULL,
 };
 
