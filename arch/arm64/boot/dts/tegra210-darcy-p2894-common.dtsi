@@ -50,6 +50,7 @@
 			nvidia,cmu-enable = <1>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+			nvidia,dc-or-node = "/host1x/sor1";
 		};
 		sor1 {
 			hdmi-display {
