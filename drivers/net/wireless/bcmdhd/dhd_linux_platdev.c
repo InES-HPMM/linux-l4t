@@ -355,6 +355,14 @@ static void wifi_platform_free_country_code_map(wifi_adapter_info_t *adapter)
 }
 #endif
 
+static inline bool is_antenna_tuned(void)
+{
+	struct device_node *np;
+
+	np = of_find_node_by_name(NULL, "wifi-antenna-tuning");
+	return of_device_is_available(np);
+}
+
 static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 {
 	struct resource *resource;
@@ -376,6 +384,12 @@ static int wifi_plat_dev_drv_probe(struct platform_device *pdev)
 
 		adapter->wlan_pwr = of_get_named_gpio(node, "wlan-pwr-gpio", 0);
 		adapter->wlan_rst = of_get_named_gpio(node, "wlan-rst-gpio", 0);
+		adapter->fw_path = of_get_property(node, "fw_path", NULL);
+		adapter->nv_path = of_get_property(node, "nv_path", NULL);
+
+		if (is_antenna_tuned())
+			adapter->nv_path = of_get_property(node,
+						"tuned_nv_path", NULL);
 
 		/* This is to get the irq for the OOB */
 		adapter->irq_num = platform_get_irq(pdev, 0);

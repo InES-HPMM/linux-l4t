@@ -99,6 +99,8 @@ static struct device *cfg80211_parent_dev = NULL;
 static struct bcm_cfg80211 *g_bcm_cfg = NULL;
 u32 wl_dbg_level = WL_DBG_ERR;
 
+extern int op_mode;
+
 #ifdef WLAIBSS_MCHAN
 #define IBSS_IF_NAME "ibss%d"
 #endif /* WLAIBSS_MCHAN */
@@ -8433,7 +8435,8 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 	 * probe response frame in case of SoftAP mode,
 	 * AP_PROBE_RESP_OFFLOAD flag is set to wiphy->flags variable.
 	 */
-	if (dhd_get_fw_mode(dhd->info) == DHD_FLAG_HOSTAP_MODE) {
+	if ((!op_mode && dhd_get_fw_mode(dhd->info) == DHD_FLAG_HOSTAP_MODE) ||
+	    (op_mode == DHD_FLAG_HOSTAP_MODE)) {
 		wdev->wiphy->flags |= WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD;
 		wdev->wiphy->probe_resp_offload = 0;
 	}
