@@ -12,6 +12,10 @@ Recommended properties:
                      Documentation/devicetree/bindings/spi/spi-bus.txt
 Optional properties:
 - nvidia,clock-always-on: Enable clock of spi always.
+- nvidia,boost-reg-access: In T210 and earlier chips SPI register access
+	is dependant on SPI clock frequency. Setting this option would
+	allow SPI clock frequency to be boosted. Benefitial when running
+	SPI at low frequencies with cpu based transfers. Default false.
 - nvidia,maximum-dma-buffer-size: Maximum dma buffer size per transfer.
 	If this is not available then 16K will be default. The value should
 	be unit of byte.

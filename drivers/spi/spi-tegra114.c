@@ -1,7 +1,7 @@
 /*
  * SPI driver for NVIDIA's Tegra114 SPI Controller.
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -200,6 +200,7 @@ struct tegra_spi_data {
 	phys_addr_t				phys;
 	unsigned				irq;
 	bool					clock_always_on;
+	bool					boost_reg_access;
 	u32					spi_max_frequency;
 	u32					cur_speed;
 	unsigned				min_div;
@@ -258,6 +259,7 @@ struct tegra_spi_data {
 
 static int tegra_spi_runtime_suspend(struct device *dev);
 static int tegra_spi_runtime_resume(struct device *dev);
+static int tegra_spi_set_clock_rate(struct tegra_spi_data *tspi, u32 speed);
 
 
 static inline unsigned long tegra_spi_readl(struct tegra_spi_data *tspi,
@@ -567,6 +569,7 @@ static int tegra_spi_start_dma_based_transfer(
 	unsigned long flags;
 	int ret = 0, maxburst;
 	struct dma_slave_config dma_sconfig;
+	u32 speed;
 
 	/* Make sure that Rx and Tx fifo are empty */
 	ret = check_and_clear_fifo(tspi);
@@ -648,6 +651,15 @@ static int tegra_spi_start_dma_based_transfer(
 			return ret;
 		}
 	}
+
+	if (tspi->boost_reg_access) {
+		speed = t->speed_hz ? t->speed_hz :
+				tspi->cur_spi->max_speed_hz;
+		ret = tegra_spi_set_clock_rate(tspi, speed);
+		if (ret < 0)
+			return ret;
+	}
+
 	spin_lock_irqsave(&tspi->lock, flags);
 	cmd1 = tegra_spi_readl(tspi, SPI_COMMAND1);
 	if (tspi->cur_direction & DATA_DIR_TX)
@@ -673,6 +685,7 @@ static int tegra_spi_start_cpu_based_transfer(
 	unsigned long intr_mask;
 	unsigned cur_words;
 	int ret;
+	u32 speed;
 
 	ret = check_and_clear_fifo(tspi);
 	if (ret != 0)
@@ -708,6 +721,14 @@ static int tegra_spi_start_cpu_based_transfer(
 
 	tegra_spi_writel(tspi, val, SPI_DMA_CTL);
 	tspi->dma_control_reg = val;
+
+	if (tspi->boost_reg_access) {
+		speed = t->speed_hz ? t->speed_hz :
+				tspi->cur_spi->max_speed_hz;
+		ret = tegra_spi_set_clock_rate(tspi, speed);
+		if (ret < 0)
+			return ret;
+	}
 
 	spin_lock_irqsave(&tspi->lock, flags);
 	tspi->is_curr_dma_xfer = false;
@@ -807,7 +828,7 @@ static void tegra_spi_deinit_dma_param(struct tegra_spi_data *tspi,
 	dma_release_channel(dma_chan);
 }
 
-static void set_best_clk_source(struct spi_device *spi,
+static void set_best_clk_source(struct tegra_spi_data *tspi,
 		unsigned long rate)
 {
 	long new_rate;
@@ -818,9 +839,8 @@ static void set_best_clk_source(struct spi_device *spi,
 	const char *pclk_name, *fpclk_name;
 	struct device_node *node;
 	struct property *prop;
-	struct tegra_spi_data *tspi = spi_master_get_devdata(spi->master);
 
-	node = spi->master->dev.of_node;
+	node = tspi->master->dev.of_node;
 	if (!of_property_count_strings(node, "nvidia,clk-parents"))
 		return;
 
@@ -883,6 +903,22 @@ static void set_best_clk_source(struct spi_device *spi,
 	}
 }
 
+static int tegra_spi_set_clock_rate(struct tegra_spi_data *tspi, u32 speed)
+{
+	int ret;
+
+	if (speed == tspi->cur_speed)
+		return 0;
+	set_best_clk_source(tspi, speed);
+	ret = clk_set_rate(tspi->clk, speed);
+	if (ret) {
+		dev_err(tspi->dev, "Failed to set clk freq %d\n", ret);
+		return -EINVAL;
+	}
+	tspi->cur_speed = speed;
+
+	return 0;
+}
 static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		struct spi_transfer *t, bool is_first_of_msg,
 		bool is_single_xfer)
@@ -900,17 +936,13 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 
 	bits_per_word = t->bits_per_word;
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
-	if (!speed)
-		speed = tspi->spi_max_frequency;
-	if (speed != tspi->cur_speed) {
-		set_best_clk_source(spi, speed);
-		ret = clk_set_rate(tspi->clk, speed);
-		if (ret) {
-			dev_err(tspi->dev, "Failed to set clk freq %d\n", ret);
-			return -EINVAL;
-		}
-		tspi->cur_speed = speed;
-	}
+		/* set max clock for faster register access */
+	if (tspi->boost_reg_access)
+		ret = tegra_spi_set_clock_rate(tspi, tspi->spi_max_frequency);
+	else
+		ret = tegra_spi_set_clock_rate(tspi, speed);
+	if (ret < 0)
+		return ret;
 
 	tspi->cur_spi = spi;
 	tspi->cur_pos = 0;
@@ -1344,6 +1376,13 @@ static int tegra_spi_handle_message(struct tegra_spi_data *tspi,
 	int ret = 0;
 	long wait_status;
 
+	if (tspi->boost_reg_access) {
+		/* set max clock for faster register access */
+		ret = tegra_spi_set_clock_rate(tspi, tspi->spi_max_frequency);
+		if (ret < 0)
+			return ret;
+	}
+
 	if (!tspi->is_curr_dma_xfer) {
 		if (tspi->cur_direction & DATA_DIR_RX)
 			tegra_spi_read_rx_fifo_to_client_rxbuf(tspi, xfer);
@@ -1623,6 +1662,9 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	if (of_find_property(np, "nvidia,clock-always-on", NULL))
 		pdata->is_clkon_always = true;
 
+	if (of_find_property(np, "nvidia,boost-reg-access", NULL))
+		pdata->boost_reg_access = true;
+
 	ret = of_property_read_u32(np, "nvidia,maximum-dma-buffer-size", &pval);
 	if (!ret)
 		pdata->max_dma_buffer_size = pval;
@@ -1739,6 +1781,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi = spi_master_get_devdata(master);
 	tspi->master = master;
 	tspi->clock_always_on = pdata->is_clkon_always;
+	tspi->boost_reg_access = pdata->boost_reg_access;
 	tspi->def_chip_select = pdata->def_chip_select;
 	tspi->dev = &pdev->dev;
 
