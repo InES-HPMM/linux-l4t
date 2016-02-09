@@ -1890,8 +1890,12 @@ follow_page_again:
 				if (foll_flags & FOLL_NOWAIT)
 					fault_flags |= (FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_RETRY_NOWAIT);
 
+				if (vma->vm_file)
+					mutex_unlock(&s_follow_page_lock);
 				ret = handle_mm_fault(mm, vma, start,
 							fault_flags);
+				if (vma->vm_file)
+					mutex_lock(&s_follow_page_lock);
 
 				if (ret & VM_FAULT_ERROR) {
 					mutex_unlock(&s_follow_page_lock);
