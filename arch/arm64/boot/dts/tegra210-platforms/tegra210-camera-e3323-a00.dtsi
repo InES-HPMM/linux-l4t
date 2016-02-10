@@ -400,7 +400,7 @@
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_focuser";
 					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@6_0072";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@72";
 				};
 			};
 			module1 {
@@ -417,7 +417,7 @@
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_focuser";
 					/* Declare the device-tree hierarchy to driver instance */
-					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@0_0072";
+					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@72";
 				};
 			};
 		};
