@@ -678,7 +678,6 @@ static void tegra_uart_rx_dma_complete(void *args)
 	struct dma_async_tx_descriptor *prev_rx_dma_desc;
 
 	spin_lock_irqsave(&u->lock, flags);
-	async_tx_ack(tup->rx_dma_desc);
 
 	status = dmaengine_tx_status(tup->rx_dma_chan,
 			tup->rx_cookie, &state);
