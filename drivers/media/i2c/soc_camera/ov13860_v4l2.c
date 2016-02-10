@@ -1,7 +1,7 @@
 /*
  * ov13860.c - ov13860 sensor driver
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -341,7 +341,7 @@ static int ov13860_power_on(struct camera_common_data *s_data)
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 1);
 
-	usleep_range(1000, 2000);
+	usleep_range(2000, 3000);
 	pw->state = SWITCH_ON;
 	return 0;
 
