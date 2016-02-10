@@ -514,6 +514,29 @@ int gr_gk20a_submit_fecs_method_op(struct gk20a *g,
 	return ret;
 }
 
+int gr_gk20a_submit_fecs_method_wfi(struct gk20a *g)
+{
+	u32 cur_ctx;
+
+	cur_ctx = gk20a_readl(g, gr_fecs_current_ctx_r());
+
+	if (gr_fecs_current_ctx_valid_v(cur_ctx))
+		gr_gk20a_submit_fecs_method_op(g,
+			   (struct fecs_method_op_gk20a) {
+				   .mailbox.id = 0,
+				   .mailbox.data = 0,
+				   .mailbox.clr = ~0,
+				   .method.data = cur_ctx,
+				   .method.addr = gr_fecs_method_push_adr_wfi_v(),
+				   .mailbox.ret = NULL,
+				   .cond.ok = GR_IS_UCODE_OP_EQUAL,
+				   .mailbox.ok = 0x5,
+				   .cond.fail = GR_IS_UCODE_OP_EQUAL,
+				   .mailbox.fail = 0xA}, false);
+
+	return 0;
+}
+
 static int gr_gk20a_ctrl_ctxsw(struct gk20a *g, u32 fecs_method, u32 *ret)
 {
 	return gr_gk20a_submit_fecs_method_op(g,

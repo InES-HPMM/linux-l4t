@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -680,6 +680,10 @@ static int gk20a_pm_prepare_poweroff(struct device *dev)
 
 	if (!g->power_on)
 		return 0;
+
+	ret = gk20a_fifo_disable_all_engine_activity(g, true);
+	if (ret)
+		return ret;
 
 	ret = gk20a_channel_suspend(g);
 	if (ret)
