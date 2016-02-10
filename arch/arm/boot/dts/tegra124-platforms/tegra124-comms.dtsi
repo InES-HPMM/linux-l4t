@@ -30,6 +30,7 @@
 				TEGRA_GPIO(X, 7)
 				TEGRA_GPIO(CC, 5)
 				>;
+			status = "disabled";
 		};
 	};
 
