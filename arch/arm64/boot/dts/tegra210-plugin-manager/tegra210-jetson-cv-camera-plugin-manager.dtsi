@@ -38,7 +38,7 @@
 				target = <&cam_module0_drivernode0>;
 				_overlay_ {
 					status = "okay";
-					pcl_id = "v4l2_soc_sensor";
+					pcl_id = "v4l2_sensor";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov23850_a@10";
 				};
 			};
@@ -69,7 +69,7 @@
 				target = <&cam_module1_drivernode0>;
 				_overlay_ {
 					status = "okay";
-					pcl_id = "v4l2_soc_sensor";
+					pcl_id = "v4l2_sensor";
 					proc-device-tree = "/proc/device-tree/i2c@7000c000/ov23850_c@36";
 				};
 			};
@@ -137,6 +137,215 @@
 				target = <&e3326_cam0>;
 				_overlay_ {
 					status = "disabled";
+				};
+			};
+		};
+
+		/* E3322 camera board */
+		fragment-e3322@0 {
+			ids = "3322-1000-000";
+			override@0 {
+				target = <&e3322_cam0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&cam_module0>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_bottomleft_A815P2";
+					position = "bottomleft";
+					orientation = "1";
+				};
+			};
+			override@2 {
+				target = <&cam_module0_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/imx219_a@10";
+				};
+			};
+			override@3 {
+				target = <&e3322_cam0_csia_in0>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out0>;
+				};
+			};
+			override@4 {
+				target = <&e3322_cam1>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@5 {
+				target = <&cam_module1>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_centerleft_A815P2";
+					position = "centerleft";
+					orientation = "1";
+				};
+			};
+			override@6 {
+				target = <&cam_module1_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/imx219_b@10";
+				};
+			};
+			override@7 {
+				target = <&e3322_cam1_csia_in1>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out1>;
+				};
+			};
+			override@8 {
+				target = <&e3322_cam2>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@9 {
+				target = <&cam_module2>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_centerright_A815P2";
+					position = "centerright";
+					orientation = "1";
+				};
+			};
+			override@10 {
+				target = <&cam_module2_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/imx219_c@10";
+				};
+			};
+			override@11 {
+				target = <&e3322_cam2_csic_in0>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out2>;
+				};
+			};
+			override@12 {
+				target = <&e3322_cam3>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@13 {
+				target = <&cam_module3>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_topleft_A815P2";
+					position = "topleft";
+					orientation = "1";
+				};
+			};
+			override@14 {
+				target = <&cam_module3_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/imx219_d@10";
+				};
+			};
+			override@15 {
+				target = <&e3322_cam3_csic_in1>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out3>;
+				};
+			};
+			override@16 {
+				target = <&e3322_cam4>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@17 {
+				target = <&cam_module4>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_bottomright_A815P2";
+					position = "bottomright";
+					orientation = "1";
+				};
+			};
+			override@18 {
+				target = <&cam_module4_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/imx219_e@10";
+				};
+			};
+			override@19 {
+				target = <&e3322_cam4_csie_in0>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out4>;
+				};
+			};
+			override@20 {
+				target = <&e3322_cam5>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@21 {
+				target = <&cam_module5>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3322_topright_A815P2";
+					position = "topright";
+					orientation = "1";
+				};
+			};
+			override@22 {
+				target = <&cam_module5_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/imx219_f@10";
+				};
+			};
+			override@23 {
+				target = <&e3322_cam5_csie_in1>;
+				_overlay_ {
+					status = "okay";
+					bus-width = <2>;
+					remote-endpoint = <&imx219_out5>;
+				};
+			};
+			override@24 {
+				target = <&e3326_cam0>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+			override@25 {
+				target = <&cam_tca6408_21>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@26 {
+				target = <&cam_tca9548_77>;
+				_overlay_ {
+					status = "okay";
 				};
 			};
 		};
