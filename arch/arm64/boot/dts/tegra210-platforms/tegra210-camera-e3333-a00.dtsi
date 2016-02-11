@@ -1,0 +1,873 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <dt-bindings/media/camera.h>
+#include <dt-bindings/platform/t210/t210.h>
+
+/* camera control gpio definitions */
+/ {
+	host1x {
+		vi {
+			num-channels = <6>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					e3333_vi_in0: endpoint {
+						remote-endpoint = <&ov5693_out0>;
+					};
+				};
+				port@1 {
+					reg = <1>;
+					e3333_vi_in1: endpoint {
+						remote-endpoint = <&ov5693_out1>;
+					};
+				};
+				port@2 {
+					reg = <2>;
+					e3333_vi_in2: endpoint {
+						remote-endpoint = <&ov5693_out2>;
+					};
+				};
+				port@3 {
+					reg = <3>;
+					e3333_vi_in3: endpoint {
+						remote-endpoint = <&ov5693_out3>;
+					};
+				};
+				port@4 {
+					reg = <4>;
+					e3333_vi_in4: endpoint {
+						remote-endpoint = <&ov5693_out4>;
+					};
+				};
+				port@5 {
+					reg = <5>;
+					e3333_vi_in5: endpoint {
+						remote-endpoint = <&ov5693_out5>;
+					};
+				};
+			};
+		};
+
+		i2c@546c0000 {
+			nvidia,clock-always-on;
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
+
+			status = "okay";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			tca9548@77 {
+				i2c@0 {
+					ov5693_a@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video0";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out0: endpoint {
+									csi-port = <0>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in0>;
+								};
+							};
+						};
+					};
+				};
+				i2c@1 {
+					ov5693_b@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video1";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_b";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_b";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_b";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_b";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out1: endpoint {
+									csi-port = <1>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in1>;
+								};
+							};
+						};
+					};
+				};
+				i2c@2 {
+					ov5693_c@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video2";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_c";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_c";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_c";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_c";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out2: endpoint {
+									csi-port = <2>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in2>;
+								};
+							};
+						};
+					};
+				};
+				i2c@3 {
+					ov5693_d@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video3";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_d";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_d";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_d";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_d";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out3: endpoint {
+									csi-port = <3>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in3>;
+								};
+							};
+						};
+					};
+				};
+				i2c@4 {
+					ov5693_e@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video4";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_e";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_e";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_e";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_e";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out4: endpoint {
+									csi-port = <4>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in4>;
+								};
+							};
+						};
+					};
+				};
+				i2c@5 {
+					ov5693_f@36 {
+						compatible = "nvidia,ov5693";
+						reg = <0x36>;
+						avdd-reg = "vana";
+						iovdd-reg = "vif";
+						devnode = "video5";
+						physical_w = "3.674";
+						physical_h = "2.738";
+						mode0 { // OV5693_MODE_2592X1944
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_f";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode1 { //OV5693_MODE_2592X1458
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_f";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1458";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "2688";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.816577";
+							max_framerate = "30";
+							min_exp_time = "34";
+							max_exp_time = "550385";
+						};
+						mode2 { //OV5693_MODE_1280X720
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_f";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "1280";
+							active_h = "720";
+							pixel_t = "bayer_bggr";
+							readout_orientation = "90";
+							line_length = "1752";
+							inherent_gain = "1";
+							mclk_multiplier = "17.0";
+							pix_clk_hz = "160000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "2.787078";
+							max_framerate = "120";
+							min_exp_time = "22";
+							max_exp_time = "358733";
+						};
+						// HDR Modes
+						mode3 { //OV5693_MODE_2592X1944_HDR
+							mclk_khz = "24000";
+							num_lanes = "2";
+							tegra_sinterface = "serial_f";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							active_w = "2592";
+							active_h = "1944";
+							pixel_t = "hdr_bggr";
+							readout_orientation = "90";
+							line_length = "3696";
+							inherent_gain = "1";
+							mclk_multiplier = "19.0";
+							pix_clk_hz = "176000000";
+							min_gain_val = "1.0";
+							max_gain_val = "16";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "64";
+							min_framerate = "1.453262";
+							max_framerate = "24";
+							min_exp_time = "42";
+							max_exp_time = "687981";
+						};
+						ports {
+							#address-cells = <1>;
+							#size-cells = <0>;
+							port@0 {
+								reg = <0>;
+								ov5693_out5: endpoint {
+									csi-port = <5>;
+									bus-width = <2>;
+									remote-endpoint = <&e3333_vi_in5>;
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
+
+/* camera control gpio definitions */
+/ {
+
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+
+		/**
+		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
+		 * The first part is the camera_board_id for the module; if the module is in a FFD
+		 * platform, then use the platform name for this part.
+		 * The second part contains the position of the module, ex. “rear” or “front”.
+		 * The third part contains the last 6 characters of a part number which is found
+		 * in the module's specsheet from the vender.
+		 */
+		modules {
+			module0 {
+				badge = "e3333_bottomleft_P5V27C";
+				position = "bottomleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/ov5693_a@36";
+				};
+			};
+			module1 {
+				badge = "e3333_centerleft_P5V27C";
+				position = "centerleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/ov5693_b@36";
+				};
+			};
+			module2 {
+				badge = "e3333_centerright_P5V27C";
+				position = "centerright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/ov5693_c@36";
+				};
+			};
+			module3 {
+				badge = "e3333_topleft_P5V27C";
+				position = "topleft";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/ov5693_d@36";
+				};
+			};
+			module4 {
+				badge = "e3333_bottomright_P5V27C";
+				position = "bottomright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/ov5693_e@36";
+				};
+			};
+			module5 {
+				badge = "e3333_topright_P5V27C";
+				position = "topright";
+				orientation = "1";
+				drivernode0 {
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/ov5693_f@36";
+				};
+			};
+		};
+	};
+};
