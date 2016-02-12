@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics channel
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -1161,6 +1161,8 @@ static int channel_gk20a_alloc_priv_cmdbuf(struct channel_gk20a *c)
 
 	q->size = q->mem.size / sizeof (u32);
 
+	INIT_LIST_HEAD(&q->free);
+
 	return 0;
 
 clean_up:
@@ -1172,11 +1174,20 @@ static void channel_gk20a_free_priv_cmdbuf(struct channel_gk20a *c)
 {
 	struct vm_gk20a *ch_vm = c->vm;
 	struct priv_cmd_queue *q = &c->priv_cmd_q;
+	struct priv_cmd_entry *e;
+	struct list_head *pos, *tmp, *head;
 
 	if (q->size == 0)
 		return;
 
 	gk20a_gmmu_unmap_free(ch_vm, &q->mem);
+
+	/* free free list */
+	head = &q->free;
+	list_for_each_safe(pos, tmp, head) {
+		e = container_of(pos, struct priv_cmd_entry, list);
+		kfree(e);
+	}
 
 	memset(q, 0, sizeof(struct priv_cmd_queue));
 }
@@ -1207,7 +1218,13 @@ int gk20a_channel_alloc_priv_cmdbuf(struct channel_gk20a *c, u32 orig_size,
 	if (size > free_count)
 		return -EAGAIN;
 
-	e = kzalloc(sizeof(struct priv_cmd_entry), GFP_KERNEL);
+	if (list_empty(&q->free))
+		e = kzalloc(sizeof(struct priv_cmd_entry), GFP_KERNEL);
+	else {
+		e = container_of((&q->free)->next,
+				 struct priv_cmd_entry, list);
+		list_del(&e->list);
+	}
 	if (!e) {
 		gk20a_err(dev_from_gk20a(c->g),
 			"ch %d: fail to allocate priv cmd entry",
@@ -1247,7 +1264,9 @@ int gk20a_channel_alloc_priv_cmdbuf(struct channel_gk20a *c, u32 orig_size,
 static void free_priv_cmdbuf(struct channel_gk20a *c,
 			     struct priv_cmd_entry *e)
 {
-	kfree(e);
+	struct priv_cmd_queue *q = &c->priv_cmd_q;
+
+	list_add(&e->list, &q->free);
 }
 
 int gk20a_alloc_channel_gpfifo(struct channel_gk20a *c,
