@@ -35,26 +35,37 @@
 
 #define IMX230_MAX_COARSE_DIFF		10
 
+/* gain values are common among sensor modes */
 #define IMX230_GAIN_SHIFT		8
 #define IMX230_MIN_GAIN		(1 << IMX230_GAIN_SHIFT)
 #define IMX230_MAX_GAIN		(16 << IMX230_GAIN_SHIFT)
+#define IMX230_DEFAULT_GAIN	IMX230_MIN_GAIN
+
+/* common FL/CT values among sensor modes */
 #define IMX230_MIN_FRAME_LENGTH	(0x0)
 #define IMX230_MAX_FRAME_LENGTH	(0xffff)
 #define IMX230_MIN_EXPOSURE_COARSE	(0x0001)
 #define IMX230_MAX_EXPOSURE_COARSE	\
 	(IMX230_MAX_FRAME_LENGTH-IMX230_MAX_COARSE_DIFF)
 
-#define IMX230_DEFAULT_GAIN		IMX230_MIN_GAIN
-#define IMX230_DEFAULT_FRAME_LENGTH	(0x0CDA)
+/* Definitions for full sensor mode that matches full mode's sequence */
+#define IMX230_MIN_FRAME_LENGTH_5344x4016	(0x1022)
+#define IMX230_DEFAULT_WIDTH_5344x4016	5344
+#define IMX230_DEFAULT_HEIGHT_5344x4016	4016
+
+/* Use full sensor mode settings as default values */
+#define IMX230_DEFAULT_MODE	IMX230_MODE_5344x4016
+#define IMX230_DEFAULT_WIDTH	IMX230_DEFAULT_WIDTH_5344x4016
+#define IMX230_DEFAULT_HEIGHT	IMX230_DEFAULT_HEIGHT_5344x4016
+#define IMX230_DEFAULT_FRAME_LENGTH	IMX230_MIN_FRAME_LENGTH_5344x4016
 #define IMX230_DEFAULT_EXPOSURE_COARSE	\
 	(IMX230_DEFAULT_FRAME_LENGTH-IMX230_MAX_COARSE_DIFF)
 
-#define IMX230_DEFAULT_MODE	IMX230_MODE_5344x3200
-#define IMX230_DEFAULT_WIDTH	5344
-#define IMX230_DEFAULT_HEIGHT	3200
+/* Some other common default values */
 #define IMX230_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB10_1X10
 #define IMX230_DEFAULT_CLK_FREQ	24000000
 
+/* R0x0344-R0x034B */
 #define IMX230_NUM_CROP_REGS	8
 
 struct imx230 {
@@ -546,8 +557,10 @@ static int imx230_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
 	}
 	right = rect->left + width - 1;
 	bottom = rect->top + height - 1;
-	if ((right > IMX230_DEFAULT_WIDTH) ||
-		(bottom > IMX230_DEFAULT_HEIGHT)) {
+
+	/* Crop window is within the full mode's active */
+	if ((right > IMX230_DEFAULT_WIDTH_5344x4016) ||
+		(bottom > IMX230_DEFAULT_HEIGHT_5344x4016)) {
 		dev_err(&client->dev,
 			"%s: CROP Bound Error: right:%d, bottom:%d)\n",
 			__func__, right, bottom);
