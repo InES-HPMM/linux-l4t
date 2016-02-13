@@ -70,7 +70,7 @@ static const int MIN_LOW_TEMP = -127000;
 /*
  * default 'max' value of the HW PLLX offsetting feature
  */
-#define PLLX_OFFSET_MAX			10
+#define PLLX_OFFSET_MAX			10000
 
 #define CTL_LVL0_CPU0			0x0
 #define CTL_LVL0_CPU0_STATUS_MASK	0x3
@@ -280,13 +280,14 @@ static const int MIN_LOW_TEMP = -127000;
 #define TH_TS_EN_HW_PLLX_OFFSET_CPU_SHIFT	0
 #define TH_TS_EN_HW_PLLX_OFFSET_CPU_MASK	1
 
+#define TH_TS_PLLX_OFFSET_MIN		0x1e8
 #define TH_TS_PLLX_OFFSET_MAX		0x1ec
-#define TH_TS_PLLX_MAX_MEM_OFFSET_SHIFT	16
-#define TH_TS_PLLX_MAX_MEM_OFFSET_MASK	0xff
-#define TH_TS_PLLX_MAX_GPU_OFFSET_SHIFT	8
-#define TH_TS_PLLX_MAX_GPU_OFFSET_MASK	0xff
-#define TH_TS_PLLX_MAX_CPU_OFFSET_SHIFT	0
-#define TH_TS_PLLX_MAX_CPU_OFFSET_MASK	0xff
+#define TH_TS_PLLX_MEM_OFFSET_SHIFT	16
+#define TH_TS_PLLX_MEM_OFFSET_MASK	0xff
+#define TH_TS_PLLX_GPU_OFFSET_SHIFT	8
+#define TH_TS_PLLX_GPU_OFFSET_MASK	0xff
+#define TH_TS_PLLX_CPU_OFFSET_SHIFT	0
+#define TH_TS_PLLX_CPU_OFFSET_MASK	0xff
 
 #define TH_TS_VALID			0x1e0
 #define TH_TS_VALID_GPU_SHIFT		9
@@ -2895,7 +2896,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 	struct soctherm_therm *therm;
 	int i, j;
 	long rem;
-	u32 r, en_hw_off_reg, hw_off_max_reg;
+	u32 r, en_hw_off_reg, hw_off_max_reg, hw_off_min_reg;
 
 #ifdef CONFIG_THERMAL
 	struct soctherm_sensor_common_params *scp = &pp->sensor_params.scp;
@@ -2929,7 +2930,7 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		}
 	}
 
-	r = en_hw_off_reg = hw_off_max_reg = 0;
+	r = en_hw_off_reg = hw_off_max_reg = hw_off_min_reg = 0;
 	/* Program hotspot offsets per THERM */
 	r = REG_SET(r, TS_HOTSPOT_OFF_CPU,
 		    plat->therm[THERM_CPU].hotspot_offset / 1000);
@@ -2952,27 +2953,37 @@ static int soctherm_init_platform_data(struct soctherm_platform_data *plat)
 		en_hw_off_reg = REG_SET(en_hw_off_reg,
 				TH_TS_EN_HW_PLLX_OFFSET_CPU, 1);
 		hw_off_max_reg = REG_SET(
-				hw_off_max_reg, TH_TS_PLLX_MAX_CPU_OFFSET,
-				plat->therm[THERM_CPU].pllx_offset_max / 1000);
+				hw_off_max_reg, TH_TS_PLLX_CPU_OFFSET,
+				plat->therm[THERM_CPU].pllx_offset_max / 500);
+		hw_off_min_reg = REG_SET(
+				hw_off_min_reg, TH_TS_PLLX_CPU_OFFSET,
+				plat->therm[THERM_CPU].pllx_offset_min / 500);
 	}
 
 	if (plat->therm[THERM_GPU].en_hw_pllx_offsetting) {
 		en_hw_off_reg = REG_SET(en_hw_off_reg,
 				TH_TS_EN_HW_PLLX_OFFSET_GPU, 1);
 		hw_off_max_reg = REG_SET(
-				hw_off_max_reg, TH_TS_PLLX_MAX_GPU_OFFSET,
-				plat->therm[THERM_GPU].pllx_offset_max / 1000);
+				hw_off_max_reg, TH_TS_PLLX_GPU_OFFSET,
+				plat->therm[THERM_GPU].pllx_offset_max / 500);
+		hw_off_min_reg = REG_SET(
+				hw_off_min_reg, TH_TS_PLLX_GPU_OFFSET,
+				plat->therm[THERM_CPU].pllx_offset_min / 500);
 	}
 
 	if (plat->therm[THERM_MEM].en_hw_pllx_offsetting) {
 		en_hw_off_reg = REG_SET(en_hw_off_reg,
 				TH_TS_EN_HW_PLLX_OFFSET_MEM, 1);
 		hw_off_max_reg = REG_SET(
-				hw_off_max_reg, TH_TS_PLLX_MAX_MEM_OFFSET,
-				plat->therm[THERM_MEM].pllx_offset_max / 1000);
+				hw_off_max_reg, TH_TS_PLLX_MEM_OFFSET,
+				plat->therm[THERM_MEM].pllx_offset_max / 500);
+		hw_off_min_reg = REG_SET(
+				hw_off_min_reg, TH_TS_PLLX_MEM_OFFSET,
+				plat->therm[THERM_CPU].pllx_offset_min / 500);
 	}
 
 	soctherm_writel(hw_off_max_reg, TH_TS_PLLX_OFFSET_MAX);
+	soctherm_writel(hw_off_min_reg, TH_TS_PLLX_OFFSET_MIN);
 	soctherm_writel(en_hw_off_reg, TH_TS_PLLX_OFFSETTING);
 
 	/* configure low, med and heavy levels for CCROC NV_THERM */
@@ -4542,12 +4553,15 @@ static void soctherm_thermctl_parse(struct platform_device *pdev)
 				"enable-hw-pllx-offsetting");
 		if (pp->therm[id].en_hw_pllx_offsetting) {
 			/*
-			 * pllx-offset-max is an optional property in DT
+			 * pllx-offset-max/min is an optional property in DT
 			 */
 			if (!of_property_read_u32(np, "pllx-offset-max", &val))
 				pp->therm[id].pllx_offset_max = val;
 			else
 				pp->therm[id].pllx_offset_max = PLLX_OFFSET_MAX;
+
+			if (!of_property_read_u32(np, "pllx-offset-min", &val))
+				pp->therm[id].pllx_offset_min = val;
 		}
 	}
 }

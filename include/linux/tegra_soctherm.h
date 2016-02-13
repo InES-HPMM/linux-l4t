@@ -108,6 +108,7 @@ struct soctherm_therm {
 	struct thermal_zone_device *tz;
 	bool en_hw_pllx_offsetting;
 	int pllx_offset_max;
+	int pllx_offset_min;
 };
 
 struct soctherm_throttle_dev {
