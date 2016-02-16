@@ -1296,17 +1296,6 @@ config RTC_DRV_MAX77660
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-max77660.
 
-config RTC_DRV_TEGRA
-	tristate "Tegra RTC"
-	depends on ARCH_TEGRA_21x_SOC
-	default y
-	help
-	  Enable RTC driver on TEGRA T210 and later SOCs. Select required
-	  rtc device number to use TEGRA RTC as system time device.
-
-	  This controller does not maintain time when powered-off.
-	  Reprogramming required on boot after power up.
-
 config RTC_DRV_MAX77620
 	tristate "Maxim MAX77620"
 	depends on MFD_MAX77620
