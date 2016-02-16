@@ -1,8 +1,6 @@
 /*
  * Alarmtimer interface
  *
- * Copyright (C) 2014 NVIDIA CORPORATION. All rights reserved.
- *
  * This interface provides a timer which is similarto hrtimers,
  * but triggers a RTC alarm if the box is suspend.
  *
@@ -27,7 +25,6 @@
 #include <linux/posix-timers.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
-#include <linux/device.h>
 
 /**
  * struct alarm_base - Alarm timer bases
@@ -86,11 +83,6 @@ static int alarmtimer_rtc_add_device(struct device *dev,
 
 	if (rtcdev)
 		return -EBUSY;
-
-#ifdef CONFIG_RTC_HCTOSYS_DEVICE
-	if (strcmp(dev_name(&rtc->dev),	CONFIG_RTC_HCTOSYS_DEVICE) != 0)
-		return -EINVAL;
-#endif
 
 	if (!rtc->ops->set_alarm)
 		return -1;
