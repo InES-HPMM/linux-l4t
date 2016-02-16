@@ -80,18 +80,20 @@ tegra_sysfs_rf_test_disable()
 	extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
 	struct net_device *net = dhd_custom_sysfs_tegra_histogram_stat_netdev;
 	char *netif = net ? net->name : "";
-
-	atomic_set(&rf_test, 0);
 	int i;
-	/* Restore saved roam_off and power mode state */
-	for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
-		if (wldev_iovar_setint(net, rf_test_params[i].var, atomic_read(&rf_test_params[i].cur_val)) != BCME_OK) {
-			pr_err("%s: Failed to restore %s val\n", __func__, rf_test_params[i].var);
+
+	if (atomic_read(&rf_test)) {
+		atomic_set(&rf_test, 0);
+		/* Restore saved roam_off and power mode state */
+		for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
+			if (wldev_iovar_setint(net, rf_test_params[i].var, atomic_read(&rf_test_params[i].cur_val)) != BCME_OK) {
+				pr_err("%s: Failed to restore %s val\n", __func__, rf_test_params[i].var);
+			}
 		}
-	}
-	if(wldev_ioctl(net, WLC_SET_PM, &atomic_read(&cur_power_mode),
-		 sizeof(cur_power_mode), true)) {
-		pr_err("%s: Failed to restore power mode state\n", __func__);
+		if(wldev_ioctl(net, WLC_SET_PM, &atomic_read(&cur_power_mode),
+			 sizeof(cur_power_mode), true)) {
+			pr_err("%s: Failed to restore power mode state\n", __func__);
+		}
 	}
 }
 

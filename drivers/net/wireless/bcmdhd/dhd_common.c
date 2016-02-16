@@ -414,7 +414,7 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 	int i;
 	/* Changing PM is not allowed while RF test is enabled */
 	if (atomic_read(&rf_test)) {
-		if (ioc->cmd == WLC_SET_PM) {
+		if (ioc->cmd == WLC_SET_PM && ioc->buf) {
 			uint pm_mode = *(uint*)ioc->buf;
 			if (ioc->set) {
 				atomic_set(&cur_power_mode, pm_mode);
