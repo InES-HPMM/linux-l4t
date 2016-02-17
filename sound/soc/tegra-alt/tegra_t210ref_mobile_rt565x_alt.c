@@ -196,8 +196,9 @@ static int tegra_t210ref_dai_init(struct snd_soc_pcm_runtime *rtd,
 	case 44100:
 	case 88200:
 	case 176000:
-		clk_out_rate = 11289600; /* Codec rate */
-		mclk = 11289600 * 4; /* PLL_A rate */
+		/* aud_mclk, 256 times the sample rate */
+		clk_out_rate = clk_rate << 8;
+		mclk = 11289600 * 4;
 		break;
 	case 8000:
 	case 16000:
@@ -207,18 +208,18 @@ static int tegra_t210ref_dai_init(struct snd_soc_pcm_runtime *rtd,
 	case 96000:
 	case 192000:
 	default:
-		clk_out_rate = 12288000;
-		mclk = 12288000 * 3;
+		clk_out_rate = clk_rate << 8;
+		mclk = 12288000 * 4;
 		break;
 	}
 
-	pr_info("Setting clk_rate = %d Hz pll_a = %d Hz clk_out = %d Hz\n",
+	pr_info("Setting clk_rate = %d Hz pll_a_out0 = %d Hz clk_out = %d Hz\n",
 		clk_rate, mclk, clk_out_rate);
 	err = tegra_alt_asoc_utils_set_rate(&machine->audio_clock,
 				clk_rate, mclk, clk_out_rate);
 	if (err < 0) {
 		dev_err(card->dev,
-		"Can't configure clocks clk_rate %dHz pll_a %dHz clk_out %dHz\n",
+		"Can't configure clocks clk_rate %dHz pll_a_out0 %dHz clk_out %dHz\n",
 		clk_rate, mclk, clk_out_rate);
 		return err;
 	}
