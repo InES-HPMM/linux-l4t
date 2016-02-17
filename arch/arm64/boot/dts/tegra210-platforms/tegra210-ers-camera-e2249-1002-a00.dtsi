@@ -152,6 +152,9 @@
 				*
 				* pixel_t = "";
 				* The sensor readout pixel pattern
+				* For eg - 10 bit bayer having 'bggr' pixel pattern has value "bayer_bggr"
+				*          12 bit bayer having 'bggr' pixel pattern has value "bayer_bggr12"
+				*          14 bit bayer having 'bggr' pixel pattern has value "bayer_bggr14"
 				*
 				* readout_orientation = "0";
 				* Based on camera module orientation.
