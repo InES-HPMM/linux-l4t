@@ -1285,6 +1285,7 @@
 			0x0 0x60005070 0x0 0x8>;	/* TMR7 registers */
 		interrupts = <0 123 0x04>;
 		nvidia,expiry-count = <4>;
+		nvidia,extend-watchdog-suspend;
 		status = "disabled";
 	};
 
