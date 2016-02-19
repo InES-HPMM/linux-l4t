@@ -37,6 +37,7 @@
 		spi4 = &spi4;
 		spi5 = &spi5;
 		udc0 = &udc;
+		rtc1 = "/rtc";
 	};
 
 	mc {
