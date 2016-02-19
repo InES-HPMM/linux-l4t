@@ -1,7 +1,7 @@
 /*
  * IOMMU driver for SMMU on Tegra 3 series SoCs and later.
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -828,10 +828,9 @@ err_out:
 }
 
 static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
-				       size_t bytes)
+				       u32 *pdir, size_t bytes)
 {
 	int total = bytes >> PAGE_SHIFT;
-	u32 *pdir = page_address(as->pdir_page);
 	struct smmu_device *smmu = as->smmu;
 	unsigned long iova_base = iova;
 	bool flush_all = (total > smmu_flush_all_th_unmap_pages) ? true : false;
@@ -893,10 +892,10 @@ static size_t __smmu_iommu_unmap_pages(struct smmu_as *as, dma_addr_t iova,
 	return bytes;
 }
 
-static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as, dma_addr_t iova)
+static size_t __smmu_iommu_unmap_largepage(struct smmu_as *as,
+					dma_addr_t iova, u32 *pdir)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
-	u32 *pdir = (u32 *)page_address(as->pdir_page);
 
 	pdir[pdn] = _PDE_VACANT(pdn);
 	trace_smmu_set_pte(as->asid, iova, 0, SZ_4M, 0);
@@ -1102,10 +1101,10 @@ static int smmu_iommu_map_sg(struct iommu_domain *domain, unsigned long iova,
 }
 
 /* Remap a 4MB large page entry to 1024 * 4KB pages entries */
-static int __smmu_iommu_remap_largepage(struct smmu_as *as, dma_addr_t iova)
+static int __smmu_iommu_remap_largepage(struct smmu_as *as,
+					dma_addr_t iova, u32 *pdir)
 {
 	int pdn = SMMU_ADDR_TO_PDN(iova);
-	u32 *pdir = page_address(as->pdir_page);
 	unsigned long pfn = __phys_to_pfn(pdir[pdn] << SMMU_PDE_SHIFT);
 	unsigned int *rest = &as->pte_count[pdn];
 	gfp_t gfp = GFP_ATOMIC;
@@ -1149,7 +1148,7 @@ static size_t __smmu_iommu_unmap_default(struct smmu_as *as, dma_addr_t iova,
 			as->asid, &iova, bytes);
 		return 0;
 	} else if (pdir[pdn] & _PDE_NEXT) {
-		return __smmu_iommu_unmap_pages(as, iova, bytes);
+		return __smmu_iommu_unmap_pages(as, iova, pdir, bytes);
 	} else { /* 4MB PDE */
 		BUG_ON(config_enabled(CONFIG_TEGRA_IOMMU_SMMU_NO4MB));
 		BUG_ON(!IS_ALIGNED(iova, SZ_4M));
@@ -1157,13 +1156,13 @@ static size_t __smmu_iommu_unmap_default(struct smmu_as *as, dma_addr_t iova,
 		if (bytes < SZ_4M) {
 			int err;
 
-			err = __smmu_iommu_remap_largepage(as, iova);
+			err = __smmu_iommu_remap_largepage(as, iova, pdir);
 			if (err)
 				return 0;
-			return __smmu_iommu_unmap_pages(as, iova, bytes);
+			return __smmu_iommu_unmap_pages(as, iova, pdir, bytes);
 		}
 
-		return __smmu_iommu_unmap_largepage(as, iova);
+		return __smmu_iommu_unmap_largepage(as, iova, pdir);
 	}
 }
 
