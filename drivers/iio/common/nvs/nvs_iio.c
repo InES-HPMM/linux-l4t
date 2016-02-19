@@ -76,8 +76,7 @@
 #include <linux/iio/trigger.h>
 #include <linux/nvs.h>
 
-#define NVS_IIO_DRIVER_VERSION		(211)
-#define NVS_ATTRS_ARRAY_SIZE		(12)
+#define NVS_IIO_DRIVER_VERSION		(212)
 
 enum NVS_ATTR {
 	NVS_ATTR_ENABLE,
@@ -107,6 +106,56 @@ enum NVS_DBG {
 	NVS_INFO_DBG_KEY = 0x131071D,
 };
 
+static ssize_t nvs_info_show(struct device *dev,
+			     struct device_attribute *attr, char *buf);
+static ssize_t nvs_info_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count);
+static ssize_t nvs_attr_show(struct device *dev,
+			     struct device_attribute *attr, char *buf);
+static ssize_t nvs_attr_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t count);
+
+static DEVICE_ATTR(nvs, S_IRUGO | S_IWUSR | S_IWGRP,
+		   nvs_info_show, nvs_info_store);
+static IIO_DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
+		       nvs_attr_show, nvs_attr_store, NVS_ATTR_ENABLE);
+static IIO_DEVICE_ATTR(part, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_PART);
+static IIO_DEVICE_ATTR(vendor, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_VENDOR);
+static IIO_DEVICE_ATTR(version, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_VERSION);
+static IIO_DEVICE_ATTR(milliamp, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_MILLIAMP);
+static IIO_DEVICE_ATTR(fifo_reserved_event_count, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_FIFO_RSRV_EVNT_CNT);
+static IIO_DEVICE_ATTR(fifo_max_event_count, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_FIFO_MAX_EVNT_CNT);
+static IIO_DEVICE_ATTR(flags, S_IRUGO | S_IWUSR | S_IWGRP,
+		       nvs_attr_show, nvs_attr_store, NVS_ATTR_FLAGS);
+/* matrix permissions are read only - writes are for debug */
+static IIO_DEVICE_ATTR(matrix, S_IRUGO,
+		       nvs_attr_show, nvs_attr_store, NVS_ATTR_MATRIX);
+static IIO_DEVICE_ATTR(self_test, S_IRUGO,
+		       nvs_attr_show, NULL, NVS_ATTR_SELF_TEST);
+
+static struct attribute *nvs_attrs[] = {
+	&dev_attr_nvs.attr,
+	&iio_dev_attr_enable.dev_attr.attr,
+	&iio_dev_attr_part.dev_attr.attr,
+	&iio_dev_attr_vendor.dev_attr.attr,
+	&iio_dev_attr_version.dev_attr.attr,
+	&iio_dev_attr_milliamp.dev_attr.attr,
+	&iio_dev_attr_fifo_reserved_event_count.dev_attr.attr,
+	&iio_dev_attr_fifo_max_event_count.dev_attr.attr,
+	&iio_dev_attr_flags.dev_attr.attr,
+	&iio_dev_attr_matrix.dev_attr.attr,
+	&iio_dev_attr_self_test.dev_attr.attr,
+	NULL
+};
+
 struct nvs_state {
 	void *client;
 	struct device *dev;
@@ -114,7 +163,7 @@ struct nvs_state {
 	struct sensor_cfg *cfg;
 	struct iio_trigger *trig;
 	struct iio_chan_spec *ch;
-	struct attribute *attrs[NVS_ATTRS_ARRAY_SIZE];
+	struct attribute *attrs[ARRAY_SIZE(nvs_attrs)];
 	struct attribute_group attr_group;
 	struct iio_info info;
 	bool shutdown;
@@ -520,7 +569,7 @@ static int nvs_buf_push(struct iio_dev *indio_dev, unsigned char *data, s64 ts)
 	}
 	if ((*st->fn_dev->sts & NVS_STS_SPEW_DATA) && ts) {
 		nvs_dbg_data(indio_dev, char_buf);
-		dev_info(st->dev, "%s %s", st->cfg->name, char_buf);
+		dev_info(st->dev, "%s", char_buf);
 	}
 	if (!ret)
 		/* return pushed byte count from data if no error.
@@ -870,57 +919,14 @@ static ssize_t nvs_info_show(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(nvs, S_IRUGO | S_IWUSR | S_IWGRP,
-		   nvs_info_show, nvs_info_store);
-static IIO_DEVICE_ATTR(enable, S_IRUGO | S_IWUSR | S_IWGRP,
-		       nvs_attr_show, nvs_attr_store, NVS_ATTR_ENABLE);
-static IIO_DEVICE_ATTR(part, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_PART);
-static IIO_DEVICE_ATTR(vendor, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_VENDOR);
-static IIO_DEVICE_ATTR(version, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_VERSION);
-static IIO_DEVICE_ATTR(milliamp, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_MILLIAMP);
-static IIO_DEVICE_ATTR(fifo_reserved_event_count, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_FIFO_RSRV_EVNT_CNT);
-static IIO_DEVICE_ATTR(fifo_max_event_count, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_FIFO_MAX_EVNT_CNT);
-static IIO_DEVICE_ATTR(flags, S_IRUGO | S_IWUSR | S_IWGRP,
-		       nvs_attr_show, nvs_attr_store, NVS_ATTR_FLAGS);
-/* matrix permissions are read only - writes are for debug */
-static IIO_DEVICE_ATTR(matrix, S_IRUGO,
-		       nvs_attr_show, nvs_attr_store, NVS_ATTR_MATRIX);
-static IIO_DEVICE_ATTR(self_test, S_IRUGO,
-		       nvs_attr_show, NULL, NVS_ATTR_SELF_TEST);
-
-static struct attribute *nvs_attrs[] = {
-	&dev_attr_nvs.attr,
-	&iio_dev_attr_enable.dev_attr.attr,
-	&iio_dev_attr_part.dev_attr.attr,
-	&iio_dev_attr_vendor.dev_attr.attr,
-	&iio_dev_attr_version.dev_attr.attr,
-	&iio_dev_attr_milliamp.dev_attr.attr,
-	&iio_dev_attr_fifo_reserved_event_count.dev_attr.attr,
-	&iio_dev_attr_fifo_max_event_count.dev_attr.attr,
-	&iio_dev_attr_flags.dev_attr.attr,
-	&iio_dev_attr_matrix.dev_attr.attr,
-	&iio_dev_attr_self_test.dev_attr.attr,
-	NULL
-};
-
 static int nvs_attr_rm(struct nvs_state *st, struct attribute *rm_attr)
 {
-	unsigned int n;
 	unsigned int i;
 
-	for (i = 0; i < ARRAY_SIZE(st->attrs); i++) {
+	for (i = 0; i < ARRAY_SIZE(st->attrs) - 1; i++) {
 		if (st->attrs[i] == rm_attr) {
-			do {
-				n = i + 1;
-				st->attrs[i] = st->attrs[n];
-				i++;
-			} while (st->attrs[i] != NULL);
+			for (; i < ARRAY_SIZE(st->attrs) - 1; i++)
+				st->attrs[i] = st->attrs[i + 1];
 			return 0;
 		}
 	}
@@ -933,7 +939,6 @@ static int nvs_attr(struct iio_dev *indio_dev)
 	struct nvs_state *st = iio_priv(indio_dev);
 	unsigned int i;
 
-	BUG_ON(NVS_ATTRS_ARRAY_SIZE < ARRAY_SIZE(nvs_attrs));
 	memcpy(st->attrs, nvs_attrs, sizeof(st->attrs));
 	/* test if matrix data */
 	for (i = 0; i < ARRAY_SIZE(st->cfg->matrix); i++) {
@@ -967,8 +972,8 @@ static int nvs_read_raw(struct iio_dev *indio_dev,
 
 		*val = 0;
 		n = chan->scan_type.storagebits / 8;
-		if (n > sizeof(val))
-			n = sizeof(val);
+		if (n > sizeof(*val))
+			n = sizeof(*val);
 		memcpy(val, &st->buf[ret], n);
 		return IIO_VAL_INT;
 
