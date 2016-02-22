@@ -30,6 +30,9 @@
 #include <linux/backlight.h>
 #include <linux/input/mt.h>
 #include <linux/sysfs.h>
+#include <linux/mutex.h>
+#include <linux/fs.h>
+
 
 #include "nvtouch_kernel.h"
 
@@ -37,13 +40,15 @@
 
 #define NVTOUCH_DEBUG 1
 
-#define GPFIFO_SIZE 4
+#define GPFIFO_SIZE_SPI 4
+#define GPFIFO_SIZE_TRACE 1024
 
 struct nvtouch_sample_gpfifo {
 	u32 getp;
 	u32 putp;
+	u32 size;
 	wait_queue_head_t data_waitqueue;
-	struct nvtouch_data_frame frames[GPFIFO_SIZE];
+	struct nvtouch_data_frame *frames;
 };
 
 struct nvtouch_dta_state {
@@ -52,7 +57,6 @@ struct nvtouch_dta_state {
 	u32 authorized_pid;
 	u8 send_debug_touch;
 	struct nvtouch_ioctl_dta_config ioctl_dta_config;
-	struct nvtouch_sample_gpfifo queue;
 
 	struct nvtouch_ioctl_dta_admin_data ioctl_dta_admin_data;
 	struct nvtouch_ioctl_dta_admin_query ioctl_dta_admin_query;
@@ -68,16 +72,18 @@ struct debugfs_blob_wrapper immediate_data;
 struct debugfs_blob_wrapper captured_data;
 struct debugfs_blob_wrapper unpacked_data;
 
-#define  SENSOR_FRAME_DATA_SIZE (NVTOUCH_SENSOR_DATA_RESERVED + 16)
+static void nvtouch_kernel_process_locked(void *samples,
+		int samples_size, u8 report_mode,
+		u64 current_time);
 
-u8 s_frame_immediate_data[SENSOR_FRAME_DATA_SIZE];
+u8 s_frame_immediate_data[NVTOUCH_SENSOR_DATA_RESERVED];
 
 static void nvtouch_init_blobs(struct dentry *dfs_nvtouch_dir)
 {
-	immediate_data.size = SENSOR_FRAME_DATA_SIZE;
+	immediate_data.size = NVTOUCH_SENSOR_DATA_RESERVED;
 	immediate_data.data = s_frame_immediate_data;
 
-	unpacked_data.size = SENSOR_FRAME_DATA_SIZE;
+	unpacked_data.size = NVTOUCH_SENSOR_DATA_RESERVED;
 	unpacked_data.data = &g_state_dta.ioctl_dta.data;
 
 #ifdef NVTOUCH_DEBUG
@@ -96,15 +102,35 @@ static void nvtouch_init_blobs(struct dentry *dfs_nvtouch_dir)
 
 #define NVTOUCH_MT_SLOT_COUNT 10
 
+struct trace_header {
+	u32 id;
+	u32 nvtouch_version;
+	u64 start_timestamp;
+};
+
+struct trace_item {
+	struct nvtouch_events detected_events;
+	struct nvtouch_data_frame data_frame;
+	struct nvtouch_events vendor_events;
+};
+
+struct trace_state {
+	u32 header_ptr;
+	u32 item_ptr;
+	u64 playback_start_time;
+	u32 frame_count;
+	struct trace_header header;
+	struct trace_item item;
+};
+
 struct nvtouch_kernel_state {
 	struct nvtouch_ioctl_config userspace_config;
 	struct input_dev *input_device;
 	struct dentry *debug_dfs;
-	struct workqueue_struct *input_workqueue;
-	struct nvtouch_sample_gpfifo sample_gpfifo;
+	struct nvtouch_sample_gpfifo *sample_gpfifo;
+	struct nvtouch_sample_gpfifo *trace_gpfifo;
+	struct mutex sample_input_mutex;
 	u64 frame_counter;
-	struct task_struct *process_thread;
-	u32 userspace_daemon_running;
 	u32 last_event_count;
 	u64 time_of_last_touch;
 	u32 refresh_rate_hz;
@@ -156,6 +182,7 @@ struct nvtouch_kernel_state {
 	u32 input_slot_bits;
 	u32 input_slot_ids[NVTOUCH_MT_SLOT_COUNT];
 
+	struct trace_state replay_trace;
 
 	struct device *nvtouch_dev;
 } g_state_kernel;
@@ -221,11 +248,48 @@ static void get_debug_touch(struct nvtouch_events *events)
 }
 
 /*
- * Returns pointer for writing data to gpfifo
- * NULL is fifo is full
+ * creates gpfifo of desired size
+ */
+static struct nvtouch_sample_gpfifo *nvtouch_gpfifo_create(u32 size)
+{
+	struct nvtouch_sample_gpfifo *gpfifo =
+		kmalloc(sizeof(struct nvtouch_sample_gpfifo), GFP_KERNEL);
+	if (gpfifo) {
+		memset(gpfifo, 0, sizeof(struct nvtouch_sample_gpfifo));
+		init_waitqueue_head(&gpfifo->data_waitqueue);
+		gpfifo->size = size;
+		gpfifo->frames =
+			vmalloc(size * sizeof(struct nvtouch_data_frame));
+
+		if (gpfifo->frames) {
+			memset(gpfifo->frames, 0,
+				size * sizeof(struct nvtouch_data_frame));
+		} else {
+			kfree(gpfifo);
+			gpfifo = NULL;
+		}
+	}
+	return gpfifo;
+}
+
+/*
+ *
+ */
+static void nvtouch_gpfifo_free(struct nvtouch_sample_gpfifo *gpfifo)
+{
+	if (gpfifo) {
+		if (gpfifo->frames)
+			vfree(gpfifo->frames);
+		kfree(gpfifo);
+	}
+}
+
+/*
+ * Returns status of gpfifo
  */
 static int nvtouch_gpfifo_empty(struct nvtouch_sample_gpfifo *gpfifo)
 {
+	wmb();
 	return (gpfifo->putp - gpfifo->getp) == 0;
 }
 
@@ -237,8 +301,9 @@ static struct nvtouch_data_frame *nvtouch_gpfifo_put(
 		struct nvtouch_sample_gpfifo *gpfifo)
 {
 	struct nvtouch_data_frame *frame = NULL;
-	if ((gpfifo->putp - gpfifo->getp) < GPFIFO_SIZE)
-		frame = &gpfifo->frames[gpfifo->putp % GPFIFO_SIZE];
+	wmb();
+	if ((gpfifo->putp - gpfifo->getp) < gpfifo->size)
+		frame = &gpfifo->frames[gpfifo->putp % gpfifo->size];
 	return frame;
 }
 
@@ -250,12 +315,279 @@ static struct nvtouch_data_frame *nvtouch_gpfifo_get(
 		struct nvtouch_sample_gpfifo *gpfifo)
 {
 	struct nvtouch_data_frame *frame = NULL;
+	wmb();
 	if ((gpfifo->putp - gpfifo->getp) > 0)
-		frame = &gpfifo->frames[gpfifo->getp % GPFIFO_SIZE];
+		frame = &gpfifo->frames[gpfifo->getp % gpfifo->size];
 	return frame;
 }
 
 static int frames_skipped;
+
+static int trace_replay_thread(void *param)
+{
+	(void)param;
+	/* delay to buffer enough data for smooth playback */
+	msleep(1000);
+	g_state_kernel.replay_trace.playback_start_time =
+			nvtouch_get_time_us();
+	while (1) {
+		struct nvtouch_data_frame *data_frame;
+		u64 frame_time;
+		u64 current_time;
+		if (nvtouch_gpfifo_empty(g_state_kernel.trace_gpfifo)) {
+			usleep_range(500, 1500);
+			continue;
+		}
+
+		data_frame = nvtouch_gpfifo_get(g_state_kernel.trace_gpfifo);
+
+		BUG_ON(!data_frame);
+
+		/* end of replay signature */
+		if (data_frame->timestamp == -1ll) {
+			wmb();
+			g_state_kernel.trace_gpfifo->getp++;
+			pr_info("Replay thread finished\n");
+			return 0;
+		}
+
+		frame_time = g_state_kernel.replay_trace.playback_start_time +
+			data_frame->timestamp -
+			g_state_kernel.replay_trace.header.start_timestamp;
+
+		current_time = nvtouch_get_time_us();
+
+		while (frame_time > current_time) {
+			usleep_range(500, 1500);
+			if (frame_time - current_time > 10000000ll) {
+				pr_err("nvtouch: input timeout %llu us\n",
+						frame_time - current_time);
+				break;
+			}
+			current_time = nvtouch_get_time_us();
+		}
+
+		if (current_time - frame_time > 3000) {
+			pr_warn("replay latency is high %llu us\n",
+					nvtouch_get_time_us() - frame_time);
+		}
+
+		nvtouch_kernel_process_locked(data_frame->samples,
+					NVTOUCH_SENSOR_DATA_RESERVED,
+					g_state_kernel.report_mode,
+					current_time);
+		wmb();
+		g_state_kernel.trace_gpfifo->getp++;
+	}
+	return 0;
+}
+
+
+static ssize_t debugfs_write_trace(struct file *filp,
+		   const char *buf,
+		   size_t count_total,
+		   loff_t *off)
+{
+	u32 count_processed = 0;
+	u32 count_to_read;
+	u8 *dest;
+	u64 frame_time;
+	u64 current_time;
+	struct nvtouch_data_frame *data_frame;
+	unsigned long count_unread;
+
+	while (count_processed < count_total) {
+		int count_remaining = count_total - count_processed;
+
+		if (g_state_kernel.replay_trace.header_ptr
+				< sizeof(struct trace_header)) {
+			u32 count_to_read = sizeof(struct trace_header) -
+				g_state_kernel.replay_trace.header_ptr;
+
+			u8 *dest = (u8 *)&g_state_kernel.replay_trace.header;
+
+			count_to_read = count_to_read < count_remaining ?
+					count_to_read : count_remaining;
+
+			count_unread = copy_from_user((void *)
+				&dest[g_state_kernel.replay_trace.header_ptr],
+				&buf[count_processed],
+				count_to_read);
+
+			if (count_unread) {
+				WARN_ON("Cannot read trace from userspace");
+				return -EFAULT;
+			}
+
+			g_state_kernel.replay_trace.header_ptr +=
+					count_to_read;
+			count_processed += count_to_read;
+
+			/* If full header is retrieved, start the playback */
+			if (g_state_kernel.replay_trace.header_ptr ==
+					sizeof(struct trace_header)) {
+
+				pr_info("Trace playback started, v %d\n",
+					g_state_kernel.replay_trace.header
+					.nvtouch_version);
+
+				g_state_kernel.replay_trace
+					.playback_start_time =
+						nvtouch_get_time_us();
+				wmb();
+				kthread_run(trace_replay_thread, NULL,
+						"nvtouch_replay");
+			}
+
+			/* jump to beginning of the data processing
+			 * loop to process next chunk of data */
+			continue;
+		}
+
+
+		/* Header must be fully initialized */
+		BUG_ON(g_state_kernel.replay_trace.header_ptr !=
+				sizeof(struct trace_header));
+
+		BUG_ON(g_state_kernel.replay_trace.item_ptr >=
+				sizeof(struct trace_item));
+
+		/* get a new frame */
+		count_to_read = sizeof(struct trace_item) -
+			g_state_kernel.replay_trace.item_ptr;
+
+		dest = (u8 *) &g_state_kernel.replay_trace.item;
+
+		count_to_read = count_to_read < count_remaining ?
+				count_to_read : count_remaining;
+
+		count_unread = copy_from_user(
+			(void *)&dest[g_state_kernel.replay_trace.item_ptr],
+			&buf[count_processed],
+			count_to_read);
+
+		if (count_unread) {
+			WARN_ON("Cannot read trace from userspace");
+			return -EFAULT;
+		}
+
+		g_state_kernel.replay_trace.item_ptr += count_to_read;
+		count_processed += count_to_read;
+
+		/* If full frame is not retrieved, jump to
+		 * process next chunk of data */
+		if (g_state_kernel.replay_trace.item_ptr !=
+				sizeof(struct trace_item))
+			continue;
+
+
+#if 0
+		/* Synchronous replay, simple but doesn't
+		 * keep timing well */
+		frame_time =
+			g_state_kernel.replay_trace.playback_start_time +
+			g_state_kernel.replay_trace.item.data_frame.timestamp -
+			g_state_kernel.replay_trace.header.start_timestamp;
+		current_time = nvtouch_get_time_us();
+		while (frame_time > current_time) {
+			usleep_range(500, 1500);
+			current_time = nvtouch_get_time_us();
+		}
+
+		nvtouch_kernel_process_locked(
+			g_state_kernel.replay_trace.item.data_frame.samples,
+			NVTOUCH_SENSOR_DATA_RESERVED,
+			g_state_kernel.report_mode,
+			current_time);
+
+		if (current_time - frame_time > 3000) {
+			pr_warn("replay latency is high %llu us\n",
+					current_time - frame_time);
+		}
+
+#else
+		/* Asynchronous replay - more complex, but keeps timing more
+		 * accurate */
+		(void) current_time;
+		(void) frame_time;
+		while (!nvtouch_gpfifo_put(g_state_kernel.trace_gpfifo))
+			usleep_range(3000, 4000);
+
+		data_frame = nvtouch_gpfifo_put(g_state_kernel.trace_gpfifo);
+
+		BUG_ON(!data_frame);
+
+		memcpy(data_frame->samples,
+			g_state_kernel.replay_trace.item.data_frame.samples,
+			NVTOUCH_SENSOR_DATA_RESERVED);
+		data_frame->timestamp =
+			g_state_kernel.replay_trace.item.data_frame.timestamp;
+		wmb();
+		g_state_kernel.trace_gpfifo->putp++;
+#endif
+		g_state_kernel.replay_trace.frame_count++;
+		/* Prepare for new frame */
+		g_state_kernel.replay_trace.item_ptr = 0;
+
+	}
+
+	BUG_ON(count_processed != count_total);
+	*off += count_processed;
+
+	return count_processed;
+}
+
+static int debugfs_replay_open(struct inode *inode,
+	struct file *file)
+{
+	mutex_lock(&g_state_kernel.sample_input_mutex);
+
+	/* Should not be allocated */
+	BUG_ON(g_state_kernel.trace_gpfifo);
+
+	g_state_kernel.trace_gpfifo =
+			nvtouch_gpfifo_create(GPFIFO_SIZE_TRACE);
+
+	memset(&g_state_kernel.replay_trace, 0, sizeof(struct trace_state));
+
+	pr_info("nvtouch: start touch trace replay...\n");
+	return 0;
+}
+
+static int debugfs_replay_release(struct inode *inode,
+	struct file *file)
+{
+	struct nvtouch_data_frame *data_frame;
+
+	while (!nvtouch_gpfifo_put(g_state_kernel.trace_gpfifo))
+		usleep_range(1000, 2000);
+
+	data_frame = nvtouch_gpfifo_put(g_state_kernel.trace_gpfifo);
+
+	/* Send end of data marker */
+	data_frame->timestamp = -1ll;
+	wmb();
+	g_state_kernel.trace_gpfifo->putp++;
+
+	/* wait for playback to finish */
+	while (!nvtouch_gpfifo_empty(g_state_kernel.trace_gpfifo))
+		usleep_range(1000, 3000);
+
+	pr_info("nvtouch: stop touch trace replay.\n");
+
+	nvtouch_gpfifo_free(g_state_kernel.trace_gpfifo);
+	g_state_kernel.trace_gpfifo = NULL;
+
+	mutex_unlock(&g_state_kernel.sample_input_mutex);
+	return 0;
+}
+
+static const struct file_operations trace_replay_ops = {
+		.open = debugfs_replay_open,
+		.release = debugfs_replay_release,
+		.write = debugfs_write_trace
+};
+
 
 static ssize_t sysfs_driver_mode_show(struct device *dev,
 	struct device_attribute *attr,
@@ -298,23 +630,24 @@ static ssize_t sysfs_driver_mode_set(struct device *dev,
 	/* send last data frame to userspace to notify about
 	 * driver mode changes */
 	if (g_state_kernel.is_initialized &&
-		nvtouch_gpfifo_empty(&g_state_kernel.sample_gpfifo)) {
-		g_state_kernel.sample_gpfifo.getp--;
-		wake_up(&g_state_kernel.sample_gpfifo.data_waitqueue);
+		nvtouch_gpfifo_empty(g_state_kernel.sample_gpfifo)) {
+		wmb();
+		g_state_kernel.sample_gpfifo->getp--;
+		wake_up(&g_state_kernel.sample_gpfifo->data_waitqueue);
 	}
 	return ret;
 }
 
-static DEVICE_ATTR(driver_mode, 0664, sysfs_driver_mode_show,
+static DEVICE_ATTR(driver_mode, 0600, sysfs_driver_mode_show,
 		sysfs_driver_mode_set);
 
 /*
  * Timestamp the samples and pass them to further processing
  */
-void nvtouch_kernel_process(void *samples, int samples_size, u8 report_mode)
+static void nvtouch_kernel_process_locked(void *samples, int samples_size,
+		u8 report_mode, u64 data_timestamp)
 {
 	struct nvtouch_data_frame *data_frame;
-	u64 data_timestamp;
 
 	g_state_kernel.report_mode = report_mode;
 
@@ -322,8 +655,6 @@ void nvtouch_kernel_process(void *samples, int samples_size, u8 report_mode)
 	if (g_state_kernel.driver_mode == NVTOUCH_DRIVER_CONFIG_MODE_VENDOR_DTA
 			&& g_state_dta.client_refcount <= 0)
 		return;
-
-	data_timestamp = nvtouch_get_time_us();
 
 	if (g_state_kernel.debug_blink_on_touch) {
 		g_state_kernel.backlight_device->props.brightness = 0;
@@ -336,43 +667,55 @@ void nvtouch_kernel_process(void *samples, int samples_size, u8 report_mode)
 	/* TODO: remove immediate data? */
 #ifdef NVTOUCH_DEBUG
 	if (immediate_data.data)
-		memcpy(immediate_data.data, samples, immediate_data.size);
+		memcpy(immediate_data.data, samples,
+			samples_size < NVTOUCH_SENSOR_DATA_RESERVED ?
+			samples_size : NVTOUCH_SENSOR_DATA_RESERVED);
 #endif
 	if (samples_size > NVTOUCH_SENSOR_DATA_RESERVED) {
-		pr_err("Samples size = %d > NVTOUCH_SENSOR_DATA_RESERVED\n",
+		pr_err("nvtouch: samples size = %d > NVTOUCH_SENSOR_DATA_RESERVED\n",
 				samples_size);
-		/* BUG_ON("Unsupported size");
-		FIXME: does Sharp send two frames sometime? Should we handle
-		this situation sometimes.
-		samples_size = NVTOUCH_SENSOR_DATA_RESERVED;
-		TODO: ignore the data, since it doesn't seem to contain any
-		useful information.
-		*/
+		/* Unexpected frame size, don't process this data */
 		return;
 	}
 
-	data_frame = nvtouch_gpfifo_put(&g_state_kernel.sample_gpfifo);
+	data_frame = nvtouch_gpfifo_put(g_state_kernel.sample_gpfifo);
 	if (data_frame) {
 		data_frame->timestamp = data_timestamp;
 		data_frame->irq_timestamp = g_state_kernel.touch_irq_timestamp;
 		data_frame->frame_counter = g_state_kernel.frame_counter++;
 		memcpy(data_frame->samples, samples, samples_size);
-		g_state_kernel.sample_gpfifo.putp++;
+		wmb();
+		g_state_kernel.sample_gpfifo->putp++;
 		if (g_state_kernel.is_initialized) {
 			/* Wake up touch recognition engine to
 			process new data frame */
-			wake_up(&g_state_kernel.sample_gpfifo.data_waitqueue);
+			wake_up(&g_state_kernel.sample_gpfifo->data_waitqueue);
 		}
 	} else {
 		if (!(frames_skipped & 0xff))
 			pr_err(
-			"userspace_daemon processing: No space in GP fifo! "
+			"nvtouch: userspace_daemon processing: No space in GP fifo! "
 			"Skipped frames %d\n",
 			frames_skipped
 			);
 		frames_skipped++;
 	}
 }
+
+/*
+ * Timestamp the samples and pass them to further processing
+ */
+void nvtouch_kernel_process(void *samples, int samples_size, u8 report_mode)
+{
+	/* Skip update if trace replay is in progress */
+	if (mutex_trylock(&g_state_kernel.sample_input_mutex)) {
+		nvtouch_kernel_process_locked(samples, samples_size,
+				report_mode,
+				nvtouch_get_time_us());
+		mutex_unlock(&g_state_kernel.sample_input_mutex);
+	}
+}
+
 EXPORT_SYMBOL(nvtouch_kernel_process);
 
 static int device_open(struct inode *inode,
@@ -465,9 +808,9 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 	params = &g_state_kernel.ioctl_data_update;
 
 	if (g_state_kernel.enable_debug_log &&
-			(g_state_kernel.sample_gpfifo.getp & 1023) == 0) {
+			(g_state_kernel.sample_gpfifo->getp & 1023) == 0) {
 		pr_err("NVTOUCH_IOCTL_UPDATE %d\n",
-			(int)g_state_kernel.sample_gpfifo.getp);
+			(int)g_state_kernel.sample_gpfifo->getp);
 	}
 
 	params->pm_active_to_lp_timeout_ms =
@@ -492,16 +835,16 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 	memcpy(&g_state_kernel.last_reported,
 			&params->detected_events,
 			sizeof(struct nvtouch_events));
-	g_state_dta.queue.putp++;
 
 	wait_count = 0;
-	while (nvtouch_gpfifo_empty(&g_state_kernel.sample_gpfifo)) {
+
+	while (nvtouch_gpfifo_empty(g_state_kernel.sample_gpfifo)) {
 		usleep_range(500, 1500);
 		wait_count++;
 		if (wait_count > 10) {
 			wait_event_interruptible(
-			g_state_kernel.sample_gpfifo.data_waitqueue,
-			!nvtouch_gpfifo_empty(&g_state_kernel.sample_gpfifo));
+			g_state_kernel.sample_gpfifo->data_waitqueue,
+			!nvtouch_gpfifo_empty(g_state_kernel.sample_gpfifo));
 		}
 
 		if (wait_count > 100) {
@@ -516,14 +859,15 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 	}
 
 	/* Get and copy dataframe to userspace */
-	data_frame = nvtouch_gpfifo_get(&g_state_kernel.sample_gpfifo);
+	data_frame = nvtouch_gpfifo_get(g_state_kernel.sample_gpfifo);
+
 	memcpy(&params->data_frame, data_frame,
 			sizeof(struct nvtouch_data_frame));
 	memcpy(&params->vendor_events,
 			&g_state_kernel.vendor_events,
 			sizeof(struct nvtouch_events));
-
-	g_state_kernel.sample_gpfifo.getp++;
+	wmb();
+	g_state_kernel.sample_gpfifo->getp++;
 
 	in_tune_param = (params->driver_config &
 			NVTOUCH_CONFIG_TUNE_PARAM_MASK) >>
@@ -972,7 +1316,6 @@ long nvtouch_dta_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 					&g_state_kernel.last_reported,
 					sizeof(struct nvtouch_events));
 		}
-		g_state_dta.queue.getp = g_state_dta.queue.putp + 1;
 
 		err = copy_to_user((void __user *)arg,
 				&g_state_dta.ioctl_dta,
@@ -1288,10 +1631,20 @@ static int __init nvtouch_cdev_init(void)
 	for (i = 0; i < NVTOUCH_MT_SLOT_COUNT; i++)
 		clear_mt_slot(i);
 
-	init_waitqueue_head(&g_state_kernel.sample_gpfifo.data_waitqueue);
 	init_debug_blink_on_touch();
 	nvtouch_init_blobs(g_state_kernel.debug_dfs);
 	spin_lock_init(&g_state_dta.slock);
+
+	mutex_init(&g_state_kernel.sample_input_mutex);
+
+	g_state_kernel.sample_gpfifo =
+			nvtouch_gpfifo_create(GPFIFO_SIZE_SPI);
+
+	BUG_ON(!g_state_kernel.sample_gpfifo);
+
+	debugfs_create_file("replay_trace", 0600,
+			g_state_kernel.debug_dfs, NULL,
+			&trace_replay_ops);
 
 	create_dta_dev_nodes();
 
@@ -1299,6 +1652,7 @@ static int __init nvtouch_cdev_init(void)
 
 out_chrdev:
 	unregister_chrdev(NVTOUCH_MAJOR, "nvtouch");
+
 out:
 	g_state_kernel.is_initialized = 0;
 	pr_err("XXX - registered NVTouch driver\n");

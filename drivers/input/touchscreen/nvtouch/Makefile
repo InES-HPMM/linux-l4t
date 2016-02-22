@@ -4,4 +4,5 @@
 
 # kernel specific code
 obj-y += nvtouch_kernel.o
+ccflags-y += -Werror
 
