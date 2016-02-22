@@ -4245,11 +4245,11 @@ static int tempoverride_set(void *data, u64 val)
 	return 0;
 }
 
-DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%llu\n");
-DEFINE_SIMPLE_ATTRIBUTE(cputemp_fops, cputemp_get, cputemp_set, "%llu\n");
-DEFINE_SIMPLE_ATTRIBUTE(gputemp_fops, gputemp_get, gputemp_set, "%llu\n");
-DEFINE_SIMPLE_ATTRIBUTE(memtemp_fops, memtemp_get, memtemp_set, "%llu\n");
-DEFINE_SIMPLE_ATTRIBUTE(plltemp_fops, plltemp_get, plltemp_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(convert_fops, convert_get, convert_set, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(cputemp_fops, cputemp_get, cputemp_set, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(gputemp_fops, gputemp_get, gputemp_set, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(memtemp_fops, memtemp_get, memtemp_set, "%lld\n");
+DEFINE_SIMPLE_ATTRIBUTE(plltemp_fops, plltemp_get, plltemp_set, "%lld\n");
 DEFINE_SIMPLE_ATTRIBUTE(tempoverride_fops, tempoverride_get, tempoverride_set,
 			"%llu\n");
 
