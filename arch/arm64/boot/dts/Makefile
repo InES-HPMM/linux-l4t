@@ -69,6 +69,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-tx1-p2597-2180-a01-android-d
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-tx1-p2597-2180-a01-devkit.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-e-base-p2595-0000-a00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-e-p2595-0000-a00-00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-e-p2595-0000-a00-00-24x7.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-a00-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-a00-wifi-00.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-2302-a01-00.dtb
