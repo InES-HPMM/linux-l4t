@@ -107,6 +107,18 @@
 		/delete-node/ regulator@210;
 	};
 
+	udc@7d000000 {
+		status = "okay";
+	};
+
+        otg@7d000000 {
+		status = "okay";
+	};
+
+	xusb@70090000 {
+		nvidia,portmap = <0x0e02>;
+	};
+
 	pwm-fan {
 		vdd-fan-supply = <&en_vdd_fan_5v0>;
 	};
