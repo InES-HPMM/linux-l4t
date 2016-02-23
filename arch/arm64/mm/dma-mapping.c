@@ -2,6 +2,7 @@
  * SWIOTLB-based DMA API implementation
  *
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
  * Author: Catalin Marinas <catalin.marinas@arm.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -2189,8 +2190,10 @@ static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!iova)
 		return;
 
-	trace_dmadebug_unmap_page(dev, handle, size,
-		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
+	if (static_key_false(&__tracepoint_dmadebug_unmap_page.key))
+		trace_dmadebug_unmap_page(dev, handle, size,
+		    phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
+
 	pg_iommu_unmap(mapping, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
@@ -2221,8 +2224,7 @@ static void arm_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
 		__dma_page_dev_to_cpu(page, offset, size, dir);
 
-	trace_dmadebug_unmap_page(dev, handle, size,
-		  phys_to_page(iommu_iova_to_phys(mapping->domain, handle)));
+	trace_dmadebug_unmap_page(dev, handle, size, page);
 	pg_iommu_unmap(mapping, iova, len, (ulong)attrs);
 	if (!dma_get_attr(DMA_ATTR_SKIP_FREE_IOVA, attrs))
 		__free_iova(mapping, iova, len, attrs);
