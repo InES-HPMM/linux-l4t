@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -49,6 +49,18 @@ static inline u32 hwmbox_readl(u32 reg)
 static inline void hwmbox_writel(u32 val, u32 reg)
 {
 	writel(val, nvadsp_drv_data->base_regs[AMISC] + reg);
+}
+
+
+#define PRINT_HWMBOX(x) \
+	dev_info(&nvadsp_pdev->dev, "%s: 0x%x\n", #x, hwmbox_readl(x))
+
+void dump_mailbox_regs(void)
+{
+	dev_info(&nvadsp_pdev->dev, "dumping hwmailbox registers ...\n");
+	PRINT_HWMBOX(RECV_HWMBOX);
+	PRINT_HWMBOX(SEND_HWMBOX);
+	dev_info(&nvadsp_pdev->dev, "end of dump ....\n");
 }
 
 static void hwmboxq_init(struct hwmbox_queue *queue)

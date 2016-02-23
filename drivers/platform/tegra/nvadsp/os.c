@@ -973,6 +973,27 @@ static void dump_adsp_logs(void)
 	dev_err(dev, "End of ADSP log dump  .....\n");
 }
 
+static void print_agic_irq_states(void)
+{
+	struct device *dev = &priv.pdev->dev;
+	int i;
+
+	for (i = INT_AMISC_MBOX_FULL0; i <= INT_ADSP_ACTMON; i++) {
+		dev_info(dev, "irq %d is %s and %s\n", i,
+		tegra_agic_irq_is_pending(INT_ADSP_WDT) ?
+			"pending" : "not pending",
+		tegra_agic_irq_is_active(INT_ADSP_WDT) ?
+			"active" : "not active");
+	}
+}
+
+static void dump_adsp_sys(void)
+{
+	dump_adsp_logs();
+	dump_mailbox_regs();
+	print_agic_irq_states();
+}
+
 int nvadsp_os_start(void)
 {
 	struct nvadsp_drv_data *drv_data;
@@ -1013,7 +1034,7 @@ int nvadsp_os_start(void)
 		pm_runtime_put_sync(&priv.pdev->dev);
 #endif
 		dev_err(dev, "adsp failed to boot with ret = %d\n", ret);
-		dump_adsp_logs();
+		dump_adsp_sys();
 		goto unlock;
 
 	}
@@ -1213,7 +1234,7 @@ int nvadsp_os_suspend(void)
 		priv.os_running = drv_data->adsp_os_running = false;
 	else {
 		dev_err(&priv.pdev->dev, "suspend failed with %d\n", ret);
-		dump_adsp_logs();
+		dump_adsp_sys();
 	}
 unlock:
 	mutex_unlock(&priv.os_run_lock);
@@ -1230,7 +1251,7 @@ static void nvadsp_os_restart(struct work_struct *work)
 	struct device *dev = &data->pdev->dev;
 
 	disable_irq(wdt_virq);
-	dump_adsp_logs();
+	dump_adsp_sys();
 	nvadsp_os_stop();
 
 	if (tegra_agic_irq_is_active(INT_ADSP_WDT)) {
