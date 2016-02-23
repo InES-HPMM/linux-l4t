@@ -940,7 +940,8 @@ static void tegra_first_level_clk_gate(void)
 	clk_disable_unprepare(g_tegra_hpriv->clk_sata_oob);
 	if (g_tegra_hpriv->clk_sata_aux)
 		clk_disable_unprepare(g_tegra_hpriv->clk_sata_aux);
-	clk_disable_unprepare(g_tegra_hpriv->clk_cml1);
+	if (g_tegra_hpriv->clk_cml1)
+		clk_disable_unprepare(g_tegra_hpriv->clk_cml1);
 	g_tegra_hpriv->clk_state = CLK_OFF;
 }
 
@@ -970,7 +971,9 @@ static int tegra_first_level_clk_ungate(void)
 		err_clk_name = "SATA_AUX";
 		goto clk_sata_aux_enb_error;
 	}
-	if (clk_prepare_enable(g_tegra_hpriv->clk_cml1)) {
+
+	if (g_tegra_hpriv->clk_cml1 &&
+		clk_prepare_enable(g_tegra_hpriv->clk_cml1)) {
 		err_clk_name = "cml1";
 		goto clk_cml1_enb_error;
 	}
@@ -1384,7 +1387,6 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 	struct clk *clk_sata_oob = NULL;
 	struct clk *clk_sata_cold = NULL;
 	struct clk *clk_pllp = NULL;
-	struct clk *clk_cml1 = NULL;
 	int err = 0;
 	u32 val;
 	int partition_id;
@@ -1407,14 +1409,7 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 			goto exit;
 		}
 
-		clk_cml1 = clk_get_sys(NULL, "cml1");
-		if (IS_ERR_OR_NULL(clk_cml1)) {
-			pr_err("%s: unable to get cml1 clock Errone is %d\n",
-					__func__, (int) PTR_ERR(clk_cml1));
-			err = PTR_ERR(clk_cml1);
-			goto exit;
-		}
-		tegra_hpriv->clk_cml1 = clk_cml1;
+		tegra_hpriv->clk_cml1 = NULL;
 
 		/* pll_p is the parent of tegra_sata and tegra_sata_oob */
 		clk_pllp = clk_get_sys(NULL, "pll_p");
@@ -1460,12 +1455,6 @@ static int tegra_ahci_t210_controller_init(void *hpriv, int lp0)
 		tegra_hpriv->base_list[2] = devm_ioremap(tegra_hpriv->dev,
 				TEGRA_XUSB_PADCTL_BASE,
 				TEGRA_XUSB_PADCTL_SIZE);
-	}
-
-	if (clk_prepare_enable(tegra_hpriv->clk_cml1)) {
-		pr_err("%s: unable to enable cml1 clock\n", __func__);
-		err = -ENODEV;
-		goto exit;
 	}
 
 	tegra_periph_reset_assert(tegra_hpriv->clk_sata);
@@ -1686,8 +1675,6 @@ exit:
 		clk_put(tegra_hpriv->clk_sata_aux);
 	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_sata_cold))
 		clk_put(tegra_hpriv->clk_sata_cold);
-	if (!IS_ERR_OR_NULL(tegra_hpriv->clk_cml1))
-		clk_put(tegra_hpriv->clk_cml1);
 
 	if (err && !lp0) {
 		/* turn off all SATA power rails; ignore returned status */
