@@ -1030,11 +1030,11 @@ int nvadsp_os_start(void)
 	if (ret) {
 		priv.os_running = drv_data->adsp_os_running = false;
 		/* if start fails call pm suspend of adsp driver */
+		dev_err(dev, "adsp failed to boot with ret = %d\n", ret);
+		dump_adsp_sys();
 #ifdef CONFIG_PM_RUNTIME
 		pm_runtime_put_sync(&priv.pdev->dev);
 #endif
-		dev_err(dev, "adsp failed to boot with ret = %d\n", ret);
-		dump_adsp_sys();
 		goto unlock;
 
 	}
@@ -1099,13 +1099,6 @@ static int __nvadsp_os_suspend(void)
 
 	assert_adsp(drv_data);
 
-#ifdef CONFIG_PM_RUNTIME
-	ret = pm_runtime_put_sync(&priv.pdev->dev);
-	if (ret) {
-		dev_err(dev, "failed in pm_runtime_put_sync\n");
-		goto out;
-	}
-#endif
  out:
 	return ret;
 }
@@ -1206,6 +1199,7 @@ EXPORT_SYMBOL(nvadsp_os_stop);
 
 int nvadsp_os_suspend(void)
 {
+	struct device *dev = &priv.pdev->dev;
 	struct nvadsp_drv_data *drv_data;
 	int ret = -EINVAL;
 
@@ -1230,9 +1224,14 @@ int nvadsp_os_suspend(void)
 		goto unlock;
 	}
 	ret = __nvadsp_os_suspend();
-	if (!ret)
+	if (!ret) {
+#ifdef CONFIG_PM_RUNTIME
+		ret = pm_runtime_put_sync(&priv.pdev->dev);
+		if (ret)
+			dev_err(dev, "failed in pm_runtime_put_sync\n");
+#endif
 		priv.os_running = drv_data->adsp_os_running = false;
-	else {
+	} else {
 		dev_err(&priv.pdev->dev, "suspend failed with %d\n", ret);
 		dump_adsp_sys();
 	}
