@@ -3076,6 +3076,9 @@ static int tegra_ahci_init_one(struct platform_device *pdev)
 	if (hpriv->cap & HOST_CAP_PMP)
 		pi.flags |= ATA_FLAG_PMP;
 
+	/* Disable DIPM */
+	pi.flags |= ATA_FLAG_NO_DIPM;
+
 	/*
 	 * CAP.NP sometimes indicate the index of the last enabled
 	 * port, at other times, that of the last possible port, so
