@@ -352,7 +352,7 @@ static int imx230_power_on(struct camera_common_data *s_data)
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 1);
 
-	usleep_range(300, 310);
+	usleep_range(1000, 1010);
 
 	pw->state = SWITCH_ON;
 	return 0;
