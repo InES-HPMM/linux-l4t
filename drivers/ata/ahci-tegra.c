@@ -129,6 +129,9 @@
 #define SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_SHIFT	24
 #define SATA0_CHX_PHY_CTRL1_GEN2_RX_EQ_MASK	(0xf << 24)
 
+#define T_SATA0_CFG_LINK_0				0x174
+#define T_SATA0_CFG_LINK_0_USE_POSEDGE_SCTL_DET		BIT(24)
+
 /* AHCI config space defines */
 #define TEGRA_PRIVATE_AHCI_CC_BKDR		0x4a4
 #define TEGRA_PRIVATE_AHCI_CC_BKDR_OVERRIDE	0x54c
@@ -489,6 +492,11 @@ static int tegra_ahci_runtime_resume(struct device *dev);
 #define tegra_ahci_resume		NULL
 #endif
 
+static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
+			  unsigned long deadline);
+static int tegra_ahci_softreset(struct ata_link *link, unsigned int *class,
+			  unsigned long deadline);
+
 static struct scsi_host_template ahci_sht = {
 	AHCI_SHT("tegra-sata"),
 };
@@ -501,6 +509,8 @@ static struct ata_port_operations tegra_ahci_ops = {
 	.port_resume            = tegra_ahci_port_resume,
 #endif
 #endif
+	.hardreset	= tegra_ahci_hardreset,
+	.softreset	= tegra_ahci_softreset,
 };
 
 static const struct ata_port_info ahci_port_info = {
@@ -2103,6 +2113,38 @@ static int tegra_ahci_runtime_resume(struct device *dev)
 		return -EBUSY;
 }
 #endif
+
+static int tegra_ahci_hardreset(struct ata_link *link, unsigned int *class,
+			  unsigned long deadline)
+{
+	int ret;
+	u32 val;
+
+	ret = ahci_ops.hardreset(link, class, deadline);
+	if (ret < 0) {
+		val = scfg_readl(T_SATA0_CFG_LINK_0);
+		val |= T_SATA0_CFG_LINK_0_USE_POSEDGE_SCTL_DET;
+		scfg_writel(val, T_SATA0_CFG_LINK_0);
+	}
+
+	return ret;
+}
+
+static int tegra_ahci_softreset(struct ata_link *link, unsigned int *class,
+			  unsigned long deadline)
+{
+	int ret;
+	u32 val;
+
+	ret = ahci_ops.softreset(link, class, deadline);
+	if (ret < 0) {
+		val = scfg_readl(T_SATA0_CFG_LINK_0);
+		val |= T_SATA0_CFG_LINK_0_USE_POSEDGE_SCTL_DET;
+		scfg_writel(val, T_SATA0_CFG_LINK_0);
+	}
+
+	return ret;
+}
 
 #ifdef CONFIG_TEGRA_AHCI_CONTEXT_RESTORE
 static u16 pg_save_bar5_registers[] = {
