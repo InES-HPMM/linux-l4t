@@ -1774,11 +1774,9 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	int rc = 0;
 	u8 algo_type;
 
-	mutex_lock(&codec->mutex);
 	if (mux >= ARRAY_SIZE(proc_block_input_texts) || mux < 0) {
 		pr_err("%s(): Invalid input mux:%d Max valid value:%d\n",
 			__func__, mux, ARRAY_SIZE(proc_block_input_texts));
-		mutex_unlock(&codec->mutex);
 		return -EINVAL;
 	}
 
@@ -1802,7 +1800,6 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 exit:
 	pr_debug("put input control %s (%d) val %s\n", kcontrol->id.name, reg,
 				proc_block_input_texts[mux]);
-	mutex_unlock(&codec->mutex);
 
 	return rc;
 }
@@ -1843,11 +1840,9 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	int prev_mux;
 	u8 algo_type;
 
-	mutex_lock(&codec->mutex);
 	if (mux >= ARRAY_SIZE(proc_block_output_texts) || mux < 0) {
 		pr_err("%s(): Invalid output mux:%d Max valid value:%d\n",
 			__func__, mux, ARRAY_SIZE(proc_block_output_texts));
-		mutex_unlock(&codec->mutex);
 		return -EINVAL;
 	}
 	/* VP CSOUT signals Tx init and VP FEOUT signals Rx init */
@@ -1887,7 +1882,6 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 exit:
 	pr_debug("put output control %s (%d) val %s\n", kcontrol->id.name, reg,
 				proc_block_output_texts[mux]);
-	mutex_unlock(&codec->mutex);
 	return rc;
 }
 
