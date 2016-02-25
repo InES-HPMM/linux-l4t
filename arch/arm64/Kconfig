@@ -69,7 +69,6 @@ config ARM64
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
-trysource ../kernel-t18x/arch/arm64/Kconfig
 
 config ARCH_TEGRA_18x_SOC
 	bool "Tegra 18x family SOC Kconfig placeholder"

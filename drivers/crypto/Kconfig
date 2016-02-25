@@ -316,7 +316,6 @@ config CRYPTO_DEV_TEGRA_SE
 	  This option allows you to have support of Security Engine for crypto
 	  acceleration.
 
-trysource "../kernel-t18x/drivers/crypto/Kconfig"
 config CRYPTO_DEV_TEGRA_SE_NO_ALG_SUPPORT
 	bool "Do not register crypto algorithms"
 	depends on CRYPTO_DEV_TEGRA_SE

@@ -182,4 +182,3 @@ config TEGRA_PANEL_CY8C
 	  Enable support for CY8C microcontroller-based panel power
 	  sequence.
 
-trysource "../kernel-t18x/drivers/platform/tegra/Kconfig"
