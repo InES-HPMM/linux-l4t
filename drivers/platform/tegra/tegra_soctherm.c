@@ -1903,7 +1903,7 @@ static int soctherm_thermal_sys_init(void)
  */
 static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 {
-	u32 st, ex = 0, cp = 0, gp = 0, pl = 0;
+	u32 st, ex = 0, cp = 0, gp = 0, pl = 0, me = 0;
 
 	st = soctherm_readl(TH_INTR_STATUS);
 
@@ -1920,6 +1920,10 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 	pl |= REG_GET_BIT(st, TH_INTR_POS_PU0);
 	ex |= pl;
 
+	me |= REG_GET_BIT(st, TH_INTR_POS_MD0);
+	me |= REG_GET_BIT(st, TH_INTR_POS_MU0);
+	ex |= me;
+
 	if (ex) {
 		soctherm_writel(ex, TH_INTR_STATUS);
 		st &= ~ex;
@@ -1929,12 +1933,11 @@ static irqreturn_t soctherm_thermal_thread_func(int irq, void *arg)
 			soctherm_update_zone(THERM_GPU);
 		if (pl)
 			soctherm_update_zone(THERM_PLL);
+		if (me)
+			soctherm_update_zone(THERM_MEM);
 	}
 
 	/* deliberately ignore expected interrupts NOT handled in SW */
-	ex |= REG_GET_BIT(st, TH_INTR_POS_MD0);
-	ex |= REG_GET_BIT(st, TH_INTR_POS_MU0);
-
 	ex |= REG_GET_BIT(st, TH_INTR_POS_CD1);
 	ex |= REG_GET_BIT(st, TH_INTR_POS_CU1);
 	ex |= REG_GET_BIT(st, TH_INTR_POS_CD2);
