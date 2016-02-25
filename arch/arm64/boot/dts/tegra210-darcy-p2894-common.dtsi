@@ -184,6 +184,7 @@
 	chosen {
 		nvidia,tegra-shield-sku;
 		no-tnid-sn;
+		nvidia,bootloader-xusb-enable;
         };
 
 	gpio-keys {
