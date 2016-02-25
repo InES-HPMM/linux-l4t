@@ -491,7 +491,7 @@ static int tegra_rtc_probe(struct platform_device *pdev)
 	ret = devm_request_threaded_irq(&pdev->dev, tegra_rtc->irq,
 					NULL, tegra_rtc_isr,
 					IRQF_ONESHOT | IRQF_EARLY_RESUME,
-					"tegra-rtc", tegra_rtc);
+					"tegra_rtc", tegra_rtc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to register RTC IRQ: %d\n", ret);
 		/* system cannot proceed without rtc */
