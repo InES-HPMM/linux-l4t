@@ -499,6 +499,15 @@ config VIDEO_OV23850
 	  To compile this driver as a module, choose M here: the module
 	  will be called ov23850.
 
+config VIDEO_OV13860
+        tristate "OmniVision OV13860 sensor support"
+	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  This driver supports OmniVision OV13860 camera sensor
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called ov13860.
+
 config VIDEO_IMX219
         tristate "IMX219 camera sensor support"
 	depends on I2C && VIDEO_V4L2 && VIDEO_V4L2_SUBDEV_API
