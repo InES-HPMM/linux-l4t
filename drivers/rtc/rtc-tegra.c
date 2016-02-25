@@ -28,6 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/syscore_ops.h>
 #include <asm/io.h>
+#include <asm/mach/time.h>
 
 /* set to 1 = busy every eight 32kHz clocks during copy of sec+msec to AHB */
 #define TEGRA_RTC_REG_BUSY			0x004
@@ -64,6 +65,9 @@ struct tegra_rtc_data {
 };
 
 static struct tegra_rtc_data *tegra_rtc_dev;
+
+static u64 persistent_ms, last_persistent_ms;
+static struct timespec persistent_ts;
 
 /*
  * tegra_rtc_read - Reads the Tegra RTC registers
@@ -411,6 +415,29 @@ err_out:
 	return -ENOMEM;
 }
 
+/*
+ * tegra_read_persistent_clock -  Return time from a persistent clock.
+ *
+ * Reads the time from a source which isn't disabled during PM, the
+ * 32k sync timer.  Convert the cycles elapsed since last read into
+ * nsecs and adds to a monotonically increasing timespec.
+ * Care must be taken that this funciton is not called while the
+ * tegra_rtc driver could be executing to avoid race conditions
+ * on the RTC shadow register
+ */
+static void tegra_rtc_read_persistent_clock(struct timespec *ts)
+{
+	u64 delta;
+	struct timespec *tsp = &persistent_ts;
+
+	last_persistent_ms = persistent_ms;
+	persistent_ms = tegra_rtc_read_ms();
+	delta = persistent_ms - last_persistent_ms;
+
+	timespec_add_ns(tsp, delta * NSEC_PER_MSEC);
+	*ts = *tsp;
+}
+
 static int tegra_rtc_probe(struct platform_device *pdev)
 {
 	static struct tegra_rtc_data *tegra_rtc;
@@ -486,6 +513,7 @@ static int tegra_rtc_probe(struct platform_device *pdev)
 		pr_err("%s: Can't init debugfs", __func__);
 		BUG();
 	}
+	register_persistent_clock(NULL, tegra_rtc_read_persistent_clock);
 
 	return 0;
 }
