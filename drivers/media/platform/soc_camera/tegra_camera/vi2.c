@@ -1399,30 +1399,48 @@ static void vi2_capture_error_status(struct vi2_channel *chan, int err)
 #if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) || \
 	IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
 	val = TC_VI_REG_RD(vi2_cam, TEGRA_CSI_DEBUG_COUNTER_0);
+	if (val)
+		TC_VI_REG_WT(vi2_cam, TEGRA_CSI_DEBUG_COUNTER_0, val);
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_CSI_DEBUG_COUNTER_0 0x%08x\n", val);
 #else
-	if (chan->port & 0x1)
+	if (chan->port & 0x1) {
 		val = debug_regs_read(vi2_cam, chan,
 				      TEGRA_CSI_DEBUG_COUNTER_0);
-	else
+		if (val)
+			debug_regs_write(vi2_cam, chan,
+					 TEGRA_CSI_DEBUG_COUNTER_0, val);
+	} else {
 		val = debug_regs_read(vi2_cam, chan,
 				      TEGRA_CSI_DEBUG_COUNTER_1);
+		if (val)
+			debug_regs_write(vi2_cam, chan,
+					 TEGRA_CSI_DEBUG_COUNTER_1, val);
+	}
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_CSI_DEBUG_COUNTER 0x%08x\n", val);
 #endif
 	val = cil_regs_read(vi2_cam, chan, TEGRA_CSI_CIL_STATUS);
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_CSI_CSI_CIL_STATUS 0x%08x\n", val);
+	if (val)
+		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_STATUS, val);
 	val = cil_regs_read(vi2_cam, chan, TEGRA_CSI_CILX_STATUS);
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_CSI_CSI_CILX_STATUS 0x%08x\n", val);
+	if (val)
+		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CILX_STATUS, val);
 	val = csi_pp_regs_read(vi2_cam, chan, TEGRA_CSI_PIXEL_PARSER_STATUS);
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_CSI_PIXEL_PARSER_STATUS 0x%08x\n", val);
+	if (val)
+		csi_pp_regs_write(vi2_cam, chan,
+				  TEGRA_CSI_PIXEL_PARSER_STATUS, val);
 	val = csi_regs_read(vi2_cam, chan, TEGRA_VI_CSI_ERROR_STATUS);
 	dev_err(&vi2_cam->cam.pdev->dev,
 		"TEGRA_VI_CSI_ERROR_STATUS 0x%08x\n", val);
+	if (val)
+		csi_regs_write(vi2_cam, chan, TEGRA_VI_CSI_ERROR_STATUS, val);
 }
 
 static int vi2_channel_capture_frame(struct vi2_channel *chan,
