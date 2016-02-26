@@ -331,6 +331,7 @@ static void ardbeg_audio_init(void)
 		if (board_info.board_id == BOARD_E1762 ||
 			board_info.board_id == BOARD_P1761 ||
 			board_info.board_id == BOARD_E1922 ||
+			board_info.board_id == BOARD_E1784 ||
 			of_machine_is_compatible("nvidia,green-arrow")) {
 			ardbeg_audio_pdata_rt5639.gpio_hp_det =
 				TEGRA_GPIO_CDC_IRQ;
