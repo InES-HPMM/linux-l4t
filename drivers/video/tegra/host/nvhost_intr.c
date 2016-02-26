@@ -261,7 +261,7 @@ static int process_wait_list(struct nvhost_intr *intr,
 	int empty;
 
 	/* take lock on waiter list */
-	mutex_lock(&syncpt->lock);
+	spin_lock(&syncpt->lock);
 
 	/* keep high priority workers in local list */
 	for (i = 0; i < NVHOST_INTR_HIGH_PRIO_COUNT; ++i) {
@@ -296,7 +296,7 @@ static int process_wait_list(struct nvhost_intr *intr,
 	}
 
 	/* release waiter lock */
-	mutex_unlock(&syncpt->lock);
+	spin_unlock(&syncpt->lock);
 
 	run_handlers(completed);
 
@@ -317,7 +317,7 @@ static void nvhost_syncpt_low_prio_work(struct work_struct *work)
 	unsigned int i, j;
 
 	/* go through low priority handlers.. */
-	mutex_lock(&syncpt->lock);
+	spin_lock(&syncpt->lock);
 	for (i = 0, j = NVHOST_INTR_HIGH_PRIO_COUNT;
 	     j < NVHOST_INTR_ACTION_COUNT;
 	     i++, j++) {
@@ -332,7 +332,7 @@ static void nvhost_syncpt_low_prio_work(struct work_struct *work)
 		/* maintain local completed list */
 		completed[j] = handler;
 	}
-	mutex_unlock(&syncpt->lock);
+	spin_unlock(&syncpt->lock);
 
 	/* ..and run them */
 	run_handlers(completed);
@@ -374,7 +374,7 @@ bool nvhost_intr_has_pending_jobs(struct nvhost_intr *intr, u32 id,
 	bool res = false;
 
 	syncpt = intr->syncpt + id;
-	mutex_lock(&syncpt->lock);
+	spin_lock(&syncpt->lock);
 	list_for_each_entry(waiter, &syncpt->wait_head, list)
 		if (((waiter->action ==
 			NVHOST_INTR_ACTION_SUBMIT_COMPLETE) &&
@@ -383,7 +383,7 @@ bool nvhost_intr_has_pending_jobs(struct nvhost_intr *intr, u32 id,
 			break;
 		}
 
-	mutex_unlock(&syncpt->lock);
+	spin_unlock(&syncpt->lock);
 
 	return res;
 }
@@ -416,7 +416,7 @@ int nvhost_intr_add_action(struct nvhost_intr *intr, u32 id, u32 thresh,
 
 	syncpt = intr->syncpt + id;
 
-	mutex_lock(&syncpt->lock);
+	spin_lock(&syncpt->lock);
 
 	queue_was_empty = list_empty(&syncpt->wait_head);
 
@@ -429,7 +429,7 @@ int nvhost_intr_add_action(struct nvhost_intr *intr, u32 id, u32 thresh,
 			intr_op().enable_syncpt_intr(intr, id);
 	}
 
-	mutex_unlock(&syncpt->lock);
+	spin_unlock(&syncpt->lock);
 
 	if (ref)
 		*ref = waiter;
@@ -551,7 +551,7 @@ int nvhost_intr_init(struct nvhost_intr *intr, u32 irq_gen, u32 irq_sync)
 	     ++id, ++syncpt) {
 		syncpt->intr = &host->intr;
 		syncpt->id = id;
-		mutex_init(&syncpt->lock);
+		spin_lock_init(&syncpt->lock);
 		INIT_LIST_HEAD(&syncpt->wait_head);
 		snprintf(syncpt->thresh_irq_name,
 			sizeof(syncpt->thresh_irq_name),
