@@ -1571,7 +1571,7 @@ if (bcmdhd_prop_txstatus_vsdb) {
 			if (mode != WL_MODE_AP)
 				wldev_iovar_setint(new_ndev, "buf_key_b4_m4", 1);
 
-			WL_ERR((" virtual interface(%s) is "
+			DHD_NV_INFO((" virtual interface(%s) is "
 				"created net attach done\n", cfg->p2p->vir_ifname));
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 			TEGRA_SYSFS_HISTOGRAM_STAT_INC(ago_start);
@@ -4395,7 +4395,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	err = wldev_iovar_setbuf_bsscfg(dev, "join", ext_join_params, join_params_size,
 		cfg->ioctl_buf, WLC_IOCTL_MAXLEN, bssidx, &cfg->ioctl_buf_sync);
 
-	WL_ERR(("Connectting with" MACDBG " channel (%d) ssid \"%s\", len (%d)\n\n",
+	DHD_NV_INFO(("Connectting with " MACDBG " channel (%d) ssid \"%s\", len (%d)\n\n",
 		MAC2STRDBG((u8*)(&ext_join_params->assoc.bssid)), cfg->channel,
 		ext_join_params->ssid.SSID, ext_join_params->ssid.SSID_len));
 
@@ -4454,7 +4454,7 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 #ifdef CUSTOM_SET_CPUCORE
 	dhd_pub_t *dhd = (dhd_pub_t *)(cfg->pub);
 #endif /* CUSTOM_SET_CPUCORE */
-	WL_ERR(("Reason %d\n", reason_code));
+	DHD_NV_INFO(("Reason %d\n", reason_code));
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 	if (bcmdhd_stat.rssi < -67)
 		TEGRA_SYSFS_HISTOGRAM_STAT_INC(disconnect_rssi_low);
@@ -6249,7 +6249,7 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 				sizeof(scb_val_t), true);
 			if (err < 0)
 				WL_ERR(("WLC_SCB_DEAUTHENTICATE_FOR_REASON error %d\n", err));
-			WL_ERR(("Disconnect STA : %s scb_val.val %d\n",
+			DHD_NV_INFO(("Disconnect STA : %s scb_val.val %d\n",
 				bcm_ether_ntoa((const struct ether_addr *)mgmt->da, eabuf),
 				scb_val.val));
 
@@ -8765,8 +8765,10 @@ wl_notify_connect_status_ap(struct bcm_cfg80211 *cfg, struct net_device *ndev,
 		return 0;
 	}
 
-	if (event == WLC_E_DISASSOC_IND || event == WLC_E_DEAUTH_IND || event == WLC_E_DEAUTH) {
-		WL_ERR(("event %s(%d) status %d reason %d\n",
+	if (event == WLC_E_DISASSOC_IND || event == WLC_E_DEAUTH_IND || event == WLC_E_DEAUTH ||
+		event == WLC_E_ASSOC || event == WLC_E_ASSOC_IND || event == WLC_E_REASSOC ||
+		event == WLC_E_REASSOC_IND) {
+		DHD_NV_INFO(("event %s(%d) status %d reason %d\n",
 		bcmevent_get_name(event), event, ntoh32(e->status), reason));
 	}
 
@@ -9034,12 +9036,12 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 			act = true;
 			if (!wl_get_drv_status(cfg, DISCONNECTING, ndev) ||
 			    wl_get_drv_status(cfg, CONNECTING, ndev)) {
-					printk("wl_bss_connect_done succeeded with " MACDBG "\n",
+					DHD_NV_INFO(("wl_bss_connect_done succeeded with " MACDBG "\n",
 						MAC2STRDBG((u8*)(&e->addr)));
 					wl_bss_connect_done(cfg, ndev, e, data, true);
 					WL_DBG(("joined in BSS network \"%s\"\n",
 					((struct wlc_ssid *)
-					 wl_read_prof(cfg, ndev, WL_PROF_SSID))->SSID));
+					 wl_read_prof(cfg, ndev, WL_PROF_SSID))->SSID)));
 				}
 			wl_update_prof(cfg, ndev, e, &act, WL_PROF_ACT);
 			wl_update_prof(cfg, ndev, NULL, (void *)&e->addr, WL_PROF_BSSID);
@@ -9064,10 +9066,10 @@ wl_notify_connect_status(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 				/* WLAN_REASON_UNSPECIFIED is used for hang up event in Android */
 				reason = (reason == WLAN_REASON_UNSPECIFIED)? 0 : reason;
 
-				printk("link down if %s may call cfg80211_disconnected. "
+				DHD_NV_INFO(("link down if %s may call cfg80211_disconnected. "
 					"event : %d, reason=%d from " MACDBG "\n",
 					ndev->name, event, ntoh32(e->reason),
-					MAC2STRDBG((u8*)(&e->addr)));
+					MAC2STRDBG((u8*)(&e->addr))));
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 				if (ntoh32(e->reason) == 15) {
 					TEGRA_SYSFS_HISTOGRAM_STAT_INC(connect_fail_reason_15);
