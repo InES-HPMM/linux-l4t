@@ -4,6 +4,7 @@
 
 source "drivers/media/platform/tegra/nvavp/Kconfig"
 source "drivers/media/platform/tegra/nvavp-virt/Kconfig"
+source "drivers/media/platform/tegra/mipical/Kconfig"
 
 # only involve device specific PCL drivers while virtual driver cannot
 # handle it full functionally.
