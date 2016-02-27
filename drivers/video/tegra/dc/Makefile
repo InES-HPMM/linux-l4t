@@ -14,7 +14,12 @@ obj-$(CONFIG_TEGRA_HDMI2FPD_DS90UH949) += hdmi2fpd_ds90uh949.o
 obj-y += dsi2lvds.o
 obj-$(CONFIG_TEGRA_DSI2EDP_TC358767) += tc358767_dsi2edp.o
 obj-$(CONFIG_TEGRA_DSI2EDP_SN65DSI86) += sn65dsi86_dsi2edp.o
+ifneq ($(CONFIG_ARCH_TEGRA_21x_SOC), y)
 obj-$(CONFIG_TEGRA_MIPI_CAL) += mipi_cal.o
+else
+ccflags-$(CONFIG_TEGRA_MIPI_CAL) +=-DCOMMON_MIPICAL_SUPPORTED\
+				-Idrivers/media/platform/tegra/mipical
+endif
 obj-$(CONFIG_TEGRA_NVHDCP) += nvhdcp.o
 obj-$(CONFIG_TEGRA_HDMIHDCP) += hdmihdcp.o
 obj-$(CONFIG_TEGRA_HDMIHDCP) += nvhdcp_hdcp22_methods.o

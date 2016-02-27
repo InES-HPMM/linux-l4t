@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/mipi_cal.h
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -17,6 +17,7 @@
 #ifndef __DRIVERS_VIDEO_TEGRA_DC_MIPI_CAL_H__
 #define __DRIVERS_VIDEO_TEGRA_DC_MIPI_CAL_H__
 
+#ifndef COMMON_MIPICAL_SUPPORTED
 #include "mipi_cal_regs.h"
 
 struct tegra_mipi_cal {
@@ -111,5 +112,6 @@ void tegra_mipi_cal_destroy(struct tegra_dc *dc)
 {
 	/* dummy */
 }
+#endif
 #endif
 #endif

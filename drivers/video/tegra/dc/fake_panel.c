@@ -1,7 +1,7 @@
 /*
  * kernel/drivers/video/tegra/dc/fake_panel.c
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -339,9 +339,10 @@ int tegra_dc_destroy_dsi_resources(struct tegra_dc *dc, long dc_outtype)
 		dsi->avdd_dsi_csi = NULL;
 	}
 
+#ifndef COMMON_MIPICAL_SUPPORTED
 	if (dsi->mipi_cal)
 		tegra_mipi_cal_destroy(dc);
-
+#endif
 	tegra_dc_io_end(dc);
 	mutex_unlock(&dsi->lock);
 
@@ -432,13 +433,14 @@ int tegra_dc_reinit_dsi_resources(struct tegra_dc *dc, long dc_outtype)
 		goto err_release_regs;
 	}
 
+#ifndef COMMON_MIPICAL_SUPPORTED
 	dsi->mipi_cal = tegra_mipi_cal_init_sw(dc);
 	if (IS_ERR(dsi->mipi_cal)) {
 		dev_err(&dc->ndev->dev, "dsi: mipi_cal sw init failed\n");
 		err = PTR_ERR(dsi->mipi_cal);
 		goto err_release_regs;
 	}
-
+#endif
 	/* Need to always reinitialize clocks to ensure proper functionality */
 	tegra_dsi_init_clock_param(dc);
 	of_node_put(np_dsi);
