@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -57,6 +57,7 @@ static inline struct tegra_camera_platform_data *icd_to_pdata(
 
 #define icd_to_port(icd) (icd_to_pdata(icd)->port)
 #define icd_to_lanes(icd) (icd_to_pdata(icd)->lanes)
+#define icd_to_continuous_clk(icd) (icd_to_pdata(icd)->continuous_clk)
 
 struct tegra_camera;
 

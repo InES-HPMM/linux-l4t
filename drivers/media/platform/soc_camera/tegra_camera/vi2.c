@@ -447,6 +447,7 @@ struct vi2_channel {
 
 	int				port;
 	int				lanes;
+	int				continuous_clk;
 	s32				bytes_per_line;
 	int				fourcc;
 	int				code;
@@ -773,6 +774,7 @@ static int vi2_channel_init(struct vi2_camera *vi2_cam,
 	chan->sof = 1;
 	chan->port = port;
 	chan->lanes = icd_to_lanes(icd);
+	chan->continuous_clk = icd_to_continuous_clk(icd);
 
 	if (IS_ENABLED(CONFIG_ARCH_TEGRA_12x_SOC) ||
 	    IS_ENABLED(CONFIG_ARCH_TEGRA_13x_SOC))
@@ -1219,7 +1221,8 @@ static int vi2_channel_capture_setup(struct vi2_channel *chan)
 
 		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_INTERRUPT_MASK,
 			       0x0);
-		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
+		cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PHY_CONTROL,
+			       (chan->continuous_clk << 6) | 0xA);
 		if (lanes == 4) {
 			regs->cil_base = vi2_cal_regs_base(TEGRA_CSI_CIL_0_BASE,
 							   port + 1);
@@ -1228,7 +1231,7 @@ static int vi2_channel_capture_setup(struct vi2_channel *chan)
 			cil_regs_write(vi2_cam, chan,
 				       TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
 			cil_regs_write(vi2_cam, chan, TEGRA_CSI_CIL_PHY_CONTROL,
-				       0xA);
+				       (chan->continuous_clk << 6) | 0xA);
 			regs->cil_base = vi2_cal_regs_base(TEGRA_CSI_CIL_0_BASE,
 							   port);
 		}
