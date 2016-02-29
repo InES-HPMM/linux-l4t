@@ -26,7 +26,7 @@ atomic_t cur_power_mode = ATOMIC_INIT(0);
 extern int tegra_sysfs_wifi_on;
 
 //NUM_RF_TEST_PARAMS needs to be updated when modifying this array
-const char const * rf_test_vars[] = {"roam_off", "txchain", "rxchain"};
+char *rf_test_vars[] = {"roam_off", "txchain", "rxchain"};
 
 rf_test_params_t rf_test_params[NUM_RF_TEST_PARAMS];
 
@@ -41,16 +41,17 @@ void rf_test_params_init() {
 void
 tegra_sysfs_rf_test_enable()
 {
-	pr_info("%s\n", __func__);
-
 	extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
 	struct net_device *net = dhd_custom_sysfs_tegra_histogram_stat_netdev;
-	char *netif = net ? net->name : "";
-
+	int power_mode_off = 0;
 	int i;
+
+	pr_info("%s\n", __func__);
+
 	/* Get current roam_off, txchain, rxchain and power mode state */
 	for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
-		if (wldev_iovar_getint(net, rf_test_params[i].var, &rf_test_params[i].cur_val) != BCME_OK) {
+		if (wldev_iovar_getint(net, rf_test_params[i].var,
+		    (s32 *)&rf_test_params[i].cur_val) != BCME_OK) {
 			pr_err("%s: Failed to get current %s val\n", __func__, rf_test_params[i].var);
 			return;
 		}
@@ -64,7 +65,6 @@ tegra_sysfs_rf_test_enable()
 		pr_err("%s: Failed to set roam off state\n", __func__);
 		return;
 	}
-	int power_mode_off = 0;
 	if(wldev_ioctl(net, WLC_SET_PM, &power_mode_off, sizeof(power_mode_off), true)) {
 		pr_err("%s: Failed to set power mode off state\n", __func__);
 	}
@@ -75,23 +75,24 @@ tegra_sysfs_rf_test_enable()
 void
 tegra_sysfs_rf_test_disable()
 {
-	pr_info("%s\n", __func__);
-
 	extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
 	struct net_device *net = dhd_custom_sysfs_tegra_histogram_stat_netdev;
-	char *netif = net ? net->name : "";
 	int i;
+
+	pr_info("%s\n", __func__);
 
 	if (atomic_read(&rf_test)) {
 		atomic_set(&rf_test, 0);
 		/* Restore saved roam_off and power mode state */
 		for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
-			if (wldev_iovar_setint(net, rf_test_params[i].var, atomic_read(&rf_test_params[i].cur_val)) != BCME_OK) {
+			if (wldev_iovar_setint(net, rf_test_params[i].var,
+			atomic_read(&rf_test_params[i].cur_val)) != BCME_OK) {
 				pr_err("%s: Failed to restore %s val\n", __func__, rf_test_params[i].var);
 			}
 		}
-		if(wldev_ioctl(net, WLC_SET_PM, &atomic_read(&cur_power_mode),
-			 sizeof(cur_power_mode), true)) {
+		if (wldev_ioctl(net, WLC_SET_PM,
+			(void *)&atomic_read(&cur_power_mode),
+			sizeof(cur_power_mode), true)) {
 			pr_err("%s: Failed to restore power mode state\n", __func__);
 		}
 	}
@@ -116,9 +117,6 @@ tegra_sysfs_rf_test_state_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
 {
-	int err;
-	unsigned int uint;
-
 	if (strncmp(buf, "enable", 6) == 0) {
 		if (!atomic_read(&rf_test) && tegra_sysfs_wifi_on) {
 			tegra_sysfs_rf_test_enable();

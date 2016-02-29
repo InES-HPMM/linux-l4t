@@ -426,7 +426,9 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifidx, wl_ioctl_t *ioc, void *buf, int len)
 			uint value;
 			for (i = 0; i < NUM_RF_TEST_PARAMS; i++) {
 				const char * param = rf_test_params[i].var;
-				value = *(uint*)&ioc->buf[strlen(param)+1];
+				char *buf = (char *)ioc->buf;
+
+				value = (uint)buf[strlen(param)+1];
 				if (strncmp(ioc->buf, param, strlen(param)) == 0) {
 					atomic_set(&rf_test_params[i].cur_val, value);
 					DHD_ERROR(("%s: WLC_SET_VAR %s:%d not allowed\n", __FUNCTION__, param, value));

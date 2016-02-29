@@ -7047,6 +7047,7 @@ int
 dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 {
 	dhd_info_t *dhd = (dhd_info_t *)dhdp->info;
+	extern struct net_device *dhd_pno_netdev;
 	dhd_if_t *ifp;
 	struct net_device *net = NULL;
 	int err = 0;
@@ -7140,7 +7141,6 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 		dhd_custom_sysfs_tegra_histogram_stat_netdev = net;
 }
 #endif
-	extern struct net_device *dhd_pno_netdev;
 	if (ifidx == 0)
 		dhd_pno_netdev = net;
 

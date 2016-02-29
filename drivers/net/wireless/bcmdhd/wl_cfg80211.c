@@ -11408,7 +11408,10 @@ static void wl_dealloc_netinfo(struct work_struct *work)
 {
 	struct net_info *_net_info, *next;
 	struct bcm_cfg80211 *cfg = container_of(work, struct bcm_cfg80211, dealloc_work);
-	down_interruptible(&cfg->net_wdev_sema);
+
+	if (down_interruptible(&cfg->net_wdev_sema))
+		return;
+
 	down_write(&cfg->netif_sem);
 	list_for_each_entry_safe(_net_info, next, &cfg->dealloc_list, list) {
 		list_del(&_net_info->list);

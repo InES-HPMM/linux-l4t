@@ -97,7 +97,7 @@ tegra_sysfs_histogram_rssi_store(struct device *dev,
 
 #define NUM_RF_TEST_PARAMS 3
 typedef struct {
-	const char const *var;
+	char *var;
 	atomic_t cur_val;
 } rf_test_params_t;
 
@@ -111,9 +111,9 @@ tegra_sysfs_rf_test_state_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count);
 
-void tegra_sysfs_rf_test_enable();
-void tegra_sysfs_rf_test_disable();
-void rf_test_params_init();
+void tegra_sysfs_rf_test_enable(void);
+void tegra_sysfs_rf_test_disable(void);
+void rf_test_params_init(void);
 
 /* scan histogram */
 
