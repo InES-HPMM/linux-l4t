@@ -159,7 +159,7 @@ static int tegra_rtc_msec_alarm_irq_enable(unsigned int enable)
 	return 0;
 }
 
-static irqreturn_t tegra_rtc_isr(int irq, void *dev_id)
+static irqreturn_t tegra_rtc_interrupt(int irq, void *dev_id)
 {
 	struct tegra_rtc_data *rtc = dev_id;
 	u32 status, mask;
@@ -489,7 +489,7 @@ static int tegra_rtc_probe(struct platform_device *pdev)
 	writel(0, tegra_rtc->base + TEGRA_RTC_REG_INTR_MASK);
 
 	ret = devm_request_threaded_irq(&pdev->dev, tegra_rtc->irq,
-					NULL, tegra_rtc_isr,
+					NULL, tegra_rtc_interrupt,
 					IRQF_ONESHOT | IRQF_EARLY_RESUME,
 					"tegra_rtc", tegra_rtc);
 	if (ret) {
