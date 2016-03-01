@@ -38,4 +38,7 @@
 /* device can handle u1/u2 power states well */
 #define USB_QUIRK_ENABLE_U1U2		0x00000400
 
+/* device can't handle Link Power Management */
+#define USB_QUIRK_NO_LPM			BIT(10)
+
 #endif /* __LINUX_USB_QUIRKS_H */
