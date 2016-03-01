@@ -3,7 +3,7 @@
  *
  * GK20A PMU (aka. gPMU outside gk20a context)
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -50,7 +50,7 @@
 #define PMU_AP_IDLE_MASK_GRAPHICS	(PMU_AP_IDLE_MASK_HIST_IDX_1)
 
 #define APP_VERSION_T186_0	19494277
-#define APP_VERSION_GM20B_4 19008461
+#define APP_VERSION_GM20B_4 20432445
 #define APP_VERSION_GM20B_3 18935575
 #define APP_VERSION_GM20B_2 18694072
 #define APP_VERSION_GM20B_1 18547257
