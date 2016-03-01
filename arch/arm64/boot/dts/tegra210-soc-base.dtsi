@@ -866,7 +866,17 @@
 	mipical {
 		compatible = "nvidia,tegra210-mipical";
 		reg = <0x0 0x700e3000 0x0 0x00000100>;
+		clocks = <&tegra_car TEGRA210_CLK_ID_MIPI_CAL>,
+			<&tegra_car TEGRA210_CLK_ID_UART_MIPI_CAL>;
+		clock-names = "mipi_cal", "uart_mipi_cal";
 		status = "disabled";
+
+		dsi {
+			dsix-cfg = <0x00000200>;
+			dsix-cfg2 = <0x00000002>;
+			bias-pad-cfg1 = <0x00000300>;
+			bias-pad-cfg2 = <0x00010010>;
+		};
 	};
 
 	tegra_pmc: pmc@7000e400 {
