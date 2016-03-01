@@ -2223,38 +2223,6 @@ int tegra_dc_update_cmu(struct tegra_dc *dc, struct tegra_dc_cmu *cmu)
 }
 EXPORT_SYMBOL(tegra_dc_update_cmu);
 
-int tegra_dc_set_hdr(struct tegra_dc *dc, struct tegra_dc_hdr *hdr,
-						bool cache_dirty)
-{
-	int ret;
-
-	mutex_lock(&dc->lock);
-
-	if (!dc->enabled) {
-		mutex_unlock(&dc->lock);
-		return 0;
-	}
-	trace_hdr_data_update(dc, hdr);
-	if (cache_dirty) {
-		dc->hdr.eotf = hdr->eotf;
-		dc->hdr.static_metadata_id = hdr->static_metadata_id;
-		memcpy(dc->hdr.static_metadata, hdr->static_metadata,
-					sizeof(dc->hdr.static_metadata));
-	} else if (dc->hdr.enabled == hdr->enabled) {
-		mutex_unlock(&dc->lock);
-		return 0;
-	}
-	dc->hdr.enabled = hdr->enabled;
-	dc->hdr_cache_dirty = true;
-	if (!dc->hdr.enabled)
-		memset(&dc->hdr, 0, sizeof(dc->hdr));
-	ret = _tegra_dc_config_frame_end_intr(dc, true);
-
-	mutex_unlock(&dc->lock);
-	return ret;
-}
-EXPORT_SYMBOL(tegra_dc_set_hdr);
-
 static int _tegra_dc_update_cmu_aligned(struct tegra_dc *dc,
 				struct tegra_dc_cmu *cmu,
 				bool force)
@@ -2289,6 +2257,38 @@ EXPORT_SYMBOL(tegra_dc_update_cmu_aligned);
 #define tegra_dc_update_cmu(dc, cmu)
 #define tegra_dc_update_cmu_aligned(dc, cmu)
 #endif
+
+int tegra_dc_set_hdr(struct tegra_dc *dc, struct tegra_dc_hdr *hdr,
+						bool cache_dirty)
+{
+	int ret;
+
+	mutex_lock(&dc->lock);
+
+	if (!dc->enabled) {
+		mutex_unlock(&dc->lock);
+		return 0;
+	}
+	trace_hdr_data_update(dc, hdr);
+	if (cache_dirty) {
+		dc->hdr.eotf = hdr->eotf;
+		dc->hdr.static_metadata_id = hdr->static_metadata_id;
+		memcpy(dc->hdr.static_metadata, hdr->static_metadata,
+					sizeof(dc->hdr.static_metadata));
+	} else if (dc->hdr.enabled == hdr->enabled) {
+		mutex_unlock(&dc->lock);
+		return 0;
+	}
+	dc->hdr.enabled = hdr->enabled;
+	dc->hdr_cache_dirty = true;
+	if (!dc->hdr.enabled)
+		memset(&dc->hdr, 0, sizeof(dc->hdr));
+	ret = _tegra_dc_config_frame_end_intr(dc, true);
+
+	mutex_unlock(&dc->lock);
+	return ret;
+}
+EXPORT_SYMBOL(tegra_dc_set_hdr);
 
 /* disable_irq() blocks until handler completes, calling this function while
  * holding dc->lock can deadlock. */
