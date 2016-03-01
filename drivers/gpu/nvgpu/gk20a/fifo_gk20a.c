@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics FIFO (gr host)
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -777,6 +777,7 @@ void gk20a_fifo_reset_engine(struct gk20a *g, u32 engine_id)
 			/* resetting engine using mc_enable_r() is not
 			enough, we do full init sequence */
 			gk20a_gr_reset(g);
+		if (support_gk20a_pmu(g->dev) && g->elpg_enabled)
 			gk20a_pmu_enable_elpg(g);
 	}
 	if (engine_id == top_device_info_type_enum_copy0_v())

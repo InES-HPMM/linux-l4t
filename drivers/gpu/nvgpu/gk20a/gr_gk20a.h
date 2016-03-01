@@ -1,7 +1,7 @@
 /*
  * GK20A Graphics Engine
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -444,14 +444,15 @@ bool gk20a_gr_sm_debugger_attached(struct gk20a *g);
 #define gr_gk20a_elpg_protected_call(g, func) \
 	({ \
 		int err = 0; \
-		if (support_gk20a_pmu(g->dev)) \
+		if (support_gk20a_pmu(g->dev) && g->elpg_enabled) { \
 			err = gk20a_pmu_disable_elpg(g); \
-		if (err) { \
-			gk20a_pmu_enable_elpg(g); \
-			return err; \
+			if (err) { \
+				gk20a_pmu_enable_elpg(g); \
+				return err; \
+			} \
 		} \
 		err = func; \
-		if (support_gk20a_pmu(g->dev)) \
+		if (support_gk20a_pmu(g->dev) && g->elpg_enabled) \
 			gk20a_pmu_enable_elpg(g); \
 		err; \
 	})
