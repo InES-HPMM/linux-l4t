@@ -1817,7 +1817,7 @@ static const struct usb_device_id acm_ids[] = {
 	},
 #endif
 
-	/* Exclude XMM6260 boot rom (not running modem software yet) */
+	/* Exclude Infineon Flash Loader utility */
 	{ USB_DEVICE(0x058b, 0x0041),
 	.driver_info = IGNORE_DEVICE,
 	},
