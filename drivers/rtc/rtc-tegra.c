@@ -186,6 +186,7 @@ static irqreturn_t tegra_rtc_interrupt(int irq, void *dev_id)
 		writel(status, rtc->base + TEGRA_RTC_REG_INTR_STATUS);
 	}
 
+	rtc_update_irq(rtc->rtc, 1, RTC_IRQF | RTC_UF | RTC_AF);
 	return IRQ_HANDLED;
 }
 
