@@ -25,71 +25,48 @@
 / {
 	host1x {
 		vi {
-			csia@54080838 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						e3322_cam0_csia_in0: endpoint@0 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out0>;
-						};
-					};
-					port@2 {
-						reg = <2>;
-						e3322_cam1_csia_in1: endpoint@2 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out1>;
-						};
+			num-channels = <6>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					e3322_vi_in0: endpoint {
+						remote-endpoint = <&imx219_out0>;
 					};
 				};
-			};
-			csic@54081038 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						e3322_cam2_csic_in0: endpoint@0 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out2>;
-						};
-					};
-					port@2 {
-						reg = <2>;
-						e3322_cam3_csic_in1: endpoint@2 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out3>;
-						};
+				port@1 {
+					reg = <1>;
+					e3322_vi_in1: endpoint {
+						remote-endpoint = <&imx219_out1>;
 					};
 				};
-			};
-			csie@54081838 {
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						e3322_cam4_csie_in0: endpoint@0 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out4>;
-						};
+				port@2 {
+					reg = <2>;
+					e3322_vi_in2: endpoint {
+						remote-endpoint = <&imx219_out2>;
 					};
-					port@2 {
-						reg = <2>;
-						e3322_cam5_csie_in1: endpoint@2 {
-							bus-width = <2>;
-							remote-endpoint = <&imx219_out5>;
-						};
+				};
+				port@3 {
+					reg = <3>;
+					e3322_vi_in3: endpoint {
+						remote-endpoint = <&imx219_out3>;
+					};
+				};
+				port@4 {
+					reg = <4>;
+					e3322_vi_in4: endpoint {
+						remote-endpoint = <&imx219_out4>;
+					};
+				};
+				port@5 {
+					reg = <5>;
+					e3322_vi_in5: endpoint {
+						remote-endpoint = <&imx219_out5>;
 					};
 				};
 			};
 		};
-
 
 		i2c@546c0000 {
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
@@ -146,8 +123,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out0: endpoint {
+									csi-port = <0>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam0_csia_in0>;
+									remote-endpoint = <&e3322_vi_in0>;
 								};
 							};
 						};
@@ -199,8 +177,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out1: endpoint {
+									csi-port = <1>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam1_csia_in1>;
+									remote-endpoint = <&e3322_vi_in1>;
 								};
 							};
 						};
@@ -252,8 +231,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out2: endpoint {
+									csi-port = <2>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam2_csic_in0>;
+									remote-endpoint = <&e3322_vi_in2>;
 								};
 							};
 						};
@@ -305,8 +285,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out3: endpoint {
+									csi-port = <3>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam3_csic_in1>;
+									remote-endpoint = <&e3322_vi_in3>;
 								};
 							};
 						};
@@ -358,8 +339,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out4: endpoint {
+									csi-port = <4>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam4_csie_in0>;
+									remote-endpoint = <&e3322_vi_in4>;
 								};
 							};
 						};
@@ -411,8 +393,9 @@
 							port@0 {
 								reg = <0>;
 								imx219_out5: endpoint {
+									csi-port = <5>;
 									bus-width = <2>;
-									remote-endpoint = <&e3322_cam5_csie_in1>;
+									remote-endpoint = <&e3322_vi_in5>;
 								};
 							};
 						};

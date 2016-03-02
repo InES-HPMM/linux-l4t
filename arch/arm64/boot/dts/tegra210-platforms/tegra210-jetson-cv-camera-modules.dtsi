@@ -38,6 +38,13 @@
 	host1x {
 		vi_base: vi {
 			ports {
+				/* keep port0 enabled for E3326 */
+				vi_port0: port@0 {
+					status = "okay";
+					vi_in0: endpoint {
+						status = "okay";
+					};
+				};
 				vi_port1: port@1 {
 					status = "disabled";
 					vi_in1: endpoint {
@@ -53,6 +60,18 @@
 				vi_port3: port@3 {
 					status = "disabled";
 					vi_in3: endpoint {
+						status = "disabled";
+					};
+				};
+				vi_port4: port@4 {
+					status = "disabled";
+					vi_in4: endpoint {
+						status = "disabled";
+					};
+				};
+				vi_port5: port@5 {
+					status = "disabled";
+					vi_in5: endpoint {
 						status = "disabled";
 					};
 				};

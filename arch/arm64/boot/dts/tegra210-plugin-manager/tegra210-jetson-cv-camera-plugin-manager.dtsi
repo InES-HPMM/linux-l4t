@@ -19,6 +19,7 @@
 		/* E3323 camera board */
 		fragment-e3323@0 {
 			ids = "3323-1000-A00", "3323-1000-A01", "3323-1000-100";
+			/* enable E3323 camera 0 */
 			override@0 {
 				target = <&e3323_cam0>;
 				_overlay_ {
@@ -42,21 +43,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov23850_a@10";
 				};
 			};
-			override@3 {
-				target = <&e3323_vi_in0>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <4>;
-					remote-endpoint = <&ov23850_out0>;
-				};
-			};
-			override@4 {
+			/* enable E3323 camera 1 */
+			override@5 {
 				target = <&e3323_cam1>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@5 {
+			override@6 {
 				target = <&cam_module1>;
 				_overlay_ {
 					status = "okay";
@@ -65,7 +59,7 @@
 					orientation = "3";
 				};
 			};
-			override@6 {
+			override@7 {
 				target = <&cam_module1_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -73,12 +67,54 @@
 					proc-device-tree = "/proc/device-tree/i2c@7000c000/ov23850_c@36";
 				};
 			};
-			override@7 {
-				target = <&e3323_vi_in1>;
+			/* enable E3323 focuser 0 */
+			override@10 {
+				target = <&e3323_vcm0>;
 				_overlay_ {
 					status = "okay";
-					bus-width = <4>;
-					remote-endpoint = <&ov23850_out1>;
+				};
+			};
+			override@11 {
+				target = <&cam_module0_drivernode1>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_focuser";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@72";
+				};
+			};
+			/* enable E3323 focuser 1 */
+			override@14 {
+				target = <&e3323_vcm1>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@15 {
+				target = <&cam_module1_drivernode1>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_focuser";
+					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@72";
+				};
+			};
+			/* enable VI ports */
+			override@18 {
+				target = <&vi_base>;
+				_overlay_ {
+					num-channels=<4>;
+				};
+			};
+			override@3 {
+				target = <&vi_port0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@4 {
+				target = <&vi_in0>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&ov23850_out0>;
 				};
 			};
 			override@8 {
@@ -88,64 +124,40 @@
 				};
 			};
 			override@9 {
+				target = <&vi_in1>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&ov23850_out1>;
+				};
+			};
+			override@12 {
 				target = <&vi_port2>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@10 {
+			override@13 {
 				target = <&vi_in2>;
 				_overlay_ {
 					status = "okay";
+					remote-endpoint = <&lc898212_out0>;
 				};
 			};
-			override@11 {
-				target = <&e3323_vcm0>;
-				_overlay_ {
-					status = "okay";
-				};
-			};
-			override@12 {
-				target = <&cam_module0_drivernode1>;
-				_overlay_ {
-					status = "okay";
-					pcl_id = "v4l2_focuser";
-					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@72";
-				};
-			};
-			override@13 {
+			override@16 {
 				target = <&vi_port3>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@14 {
+			override@17 {
 				target = <&vi_in3>;
 				_overlay_ {
 					status = "okay";
+					remote-endpoint = <&lc898212_out1>;
 				};
 			};
-			override@15 {
-				target = <&e3323_vcm1>;
-				_overlay_ {
-					status = "okay";
-				};
-			};
-			override@16 {
-				target = <&cam_module1_drivernode1>;
-				_overlay_ {
-					status = "okay";
-					pcl_id = "v4l2_focuser";
-					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@72";
-				};
-			};
-			override@17{
-				target = <&vi_base>;
-				_overlay_ {
-					num-channels=<4>;
-				};
-			};
-			override@18{
+			/* disable E3326 camera board*/
+			override@19 {
 				target = <&e3326_cam0>;
 				_overlay_ {
 					status = "disabled";
@@ -156,6 +168,7 @@
 		/* E3322 camera board */
 		fragment-e3322@0 {
 			ids = "3322-1000-000";
+			/* enable E3322 camera 0 */
 			override@0 {
 				target = <&e3322_cam0>;
 				_overlay_ {
@@ -179,21 +192,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/imx219_a@10";
 				};
 			};
+			/* enable E3322 camera 1 */
 			override@3 {
-				target = <&e3322_cam0_csia_in0>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out0>;
-				};
-			};
-			override@4 {
 				target = <&e3322_cam1>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@5 {
+			override@4 {
 				target = <&cam_module1>;
 				_overlay_ {
 					status = "okay";
@@ -202,7 +208,7 @@
 					orientation = "1";
 				};
 			};
-			override@6 {
+			override@5 {
 				target = <&cam_module1_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -210,21 +216,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/imx219_b@10";
 				};
 			};
-			override@7 {
-				target = <&e3322_cam1_csia_in1>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out1>;
-				};
-			};
-			override@8 {
+			/* E3322 camera 2 */
+			override@6 {
 				target = <&e3322_cam2>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@9 {
+			override@7 {
 				target = <&cam_module2>;
 				_overlay_ {
 					status = "okay";
@@ -233,7 +232,7 @@
 					orientation = "1";
 				};
 			};
-			override@10 {
+			override@8 {
 				target = <&cam_module2_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -241,21 +240,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/imx219_c@10";
 				};
 			};
-			override@11 {
-				target = <&e3322_cam2_csic_in0>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out2>;
-				};
-			};
-			override@12 {
+			/* E3322 camera 3 */
+			override@9 {
 				target = <&e3322_cam3>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@13 {
+			override@10 {
 				target = <&cam_module3>;
 				_overlay_ {
 					status = "okay";
@@ -264,7 +256,7 @@
 					orientation = "1";
 				};
 			};
-			override@14 {
+			override@11 {
 				target = <&cam_module3_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -272,21 +264,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/imx219_d@10";
 				};
 			};
-			override@15 {
-				target = <&e3322_cam3_csic_in1>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out3>;
-				};
-			};
-			override@16 {
+			/* E3322 camera 4 */
+			override@12 {
 				target = <&e3322_cam4>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@17 {
+			override@13 {
 				target = <&cam_module4>;
 				_overlay_ {
 					status = "okay";
@@ -295,7 +280,7 @@
 					orientation = "1";
 				};
 			};
-			override@18 {
+			override@14 {
 				target = <&cam_module4_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -303,21 +288,14 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/imx219_e@10";
 				};
 			};
-			override@19 {
-				target = <&e3322_cam4_csie_in0>;
-				_overlay_ {
-					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out4>;
-				};
-			};
-			override@20 {
+			/* E3322 camera 5 */
+			override@15 {
 				target = <&e3322_cam5>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
-			override@21 {
+			override@16 {
 				target = <&cam_module5>;
 				_overlay_ {
 					status = "okay";
@@ -326,7 +304,7 @@
 					orientation = "1";
 				};
 			};
-			override@22 {
+			override@17 {
 				target = <&cam_module5_drivernode0>;
 				_overlay_ {
 					status = "okay";
@@ -334,30 +312,110 @@
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/imx219_f@10";
 				};
 			};
-			override@23 {
-				target = <&e3322_cam5_csie_in1>;
+			/* Enable VI ports */
+			override@18 {
+				target = <&vi_base>;
+				_overlay_ {
+					num-channels=<6>;
+				};
+			};
+			override@19 {
+				target = <&vi_port0>;
 				_overlay_ {
 					status = "okay";
-					bus-width = <2>;
-					remote-endpoint = <&imx219_out5>;
+				};
+			};
+			override@20 {
+				target = <&vi_in0>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&imx219_out0>;
+				};
+			};
+			override@21 {
+				target = <&vi_port1>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@22 {
+				target = <&vi_in1>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&imx219_out1>;
+				};
+			};
+			override@23 {
+				target = <&vi_port2>;
+				_overlay_ {
+					status = "okay";
 				};
 			};
 			override@24 {
-				target = <&e3326_cam0>;
+				target = <&vi_in2>;
 				_overlay_ {
-					status = "disabled";
+					status = "okay";
+					remote-endpoint = <&imx219_out2>;
 				};
 			};
 			override@25 {
-				target = <&cam_tca6408_21>;
+				target = <&vi_port3>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
 			override@26 {
+				target = <&vi_in3>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&imx219_out3>;
+				};
+			};
+			override@27 {
+				target = <&vi_port4>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@28 {
+				target = <&vi_in4>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&imx219_out4>;
+				};
+			};
+			override@29 {
+				target = <&vi_port5>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@30 {
+				target = <&vi_in5>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&imx219_out5>;
+				};
+			};
+			/* Enable TCA6408 GPIO expander */
+			override@31 {
+				target = <&cam_tca6408_21>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			/* Enable TCA9548 I2C mux */
+			override@32 {
 				target = <&cam_tca9548_77>;
 				_overlay_ {
 					status = "okay";
+				};
+			};
+			/* Disable E3326 camera board */
+			override@33 {
+				target = <&e3326_cam0>;
+				_overlay_ {
+					status = "disabled";
 				};
 			};
 		};
