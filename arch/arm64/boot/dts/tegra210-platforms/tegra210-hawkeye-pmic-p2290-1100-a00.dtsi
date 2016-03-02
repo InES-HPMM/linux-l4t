@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@
 			};
 
 			watchdog {
-				maxim,wdt-boot-timeout = <32>;
+				maxim,wdt-boot-timeout = <0>;
 				maxim,wdt-suspend-timeout = <120>;
 				status = "disabled";
 			};
