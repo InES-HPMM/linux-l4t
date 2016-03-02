@@ -300,7 +300,8 @@
 			regulator-name = "en-vdd-cam-1v2";
 			regulator-min-microvol = <1200000>;
 			regulator-max-microvol = <1200000>;
-			gpio = <&tca9539_77 10 1>;
+			vin-supply = <&vdd_3v3>;
+			gpio = <&tca9539_77 3 1>;
 			enable-active-high;
 		};
 
@@ -311,6 +312,16 @@
 			regulator-min-microvol = <2800000>;
 			regulator-max-microvol = <2800000>;
 			vin-supply = <&vdd_3v3>;
+			enable-active-high;
+		};
+
+		en_vdd_cam_1v2_alt: regulator@211 {
+			compatible = "regulator-fixed-sync";
+			reg = <211>;
+			regulator-name = "en-vdd-cam-1v2-alt";
+			regulator-min-microvol = <1200000>;
+			regulator-max-microvol = <1200000>;
+			gpio = <&tca9539_77 10 1>;
 			enable-active-high;
 		};
 	};
