@@ -1,7 +1,7 @@
 /*
  * Driver for TI,ADS1015 ADC
  *
- * Copyright (c) 2014 - 2015, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014 - 2016, NVIDIA Corporation. All rights reserved.
  *
  * Author: Mallikarjun Kasoju <mkasoju@nvidia.com>
  *         Laxman Dewangan <ldewangan@nvidia.com>
@@ -399,6 +399,7 @@ static int ads1015_configure(struct ads1015 *adc)
 	int ret, val;
 	u16 reg_val = 0;
 	u16 os_val = 0;
+	int retries = 5;
 
 	/* Set PGA */
 	reg_val |= (adc->adc_cont_prop.pga << ADS1015_AMPLIFIER_GAIN_SHIFT);
@@ -420,10 +421,14 @@ static int ads1015_configure(struct ads1015 *adc)
 	reg_val |= (adc->adc_cont_prop.comparator_queue <<
 				ADS1015_COMPARATOR_QUEUE_SHIFT);
 
-	ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, reg_val);
-	if (ret < 0) {
-		dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
-		return ret;
+	while (retries--) {
+		ret = ads1015_write(adc->rmap, ADS1015_CONFIG_REG, reg_val);
+		if (ret < 0)
+			dev_err(adc->dev, "CONFIG reg write failed %d\n", ret);
+		else
+			break;
+		if (!retries)
+			return ret;
 	}
 	adc->cont_config = reg_val;
 
