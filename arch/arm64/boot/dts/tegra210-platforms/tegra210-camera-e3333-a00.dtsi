@@ -66,7 +66,6 @@
 		};
 
 		i2c@546c0000 {
-			nvidia,clock-always-on;
 			avdd_dsi_csi-supply = <&max77620_gpio7>;
 
 			status = "okay";
@@ -185,7 +184,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out0: endpoint {
+								e3333_ov5693_out0: endpoint {
 									csi-port = <0>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in0>;
@@ -305,7 +304,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out1: endpoint {
+								e3333_ov5693_out1: endpoint {
 									csi-port = <1>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in1>;
@@ -425,7 +424,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out2: endpoint {
+								e3333_ov5693_out2: endpoint {
 									csi-port = <2>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in2>;
@@ -545,7 +544,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out3: endpoint {
+								e3333_ov5693_out3: endpoint {
 									csi-port = <3>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in3>;
@@ -665,7 +664,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out4: endpoint {
+								e3333_ov5693_out4: endpoint {
 									csi-port = <4>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in4>;
@@ -785,7 +784,7 @@
 							#size-cells = <0>;
 							port@0 {
 								reg = <0>;
-								ov5693_out5: endpoint {
+								e3333_ov5693_out5: endpoint {
 									csi-port = <5>;
 									bus-width = <2>;
 									remote-endpoint = <&e3333_vi_in5>;

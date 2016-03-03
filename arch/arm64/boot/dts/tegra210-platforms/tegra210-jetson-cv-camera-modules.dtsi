@@ -12,6 +12,7 @@
  *
  */
 
+#include "tegra210-platforms/tegra210-jetson-cv-camera-e3333-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-camera-e3322-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-camera-e3323-a00.dtsi"
 #include "tegra210-platforms/tegra210-jetson-cv-camera-e3326-a00.dtsi"
@@ -96,9 +97,15 @@
 					e3322_cam0: imx219_a@10 {
 						status = "disabled";
 					};
+					e3333_cam0: ov5693_a@36 {
+						status = "disabled";
+					};
 				};
 				i2c@1 {
 					e3322_cam1: imx219_b@10 {
+						status = "disabled";
+					};
+					e3333_cam1: ov5693_b@36 {
 						status = "disabled";
 					};
 				};
@@ -106,9 +113,15 @@
 					e3322_cam2: imx219_c@10 {
 						status = "disabled";
 					};
+					e3333_cam2: ov5693_c@36 {
+						status = "disabled";
+					};
 				};
 				i2c@3 {
 					e3322_cam3: imx219_d@10 {
+						status = "disabled";
+					};
+					e3333_cam3: ov5693_d@36 {
 						status = "disabled";
 					};
 				};
@@ -116,11 +129,22 @@
 					e3322_cam4: imx219_e@10 {
 						status = "disabled";
 					};
+					e3333_cam4: ov5693_e@36 {
+						status = "disabled";
+					};
 				};
 				i2c@5 {
 					e3322_cam5: imx219_f@10 {
 						status = "disabled";
 					};
+					e3333_cam5: ov5693_f@36 {
+						status = "disabled";
+					};
+				};
+			};
+			tca6408_21: tca6408@21 {
+				default {
+					gpio-output-low = <0 1 2 3 4 5 6 7>;
 				};
 			};
 		};

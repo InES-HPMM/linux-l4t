@@ -419,5 +419,260 @@
 				};
 			};
 		};
+
+		/* E3333 camera board */
+		fragment-e3333@0 {
+			ids = "3333-1000-000", "3333-1000-100";
+			/* Enable E3333 camera 0 */
+			override@0 {
+				target = <&e3333_cam0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&cam_module0>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_bottomleft_P5V27C";
+					position = "bottomleft";
+					orientation = "1";
+				};
+			};
+			override@2 {
+				target = <&cam_module0_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/ov5693_a@36";
+				};
+			};
+			/* Enable E3333 camera 1 */
+			override@3 {
+				target = <&e3333_cam1>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@4 {
+				target = <&cam_module1>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_centerleft_P5V27C";
+					position = "centerleft";
+					orientation = "1";
+				};
+			};
+			override@5 {
+				target = <&cam_module1_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/ov5693_b@36";
+				};
+			};
+			/* Enable E3333 camera 2 */
+			override@6 {
+				target = <&e3333_cam2>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@7 {
+				target = <&cam_module2>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_centerright_P5V27C";
+					position = "centerright";
+					orientation = "1";
+				};
+			};
+			override@8 {
+				target = <&cam_module2_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/ov5693_c@36";
+				};
+			};
+			/* Enable E3333 camera 3 */
+			override@9 {
+				target = <&e3333_cam3>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@10 {
+				target = <&cam_module3>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_topleft_P5V27C";
+					position = "topleft";
+					orientation = "1";
+				};
+			};
+			override@11 {
+				target = <&cam_module3_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/ov5693_d@36";
+				};
+			};
+			/* Enable E3333 camera 4 */
+			override@12 {
+				target = <&e3333_cam4>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@13 {
+				target = <&cam_module4>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_bottomright_P5V27C";
+					position = "bottomright";
+					orientation = "1";
+				};
+			};
+			override@14 {
+				target = <&cam_module4_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/ov5693_e@36";
+				};
+			};
+			/* Enable E3333 camera 5 */
+			override@15 {
+				target = <&e3333_cam5>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@16 {
+				target = <&cam_module5>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3333_topright_P5V27C";
+					position = "topright";
+					orientation = "1";
+				};
+			};
+			override@17 {
+				target = <&cam_module5_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/ov5693_f@36";
+				};
+			};
+			/* Enable VI ports */
+			override@18 {
+				target = <&vi_base>;
+				_overlay_ {
+					num-channels=<6>;
+				};
+			};
+			override@19 {
+				target = <&vi_port0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@20 {
+				target = <&e3333_vi_in0>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out0>;
+				};
+			};
+			override@21 {
+				target = <&vi_port1>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@22 {
+				target = <&vi_in1>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out1>;
+				};
+			};
+			override@23 {
+				target = <&vi_port2>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@24 {
+				target = <&vi_in2>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out2>;
+				};
+			};
+			override@25 {
+				target = <&vi_port3>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@26 {
+				target = <&vi_in3>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out3>;
+				};
+			};
+			override@27 {
+				target = <&vi_port4>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@28 {
+				target = <&vi_in4>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out4>;
+				};
+			};
+			override@29 {
+				target = <&vi_port5>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@30 {
+				target = <&vi_in5>;
+				_overlay_ {
+					status = "okay";
+					remote-endpoint = <&e3333_ov5693_out5>;
+				};
+			};
+			/* Enable TCA6408 GPIO expander */
+			override@31 {
+				target = <&cam_tca6408_21>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			/* Enable TCA9548 I2C mux */
+			override@32 {
+				target = <&cam_tca9548_77>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			/* Disable E3326 camera board */
+			override@33 {
+				target = <&e3326_cam0>;
+				_overlay_ {
+					status = "disabled";
+				};
+			};
+		};
 	};
 };
