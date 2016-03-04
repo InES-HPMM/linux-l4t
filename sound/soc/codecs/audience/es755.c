@@ -3167,6 +3167,8 @@ irqreturn_t es755_irq_work(int irq, void *data)
 
 	escore->intr_recvd = 1;
 
+	/* Take wake lock to avoid system wide suspend */
+	wake_lock_timeout(&escore_priv.wake_lock, 1000);
 repeat:
 	rc = wait_event_interruptible(escore->irq_waitq,
 			(escore->dev->power.is_suspended != true));
@@ -3360,6 +3362,7 @@ int es755_core_probe(struct device *dev)
 	mutex_init(&escore_priv.msg_list_mutex);
 	mutex_init(&escore_priv.datablock_dev.datablock_mutex);
 	mutex_init(&escore_priv.escore_event_type_mutex);
+	wake_lock_init(&escore_priv.wake_lock, WAKE_LOCK_SUSPEND, "es755_wakelock");
 
 	init_completion(&escore_priv.cmd_compl);
 	init_waitqueue_head(&escore_priv.stream_in_q);
@@ -3728,6 +3731,8 @@ static __exit void es755_exit(void)
 
 	if (escore_priv.power_transition_wq)
 		destroy_workqueue(escore_priv.power_transition_wq);
+
+	wake_lock_destroy(&escore_priv.wake_lock);
 
 #if defined(CONFIG_SND_SOC_ES_VS)
 	escore_vs_release_firmware(&escore_priv);

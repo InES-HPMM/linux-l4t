@@ -42,6 +42,7 @@
 #include <linux/spi/spi.h>
 #include <linux/of_gpio.h>
 #include <linux/wait.h>
+#include <linux/wakelock.h>
 #if defined(CONFIG_SND_SOC_ES_SLIM)
 #include <linux/slimbus/slimbus.h>
 #endif
@@ -695,6 +696,7 @@ struct escore_priv {
 	unsigned char *debug_buff;
 	struct escore_delay delay;
 	int pcm_format;
+	struct wake_lock wake_lock;
 };
 
 #define escore_resp(obj) ((obj)->bus.last_response)
