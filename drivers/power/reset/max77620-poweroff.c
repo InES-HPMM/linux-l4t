@@ -99,7 +99,7 @@ static void max77620_auto_power_on(struct max77620_poweroff *max77620_poweroff)
 	}
 
 	/* Must wait 16ms for buffer update */
-	usleep_range(16000, 16000);
+	udelay(16000);
 
 	ret = max77620_reg_read(max77620_poweroff->max77620->dev,
 			MAX77620_RTC_SLAVE,
@@ -131,7 +131,7 @@ static void max77620_auto_power_on(struct max77620_poweroff *max77620_poweroff)
 	}
 
 	/* Must wait 16ms for buffer update */
-	usleep_range(16000, 16000);
+	udelay(16000);
 	max77620_allow_atomic_xfer(max77620_poweroff->max77620);
 
 	if (soc_specific_power_off)
