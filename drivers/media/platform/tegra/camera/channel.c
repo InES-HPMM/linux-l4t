@@ -773,12 +773,52 @@ tegra_channel_set_format(struct file *file, void *fh,
 	return ret;
 }
 
+static int tegra_channel_s_crop(struct file *file, void *fh,
+				const struct v4l2_crop *crop)
+{
+	struct v4l2_fh *vfh = file->private_data;
+	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
+	struct v4l2_subdev *subdev = NULL;
+	int num_sd = 0;
+	int ret = 0;
+
+	while ((subdev = chan->subdev[num_sd++]) &&
+		(num_sd <= chan->num_subdevs)) {
+		ret = v4l2_subdev_call(subdev, video, s_crop, crop);
+		if (ret < 0 && ret != -ENOIOCTLCMD)
+			return ret;
+	}
+
+	return 0;
+}
+
+static int tegra_channel_g_crop(struct file *file, void *fh,
+				struct v4l2_crop *crop)
+{
+	struct v4l2_fh *vfh = file->private_data;
+	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
+	struct v4l2_subdev *subdev = NULL;
+	int num_sd = 0;
+	int ret = 0;
+
+	while ((subdev = chan->subdev[num_sd++]) &&
+		(num_sd <= chan->num_subdevs)) {
+		ret = v4l2_subdev_call(subdev, video, g_crop, crop);
+		if (ret < 0 && ret != -ENOIOCTLCMD)
+			return ret;
+	}
+
+	return 0;
+}
+
 static const struct v4l2_ioctl_ops tegra_channel_ioctl_ops = {
 	.vidioc_querycap		= tegra_channel_querycap,
 	.vidioc_enum_fmt_vid_cap	= tegra_channel_enum_format,
 	.vidioc_g_fmt_vid_cap		= tegra_channel_get_format,
 	.vidioc_s_fmt_vid_cap		= tegra_channel_set_format,
 	.vidioc_try_fmt_vid_cap		= tegra_channel_try_format,
+	.vidioc_s_crop			= tegra_channel_s_crop,
+	.vidioc_g_crop			= tegra_channel_g_crop,
 	.vidioc_reqbufs			= vb2_ioctl_reqbufs,
 	.vidioc_querybuf		= vb2_ioctl_querybuf,
 	.vidioc_qbuf			= vb2_ioctl_qbuf,
