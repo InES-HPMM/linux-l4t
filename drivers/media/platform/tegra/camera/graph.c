@@ -66,7 +66,7 @@ static int tegra_vi_graph_build_one(struct tegra_mc_vi *vi,
 	struct device_node *next;
 	int ret = 0;
 
-	dev_dbg(vi->dev, "creating links for entity %s\n", local->name);
+	dev_info(vi->dev, "creating links for entity %s\n", local->name);
 
 	do {
 		/* Get the next endpoint and parse its link. */
@@ -77,7 +77,7 @@ static int tegra_vi_graph_build_one(struct tegra_mc_vi *vi,
 		of_node_put(ep);
 		ep = next;
 
-		dev_dbg(vi->dev, "processing endpoint %s\n", ep->full_name);
+		dev_info(vi->dev, "processing endpoint %s\n", ep->full_name);
 
 		ret = v4l2_of_parse_link(ep, &link);
 		if (ret < 0) {
@@ -100,7 +100,7 @@ static int tegra_vi_graph_build_one(struct tegra_mc_vi *vi,
 		local_pad = &local->pads[link.local_port];
 
 		if (local_pad->flags & MEDIA_PAD_FL_SINK) {
-			dev_dbg(vi->dev, "skipping sink port %s:%u\n",
+			dev_info(vi->dev, "skipping sink port %s:%u\n",
 				link.local_node->full_name, link.local_port);
 			v4l2_of_put_link(&link);
 			continue;
@@ -108,7 +108,7 @@ static int tegra_vi_graph_build_one(struct tegra_mc_vi *vi,
 
 		/* Skip channel entity , they will be processed separately. */
 		if (link.remote_node == vi->dev->of_node) {
-			dev_dbg(vi->dev, "skipping channel port %s:%u\n",
+			dev_info(vi->dev, "skipping channel port %s:%u\n",
 				link.local_node->full_name, link.local_port);
 			v4l2_of_put_link(&link);
 			continue;
@@ -139,7 +139,7 @@ static int tegra_vi_graph_build_one(struct tegra_mc_vi *vi,
 		v4l2_of_put_link(&link);
 
 		/* Create the media link. */
-		dev_dbg(vi->dev, "creating %s:%u -> %s:%u link\n",
+		dev_info(vi->dev, "creating %s:%u -> %s:%u link\n",
 			local->name, local_pad->index,
 			remote->name, remote_pad->index);
 
@@ -174,7 +174,7 @@ static int tegra_vi_graph_build_links(struct tegra_mc_vi *vi)
 	struct tegra_channel *chan;
 	int ret = 0;
 
-	dev_dbg(vi->dev, "creating links for channels\n");
+	dev_info(vi->dev, "creating links for channels\n");
 
 	do {
 		/* Get the next endpoint and parse its link. */
@@ -185,7 +185,7 @@ static int tegra_vi_graph_build_links(struct tegra_mc_vi *vi)
 		of_node_put(ep);
 		ep = next;
 
-		dev_dbg(vi->dev, "processing endpoint %s\n", ep->full_name);
+		dev_info(vi->dev, "processing endpoint %s\n", ep->full_name);
 
 		ret = v4l2_of_parse_link(ep, &link);
 		if (ret < 0) {
@@ -204,7 +204,7 @@ static int tegra_vi_graph_build_links(struct tegra_mc_vi *vi)
 
 		chan = &vi->chans[link.local_port];
 
-		dev_dbg(vi->dev, "creating link for channel %s\n",
+		dev_info(vi->dev, "creating link for channel %s\n",
 			chan->video.name);
 
 		/* Find the remote entity. */
@@ -225,7 +225,7 @@ static int tegra_vi_graph_build_links(struct tegra_mc_vi *vi)
 		v4l2_of_put_link(&link);
 
 		/* Create the media link. */
-		dev_dbg(vi->dev, "creating %s:%u -> %s:%u link\n",
+		dev_info(vi->dev, "creating %s:%u -> %s:%u link\n",
 			source->name, source_pad->index,
 			sink->name, sink_pad->index);
 
@@ -254,7 +254,7 @@ static int tegra_vi_graph_notify_complete(struct v4l2_async_notifier *notifier)
 	struct tegra_vi_graph_entity *entity;
 	int ret;
 
-	dev_dbg(vi->dev, "notify complete, all subdevs registered\n");
+	dev_info(vi->dev, "notify complete, all subdevs registered\n");
 
 	/* Create links for every entity. */
 	list_for_each_entry(entity, &vi->entities, list) {
@@ -273,6 +273,8 @@ static int tegra_vi_graph_notify_complete(struct v4l2_async_notifier *notifier)
 	ret = v4l2_device_register_subdev_nodes(&vi->v4l2_dev);
 	if (ret < 0)
 		dev_err(vi->dev, "failed to register subdev nodes\n");
+
+	vi->link_status++;
 
 	return ret;
 }
@@ -298,9 +300,10 @@ static int tegra_vi_graph_notify_bound(struct v4l2_async_notifier *notifier,
 			return -EINVAL;
 		}
 
-		dev_dbg(vi->dev, "subdev %s bound\n", subdev->name);
+		dev_info(vi->dev, "subdev %s bound\n", subdev->name);
 		entity->entity = &subdev->entity;
 		entity->subdev = subdev;
+		vi->subdevs_bound++;
 		return 0;
 	}
 
@@ -393,7 +396,7 @@ static int tegra_vi_graph_parse_one(struct tegra_mc_vi *vi,
 	struct tegra_vi_graph_entity *entity;
 	int ret = 0;
 
-	dev_dbg(vi->dev, "parsing node %s\n", node->full_name);
+	dev_info(vi->dev, "parsing node %s\n", node->full_name);
 
 	do {
 		/* Parse all the remote entities and put them into the list */
@@ -404,7 +407,7 @@ static int tegra_vi_graph_parse_one(struct tegra_mc_vi *vi,
 		of_node_put(ep);
 		ep = next;
 
-		dev_dbg(vi->dev, "handling endpoint %s\n", ep->full_name);
+		dev_info(vi->dev, "handling endpoint %s\n", ep->full_name);
 
 		remote = of_graph_get_remote_port_parent(ep);
 		if (!remote) {
@@ -457,7 +460,7 @@ int tegra_vi_tpg_graph_init(struct tegra_mc_vi *mc_vi)
 		chan->bypass = 0;
 
 		/* Create the media link. */
-		dev_dbg(mc_vi->dev, "creating %s:%u -> %s:%u link\n",
+		dev_info(mc_vi->dev, "creating %s:%u -> %s:%u link\n",
 			source->name, source_pad->index,
 			sink->name, sink_pad->index);
 
@@ -501,7 +504,7 @@ int tegra_vi_graph_init(struct tegra_mc_vi *vi)
 	}
 
 	if (!vi->num_subdevs) {
-		dev_dbg(vi->dev, "warning: no subdev found in graph\n");
+		dev_info(vi->dev, "warning: no subdev found in graph\n");
 		goto done;
 	}
 
@@ -527,11 +530,22 @@ int tegra_vi_graph_init(struct tegra_mc_vi *vi)
 	vi->notifier.num_subdevs = num_subdevs;
 	vi->notifier.bound = tegra_vi_graph_notify_bound;
 	vi->notifier.complete = tegra_vi_graph_notify_complete;
+	vi->link_status = 0;
+	vi->subdevs_bound = 0;
 
 	ret = v4l2_async_notifier_register(&vi->v4l2_dev, &vi->notifier);
 	if (ret < 0) {
 		dev_err(vi->dev, "notifier registration failed\n");
 		goto done;
+	}
+
+	if (!vi->link_status) {
+		if (vi->subdevs_bound) {
+			ret = tegra_vi_graph_notify_complete(&vi->notifier);
+			if (ret < 0)
+				goto done;
+		}
+		tegra_clean_unlinked_channels(vi);
 	}
 
 	return 0;
