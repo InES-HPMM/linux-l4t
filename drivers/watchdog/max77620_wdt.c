@@ -1,7 +1,7 @@
 /*
  * Watchdog timer for Max77620 PMIC.
  *
- * Copyright (c) 2014, NVIDIA Corporation. All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA Corporation. All rights reserved.
  *
  * Author: Chaitanya Bandi <bandik@nvidia.com>
  *
@@ -578,6 +578,7 @@ static int max77620_wdt_resume(struct device *dev)
 		ret = max77620_wdt_stop(&wdt->wdt_dev);
 		if (ret < 0)
 			dev_err(wdt->dev, "wdt stop failed: %d\n", ret);
+		wdt->current_timeout = 0;
 		return ret;
 	}
 
