@@ -603,10 +603,12 @@ static int gk20a_channel_cycle_stats_snapshot(struct channel_gk20a *ch,
 #endif
 
 static int gk20a_init_error_notifier(struct channel_gk20a *ch,
-		struct nvgpu_set_error_notifier *args) {
-	void *va;
-
+		struct nvgpu_set_error_notifier *args)
+{
+	struct device *dev = dev_from_gk20a(ch->g);
 	struct dma_buf *dmabuf;
+	void *va;
+	u64 end = args->offset + sizeof(struct nvgpu_notification);
 
 	if (!args->mem) {
 		pr_err("gk20a_init_error_notifier: invalid memory handle\n");
@@ -622,6 +624,13 @@ static int gk20a_init_error_notifier(struct channel_gk20a *ch,
 		pr_err("Invalid handle: %d\n", args->mem);
 		return -EINVAL;
 	}
+
+	if (end > dmabuf->size || end < sizeof(struct nvgpu_notification)) {
+		dma_buf_put(dmabuf);
+		gk20a_err(dev, "gk20a_init_error_notifier: invalid offset\n");
+		return -EINVAL;
+	}
+
 	/* map handle */
 	va = dma_buf_vmap(dmabuf);
 	if (!va) {
