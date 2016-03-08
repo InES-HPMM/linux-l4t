@@ -22,6 +22,7 @@
 	model = "jetson_cv";
 	compatible = "nvidia,jetson-cv", "nvidia,tegra210";
 	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0xEE01>;
 
 	#address-cells = <2>;
 	#size-cells = <2>;
