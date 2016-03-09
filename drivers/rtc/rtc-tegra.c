@@ -66,9 +66,6 @@ struct tegra_rtc_data {
 
 static struct tegra_rtc_data *tegra_rtc_dev;
 
-static u64 persistent_ms, last_persistent_ms;
-static struct timespec persistent_ts;
-
 /*
  * tegra_rtc_read - Reads the Tegra RTC registers
  * Care must be taken that this funciton is not called while the
@@ -433,15 +430,9 @@ err_out:
  */
 static void tegra_rtc_read_persistent_clock(struct timespec *ts)
 {
-	u64 delta;
-	struct timespec *tsp = &persistent_ts;
-
-	last_persistent_ms = persistent_ms;
-	persistent_ms = tegra_rtc_read_ms();
-	delta = persistent_ms - last_persistent_ms;
-
-	timespec_add_ns(tsp, delta * NSEC_PER_MSEC);
-	*ts = *tsp;
+	ts->tv_nsec = NSEC_PER_MSEC *
+			readl(tegra_rtc_dev->base + RTC_MILLISECONDS);
+	ts->tv_sec = readl(tegra_rtc_dev->base + RTC_SHADOW_SECONDS);
 }
 
 static int tegra_rtc_probe(struct platform_device *pdev)
