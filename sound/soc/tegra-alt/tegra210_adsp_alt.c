@@ -2534,6 +2534,13 @@ static int tegra210_adsp_apm_put(struct snd_kcontrol *kcontrol,
 		return 0;
 	}
 
+	/* Controls here may execute whether or not APM is initialized */
+	if (strstr(kcontrol->id.name, "Min ADSP Clock")) {
+		app->min_adsp_clock = ucontrol->value.integer.value[0];
+		return 0;
+	}
+
+	/* Check for APM initialized */
 	if (!app->plugin) {
 		dev_warn(adsp->dev, "APM not yet initialized\n");
 		return 0;
@@ -2555,8 +2562,6 @@ static int tegra210_adsp_apm_put(struct snd_kcontrol *kcontrol,
 				TEGRA210_ADSP_MSG_FLAG_SEND);
 		pm_runtime_put(adsp->dev);
 		app->priority = ucontrol->value.integer.value[0];
-	} else if (strstr(kcontrol->id.name, "Min ADSP Clock")) {
-		app->min_adsp_clock = ucontrol->value.integer.value[0];
 	}
 
 	return ret;
