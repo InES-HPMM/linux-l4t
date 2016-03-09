@@ -1,0 +1,86 @@
+/*
+ * arch/arm64/boot/dts/tegra210-jetson-cv-p2597-2180-a00-imx274.dts
+ *
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+#include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
+#include "tegra210-platforms/tegra210-modem-common.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-shim-p2597-2180-a00.dtsi"
+#include "tegra210-platforms/tegra210-jetson-cv-camera-imx274.dtsi"
+
+/ {
+	model = "jetson_cv";
+	compatible = "nvidia,jetson-cv", "nvidia,tegra210";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,fastboot-usb-pid = <0xEE01>;
+
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		fastboot-instructions = "Press <PWR> to select, <VOL D/REC> for selection move\n";
+		board-has-eeprom;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "jetson_cv";
+		};
+	};
+
+	tegra-camera-platform {
+		modules {
+			/delete-node/ module1;
+			/delete-node/ module2;
+			/delete-node/ module3;
+			/delete-node/ module4;
+			/delete-node/ module5;
+		};
+	};
+
+	plugin-manager {
+		/delete-node/ fragment-e3323@0;
+		/delete-node/ fragment-e3322@0;
+		/delete-node/ fragment-e3333@0;
+	};
+
+	host1x {
+			vi {
+				ports {
+				/delete-node/ port@1;
+				/delete-node/ port@2;
+				/delete-node/ port@3;
+				/delete-node/ port@4;
+				/delete-node/ port@5;
+				};
+
+			};
+		i2c@546c0000 {
+			/delete-node/ tca9548@77;
+			/delete-node/ ov5693_c@36;
+			/delete-node/ ov23850_a@10;
+			/delete-node/ lc898212@72;
+		};
+	};
+
+	i2c@7000c000 {
+		/delete-node/ ov23850_c@36;
+		/delete-node/ lc898212@72;
+	};
+
+	gpio@6000d000 {
+		/delete-node/ camera_control;
+	};
+};
