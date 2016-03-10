@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra_soctherm.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -490,6 +490,9 @@ static const int MIN_LOW_TEMP = -127000;
 #define IS_T13X		(tegra_chip_id == TEGRA_CHIPID_TEGRA13)
 #define IS_T21X		(tegra_chip_id == TEGRA_CHIPID_TEGRA21)
 
+#define T21X_GPU_TSENSE_VMIN_UV	824000
+#define CORE_TSENSE_VMIN_UV	900000
+
 static void __iomem *reg_soctherm_base;
 static void __iomem *clk_reset_base;
 static void __iomem *clk13_rst_base;
@@ -513,8 +516,9 @@ static bool read_hw_temp = true;
 static bool soctherm_suspended;
 
 #ifdef CONFIG_THERMAL
-static bool vdd_cpu_low_voltage;
-static bool vdd_core_low_voltage;
+static bool cpu_tsense_low_voltage;
+static bool mem_tsense_low_voltage;
+static bool gpu_tsense_low_voltage;
 #endif
 
 static u32 tegra_chip_id;
@@ -2644,14 +2648,15 @@ static int zone_invalidate(int zn, bool control)
 }
 
 /**
- * soctherm_adjust_cpu_zone() - Adjusts the soctherm CPU zone
- * @therm:	soctherm_therm_id specifying the sensor group to adjust
+ * soctherm_adjust_zone() - Adjusts the soctherm CPU/GPU/MEM zone
+ * @tz:	soctherm_therm_id specifying the sensor group to adjust
  *
  * Changes SOC_THERM registers based on the CPU and PLLX temperatures.
  * Programs hotspot offsets per CPU or GPU and PLLX difference of temperature,
  * stops or starts CPUn TSOSCs, and programs hotspot offsets per configuration.
  * This function is called in soctherm_init_platform_data(),
- * tegra_soctherm_adjust_cpu_zone() and tegra_soctherm_adjust_core_zone().
+ * tegra_soctherm_adjust_cpu_zone() and tegra_soctherm_adjust_mem_zone()
+ * tegra_soctherm_adjust_gpu_zone().
  */
 static void soctherm_adjust_zone(int tz)
 {
@@ -2667,11 +2672,11 @@ static void soctherm_adjust_zone(int tz)
 		return;
 
 	if (tz == THERM_CPU)
-		low_voltage = vdd_cpu_low_voltage;
+		low_voltage = cpu_tsense_low_voltage;
 	else if (tz == THERM_GPU)
-		low_voltage = vdd_core_low_voltage;
+		low_voltage = gpu_tsense_low_voltage;
 	else if (tz == THERM_MEM)
-		low_voltage = vdd_core_low_voltage;
+		low_voltage = mem_tsense_low_voltage;
 	else
 		return;
 
@@ -3354,48 +3359,6 @@ static int soctherm_oc_int_init(int irq_base, int num_irqs,
 	return 0;
 }
 
-static int core_rail_regulator_notifier_cb(
-	struct notifier_block *nb, unsigned long event, void *v)
-{
-	int uv = (int)((long)v);
-	int rv = NOTIFY_DONE;
-	int core_vmin_limit_uv;
-
-	if (IS_T12X || IS_T21X) {
-		core_vmin_limit_uv = 900000;
-		if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
-			if (uv >= core_vmin_limit_uv) {
-				tegra_soctherm_adjust_core_zone(true);
-				rv = NOTIFY_OK;
-			}
-		} else if (event & REGULATOR_EVENT_OUT_PRECHANGE) {
-			if (uv < core_vmin_limit_uv) {
-				tegra_soctherm_adjust_core_zone(false);
-				rv = NOTIFY_OK;
-			}
-		}
-	}
-	return rv;
-}
-
-static int __init soctherm_core_rail_notify_init(void)
-{
-	int ret;
-	static struct notifier_block vmin_condition_nb;
-
-	vmin_condition_nb.notifier_call = core_rail_regulator_notifier_cb;
-	ret = tegra_dvfs_rail_register_notifier(tegra_core_rail,
-						&vmin_condition_nb);
-	if (ret) {
-		pr_err("%s: Failed to register core rail notifier\n",
-		       __func__);
-		return ret;
-	}
-
-	return 0;
-}
-late_initcall_sync(soctherm_core_rail_notify_init);
-
 /**
  * tegra_soctherm_adjust_cpu_zone() - Adjusts the CPU zone of Tegra soctherm
  * @high_voltage_range:		Flag indicating whether or not the system is
@@ -3409,23 +3372,112 @@ late_initcall_sync(soctherm_core_rail_notify_init);
 void tegra_soctherm_adjust_cpu_zone(bool high_voltage_range)
 {
 #ifdef CONFIG_THERMAL
-	if (!vdd_cpu_low_voltage != high_voltage_range) {
-		vdd_cpu_low_voltage = !high_voltage_range;
+	if (!cpu_tsense_low_voltage != high_voltage_range) {
+		cpu_tsense_low_voltage = !high_voltage_range;
 		soctherm_adjust_zone(THERM_CPU);
 	}
 #endif
 }
 
-void tegra_soctherm_adjust_core_zone(bool high_voltage_range)
+static void tegra_soctherm_adjust_mem_zone(bool high_voltage_range)
 {
 #ifdef CONFIG_THERMAL
-	if (!vdd_core_low_voltage != high_voltage_range) {
-		vdd_core_low_voltage = !high_voltage_range;
-		soctherm_adjust_zone(THERM_GPU);
+	if (!mem_tsense_low_voltage != high_voltage_range) {
+		mem_tsense_low_voltage = !high_voltage_range;
 		soctherm_adjust_zone(THERM_MEM);
 	}
 #endif
 }
+
+static void tegra_soctherm_adjust_gpu_zone(bool high_voltage_range)
+{
+#ifdef CONFIG_THERMAL
+	if (!gpu_tsense_low_voltage != high_voltage_range) {
+		gpu_tsense_low_voltage = !high_voltage_range;
+		soctherm_adjust_zone(THERM_GPU);
+	}
+#endif
+}
+
+static int core_rail_regulator_notifier_cb(
+	struct notifier_block *nb, unsigned long event, void *v)
+{
+	int uv = (int)((long)v);
+	int rv = NOTIFY_DONE;
+
+	if (!(IS_T12X || IS_T21X))
+		return NOTIFY_STOP;
+
+	if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
+		if (uv >= CORE_TSENSE_VMIN_UV) {
+			tegra_soctherm_adjust_mem_zone(true);
+			if (IS_T12X)
+				tegra_soctherm_adjust_gpu_zone(true);
+			rv = NOTIFY_OK;
+		}
+	} else if (event & REGULATOR_EVENT_OUT_PRECHANGE) {
+		if (uv < CORE_TSENSE_VMIN_UV) {
+			tegra_soctherm_adjust_mem_zone(false);
+			if (IS_T12X)
+				tegra_soctherm_adjust_gpu_zone(false);
+			rv = NOTIFY_OK;
+		}
+	}
+	return rv;
+}
+
+static int gpu_rail_regulator_notifier_cb(
+	struct notifier_block *nb, unsigned long event, void *v)
+{
+	int uv = (int)((long)v);
+	int rv = NOTIFY_DONE;
+
+	if (!IS_T21X)
+		return NOTIFY_STOP;
+
+	if (event & REGULATOR_EVENT_OUT_POSTCHANGE) {
+		if (uv >= T21X_GPU_TSENSE_VMIN_UV) {
+			tegra_soctherm_adjust_gpu_zone(true);
+			rv = NOTIFY_OK;
+		}
+	} else if (event & REGULATOR_EVENT_OUT_PRECHANGE) {
+		if (uv < T21X_GPU_TSENSE_VMIN_UV) {
+			tegra_soctherm_adjust_gpu_zone(false);
+			rv = NOTIFY_OK;
+		}
+	}
+	return rv;
+}
+
+static int __init soctherm_rail_notify_init(void)
+{
+	int ret;
+	static struct notifier_block core_vmin_condition_nb;
+	static struct notifier_block gpu_vmin_nb;
+
+	core_vmin_condition_nb.notifier_call = core_rail_regulator_notifier_cb;
+	ret = tegra_dvfs_rail_register_notifier(tegra_core_rail,
+						&core_vmin_condition_nb);
+	if (ret) {
+		pr_err("%s: Failed to register core rail notifier\n",
+				__func__);
+		return ret;
+	}
+
+	if (IS_T21X) {
+		gpu_vmin_nb.notifier_call = gpu_rail_regulator_notifier_cb;
+		ret = tegra_dvfs_rail_register_notifier(tegra_gpu_rail,
+						&gpu_vmin_nb);
+		if (ret) {
+			pr_err("%s: Failed to register gpu rail notifier\n",
+				__func__);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+late_initcall_sync(soctherm_rail_notify_init);
 
 /**
  * tegra_soctherm_gpu_tsens_invalidate() - Allow external clients (PG driver
