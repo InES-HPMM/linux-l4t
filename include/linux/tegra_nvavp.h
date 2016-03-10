@@ -1,7 +1,7 @@
 /*
  * include/linux/tegra_nvavp.h
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -14,7 +14,7 @@
 #include <linux/ioctl.h>
 #include <linux/types.h>
 
-#define NVAVP_MAX_RELOCATION_COUNT 64
+#define NVAVP_MAX_RELOCATION_COUNT 65
 
 /* avp submit flags */
 #define NVAVP_FLAG_NONE		0x00000000

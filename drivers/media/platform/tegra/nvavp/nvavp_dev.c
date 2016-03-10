@@ -1,7 +1,7 @@
 /*
  * drivers/media/video/tegra/nvavp/nvavp_dev.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -1582,6 +1582,12 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 
 	if (!hdr.cmdbuf.mem)
 		return 0;
+
+	if (hdr.num_relocs > NVAVP_MAX_RELOCATION_COUNT) {
+		dev_err(&nvavp->nvhost_dev->dev,
+			"invalid num_relocs %d\n", hdr.num_relocs);
+		return -EINVAL;
+	}
 
 	if (copy_from_user(clientctx->relocs, (void __user *)hdr.relocs,
 			sizeof(struct nvavp_reloc) * hdr.num_relocs)) {
