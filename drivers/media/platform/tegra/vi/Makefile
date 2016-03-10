@@ -9,10 +9,8 @@ ccflags-y += -I../kernel-t18x/drivers/video/tegra/host/
 endif
 
 
-ifneq (,$(filter $(CONFIG_VIDEO_TEGRA_VI),y m))
 obj-y += vi_irq.o
 obj-y += tegra_vi.o
-endif
 
 nvhost-vi-objs += vi.o
 obj-$(CONFIG_VIDEO_TEGRA_VI) += nvhost-vi.o

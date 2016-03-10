@@ -198,8 +198,7 @@ static struct platform_device tegra_isp01b_device = {
 
 #endif
 
-#if defined(CONFIG_VIDEO_TEGRA_VI) || defined(CONFIG_VIDEO_TEGRA_VI_MODULE)
-
+#if IS_ENABLED(CONFIG_VIDEO_TEGRA_VI) || IS_ENABLED(CONFIG_VIDEO_TEGRA)
 static struct resource vi_resources[] = {
 	{
 		.name = "regs",
@@ -432,7 +431,7 @@ static struct platform_device *t124_devices[] = {
 	&tegra_isp01_device,
 	&tegra_isp01b_device,
 #endif
-#if defined(CONFIG_VIDEO_TEGRA_VI) || defined(CONFIG_VIDEO_TEGRA_VI_MODULE)
+#if IS_ENABLED(CONFIG_VIDEO_TEGRA_VI) || IS_ENABLED(CONFIG_VIDEO_TEGRA)
 	&tegra_vi01_device,
 #endif
 	&tegra_msenc03_device,
