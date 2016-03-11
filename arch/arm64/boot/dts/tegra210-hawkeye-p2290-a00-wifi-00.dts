@@ -37,4 +37,18 @@
 			};
 		};
 	};
+
+	i2c@7000c400 {
+		tps61280@75 {
+			status = "disabled";
+		};
+	};
+
+	gpio@6000d000 {
+		modem-regulator {
+			gpio-output-low = <TEGRA_GPIO(E, 0)
+					   TEGRA_GPIO(E, 5)
+					   TEGRA_GPIO(E, 1)>;
+		};
+	};
 };
