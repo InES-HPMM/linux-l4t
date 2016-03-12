@@ -306,6 +306,12 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 
 
 		if (escore->base_route_setup) {
+
+			/* Atleast requires 30ms for any route to get stable
+			 * before it stopping it to avoid loud noise.
+			 * More details:  BAS-3839 */
+			msleep(30);
+
 			ret = escore_cmd(escore, stop_route_cmd, &resp);
 			if (ret) {
 				pr_err("%s: Route stop failed, ret = %d\n",
@@ -526,7 +532,7 @@ static int convert_output_mux_to_cmd(struct escore_priv *escore, int reg)
 	port = (msg[0] >> 9) & 0x1f;
 
 	/* For BAS-3205, in case of PT_VP route and PCM0 port and 16bits,
-	 * set channel number to 0 for PassIN1 and 2 for PassIN2 */
+	 * set channel number to 0 and 2 for PCM0 port for capture */
 	if (PCM0 == port && PASSTHRU_VP == algo_type &&
 	    (SNDRV_PCM_FORMAT_S16_LE == escore->pcm_format ||
 	     SNDRV_PCM_FORMAT_S16_BE == escore->pcm_format)) {
