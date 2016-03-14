@@ -240,6 +240,11 @@ static int tegra_rtc_read_time(struct device *dev, struct rtc_time *time)
 		dev_err(dev, "Timeout accessing RTC\n");
 		return ret;
 	}
+	/* Update to Shadow registers in APB can take upto 250us
+	 * after register write is complete. Adding delay to
+	 * avoid race condition
+	 */
+	udelay(260);
 	sec = readl(rtc->base + TEGRA_RTC_REG_SECONDS);
 	rtc_time_to_tm(sec, time);
 
