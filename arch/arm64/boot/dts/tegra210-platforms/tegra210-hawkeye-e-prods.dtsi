@@ -1,5 +1,5 @@
 /* 
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -144,23 +144,23 @@
 				prod_c_600M {
 				    prod = <
 					0x000003a0 0xfffffffd 0x00000002	// SOR_NV_PDISP_INPUT_CONTROL  	01:01=ARM_VIDEO_RANGE	0x1
-					0x0000005c 0xf0fff8ff 0x0A0003C0	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x3
-										//				27:24=ICHPMP		0xA
+					0x0000005c 0xf0fff8ff 0x010003C0	// SOR_NV_PDISP_SOR_PLL0_0	11:08=VCOCAP		0x3
+										//				27:24=ICHPMP		0x1
 										//				07:06=PLLREG_LEVEL	0X3
-					0x00000060 0xff0fe0ff 0x00301700	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
-										//				12:09=TMDS_TERMADJ	0xB
+					0x00000060 0xff0fe0ff 0x00301100	// SOR_NV_PDISP_SOR_PLL1_0	08:08=TMDS_TERM		0x1
+										//				12:09=TMDS_TERMADJ	0x8
 										//				23:20=LOADADJ		0x3
-					0x00000068 0xf0ffffff 0x0F000000	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0xF
-					0x00000138 0x00000000 0x35383838	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
-										//				31:24=LANE3_DP_LANE0	0x35
+					0x00000068 0xf0ffffff 0x3F000440	// SOR_NV_PSIDP_SOR_PLL3_0	27:24=BG_VREF_LEVEL	0xF
+					0x00000138 0x00000000 0x31383838	// SOR_NV_PDISP_SOR_LANE_DRIVE_CURRENT0_0
+										//				31:24=LANE3_DP_LANE0	0x31
 										//				23:16=LANE2_DP_LANE1	0x38
 										//				15:08=LANE1_DP_LANE2	0x38
 										//				07:00=LANE0_DP_LANE3	0x38
-					0x00000148 0x00000000 0x023E3E3E	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
+					0x00000148 0x00000000 0x02141414	// SOR_NV_PDISP_SOR_LANE_PREEMPHASIS0_0
 										//				31:24=LANE3_DP_LANE0	0x02
-										//				23:16=LANE2_DP_LANE1	0x3E
-										//				15:08=LANE1_DP_LANE2	0x3E
-										//				07:00=LANE0_DP_LANE3	0x3E
+										//				23:16=LANE2_DP_LANE1	0x14
+										//				15:08=LANE1_DP_LANE2	0x14
+										//				07:00=LANE0_DP_LANE3	0x14
 					0x00000170 0xffbf00ff 0x00406600	// SOR_NV_PDISP_SOR_DP_PADCTL0_0
 										//				22:22=TX_PU		0x1
 										//				15:08=TX_PU_VALUE	0x66
