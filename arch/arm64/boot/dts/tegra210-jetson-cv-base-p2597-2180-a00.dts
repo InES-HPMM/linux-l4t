@@ -1068,4 +1068,7 @@
 			pllx-offset-min = <2000>;
 		};
 	};
+	watchdog@60005100 {
+		status = "okay";
+	};
 };
