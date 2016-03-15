@@ -910,44 +910,6 @@ static int soctherm_get_mn_cpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m
 	return 0;
 }
 
-/**
- * soctherm_get_gpu_pskip_status() - read state of the GPU thermal pulse skipper
- * @enabled: pointer to a u8: return 0 if the skipper is disabled, 1 if enabled
- * @sw_override: ptr to a u8: return 0 if sw override is disabled, 1 if enabled
- * @m: pointer to a u8 to return the current pulse skipper ratio numerator into
- * @n: pointer to a u8 to return the current pulse skipper ratio denominator to
- *
- * Read the current status of the thermal throttling pulse skipper
- * attached to the GPU clock, and return the status into the variables
- * pointed to by @enabled, @sw_override, @m, and @n.  Note that the M
- * and N values are not what is stored in the register bitfields, but
- * instead are the actual values used by the pulse skipper -- i.e., they
- * are the bitfield values _plus one_; they have valid ranges of 1-256.
- *
- * Return: 0 upon success, -ENOTSUPP on chips with GPU-local
- * throttling status (e.g., T124, T132) or -EINVAL if any of the
- * arguments are NULL.
- */
-static int soctherm_get_gpu_pskip_status(u8 *enabled, u8 *sw_override, u16 *m, u16 *n)
-{
-	u32 v;
-
-	if (!enabled || !m || !n || !sw_override)
-		return -EINVAL;
-
-	v = soctherm_readl(GPU_PSKIP_STATUS);
-	if (REG_GET(v, XPU_PSKIP_STATUS_ENABLED)) {
-		*enabled = 1;
-		*sw_override = REG_GET(v, XPU_PSKIP_STATUS_SW_OVERRIDE);
-		*m = REG_GET(v, XPU_PSKIP_STATUS_M) + 1;
-		*n = REG_GET(v, XPU_PSKIP_STATUS_N) + 1;
-	} else {
-		*enabled = 0;
-	}
-
-	return 0;
-}
-
 #ifdef CONFIG_THERMAL
 /**
  * enforce_temp_range() - check and enforce temperature range [min, max]
@@ -1291,51 +1253,32 @@ static int soctherm_get_cpu_throt_state(u16 dividend, u16 divisor,
 }
 
 /**
- * soctherm_get_gpu_throt_state - read the current state of the GPU pulse skipper
- * @dividend: pulse skipper numerator value to test against (1-256)
- * @divisor: pulse skipper denominator value to test against (1-256)
- * @cur_state: ptr to the variable that the current throttle state is stored in
+ * soctherm_get_gpu_throt_state - read the GPU throttling state from HW
+ * throttling status registers and update the result to reflect the current
+ * throttled state of the system.
  *
- * Determine the current state of the GPU thermal throttling pulse
- * skipper, and if it's enabled and at its configured ending state,
- * set the appropriate 'enabled' bit in the variable pointed to by
- * @cur_state.  This works on T114 and T148 by comparing @dividend and
- * @divisor with the current state of the hardware - though note that
- * @dividend and @divisor must be the actual dividend and divisor
- * values.  That is, they must be in 1-256 range, not the 0-255 range used
- * by the hardware bitfields.
- *
- * Unfortunately, on T12x and T13x, the GPU manages its own thermal
- * throttling, and does not report its state to the SOC_THERM IP
- * block.  So on those chips, this function will return an error.
- *
- * Return: 0 upon success, -ENOTSUPP on T12x and T13x, or -EINVAL if
- * the arguments are invalid or out of range.
+ * @cur_state: ptr to hold the updated current state of GPU throttle action. this
+ * 	state is binary (throttled/not throttled), and doesn't reflect the actual
+ * 	throttle depth in effect.
  */
-static int soctherm_get_gpu_throt_state(u16 dividend, u16 divisor,
-					unsigned long *cur_state)
+static int soctherm_get_gpu_throt_state(unsigned long *cur_state)
 {
-	u16 m, n;
-	u8 enabled, sw_override;
-	int r;
+	int result, state, enabled;
+	u32 reg;
 
-	if (!cur_state || dividend == 0 || divisor == 0 ||
-	    dividend > 256 || divisor > 256)
+	if (!cur_state)
 		return -EINVAL;
 
-	r = soctherm_get_gpu_pskip_status(&enabled, &sw_override, &m, &n);
-	if (r) {
-		WARN_ON(1);
-		return r;
-	}
+	reg = soctherm_readl(GPU_PSKIP_STATUS);
+	enabled = REG_GET(reg, XPU_PSKIP_STATUS_ENABLED);
+	state = REG_GET(reg, GPU_PSKIP_STATUS_THROTTLE_DEPTH);
+	result = enabled ? (state ? (1 << THROTTLE_DEV_GPU) : 0) : 0;
 
 	if (!enabled)
-		return 0;
+		return -ENODEV;
 
-	*cur_state |= (m == dividend && n == divisor) ?
-		(1 << THROTTLE_DEV_GPU) : 0;
-
-	return r;
+	*cur_state |= result;
+	return 0;
 }
 
 /**
@@ -1355,7 +1298,7 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 {
 	struct thermal_trip_info *trip_state = cdev->devdata;
 	struct soctherm_throttle_dev *devs;
-	int i, r;
+	int i;
 
 	*cur_state = 0;
 	if (!trip_state)
@@ -1376,33 +1319,8 @@ static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 						     cur_state);
 
 		devs = &pp->throttle[i].devs[THROTTLE_DEV_GPU];
-		if (devs->enable) {
-			r = soctherm_get_gpu_throt_state(devs->dividend + 1,
-							 devs->divisor + 1,
-							 cur_state);
-			/*
-			 * On some chips, the GPU thermal throttling
-			 * status isn't reported back to the SOC_THERM
-			 * hardware.  The ideal situation is for the
-			 * GPU driver to register its own cooling
-			 * device in that case; however, that code
-			 * isn't implemented AFAIK.  On those chips,
-			 * Diwakar's preferred approach is for the GPU
-			 * throttling status bit to follow the CPU
-			 * throttling status bit, since that's the
-			 * vendor- recommended thermal configuration.
-			 * Diwakar notes: On Tegra12x OC5 is a
-			 * reserved alarm. Hence GPU 'PSKIP' state
-			 * always shows ON. The real status register
-			 * 'NV_THERM_CLK_STATUS' can't be read safely
-			 * [from this code - pjw]. So we mirror the
-			 * CPU status.
-			 */
-			if (r == -ENOTSUPP)
-				if (*cur_state & (1 << THROTTLE_DEV_CPU))
-					*cur_state |= (1 << THROTTLE_DEV_GPU);
-		}
-
+		if (devs->enable)
+			soctherm_get_gpu_throt_state(cur_state);
 	}
 
 	return 0;
