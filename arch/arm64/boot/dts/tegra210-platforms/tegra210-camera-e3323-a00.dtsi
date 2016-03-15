@@ -162,6 +162,31 @@
 				* If sensor does not support embedded metadata value should be 0.
 				*/
 
+				/* Tline = HTS / SCLK / 4
+				*        = 7200 / 180Mhz / 4
+				*        = 10 us
+				*  Line length = Tline * (mipiclk / bit count) * line count
+				*              = 10 us * (1500Mbps / 10) * 4
+				*              = 6000 pixels
+				*  Max frame rate = SCLK * 4 / (HTS * min VTS)
+				*                 = 180Mhz * 4 / (7200 * 4806)
+				*                 = 20.8 fps
+				*  Min frame rate = SCLK * 4 / (HTS * max VTS)
+				*                 = 180Mhz * 4 / (7200 * 32767)
+				*                 = 3.05185
+				*  Min exposure time = 2 row * Tline
+				*                    = 2 * 10
+				*                    = 20
+				*  Max exposure time = (max VTS - 32) row * Tline
+				*                    = (32767 - 32) * 10
+				*                    = 327350
+				*  Pixel clock = mipiclk * lane count / bit count
+				*              = 1500Mbps * 4 / 10
+				*              = 600000000
+				*  Mclk Multiplier = Pixel clock / Extclk
+				*                  = 600Mhz / 24
+				*                  = 25
+				*/
 				mode0 { // OV23850_MODE_5632X4224
 					mclk_khz = "24000";
 					num_lanes = "4";
@@ -174,22 +199,46 @@
 					active_h = "4224";
 					pixel_t = "bayer_bggr";
 					readout_orientation = "270";
-					line_length = "7200";
+					line_length = "6000";
 					inherent_gain = "1";
-					mclk_multiplier = "31.25";
-					pix_clk_hz = "750000000";
+					mclk_multiplier = "25";
+					pix_clk_hz = "600000000";
 
 					min_gain_val = "1.0";
 					max_gain_val = "15.5";
 					min_hdr_ratio = "1";
 					max_hdr_ratio = "64";
-					min_framerate = "3.179011";
-					max_framerate = "21";
+					min_framerate = "3.05185";
+					max_framerate = "20.8";
 					min_exp_time = "20";
-					max_exp_time = "314256";
+					max_exp_time = "327350";
 					embedded_metadata_height = "0";
 				};
-
+				/* Tline = HTS / SCLK / 4
+				*        = 7108 / 180Mhz / 4
+				*        = 9.87 us
+				*  Line length = Tline * (mipiclk / bit count) * line count
+				*              = 10 us * (1500Mbps / 10) * 4
+				*              = 5922 pixels
+				*  Max frame rate = SCLK * 4 / (HTS * min VTS)
+				*                 = 180Mhz * 4 / (7108 * 3376)
+				*                 = 30 fps
+				*  Min frame rate = SCLK * 4 / (HTS * max VTS)
+				*                 = 180Mhz * 4 / (7108 * 32767)
+				*                 = 3.09135
+				*  Min exposure time = 2 row * Tline
+				*                    = 2 * 9.87
+				*                    = 19.94
+				*  Max exposure time = (max VTS - 32) row * Tline
+				*                    = (32767 - 32) * 9.87
+				*                    = 323094
+				*  Pixel clock = mipiclk * lane count / bit count
+				*              = 1500Mbps * 4 / 10
+				*              = 600000000
+				*  Mclk Multiplier = Pixel clock / Extclk
+				*                  = 600Mhz / 24
+				*                  = 25
+				*/
 				mode1 { // OV23850_MODE_5632X3168
 					mclk_khz = "24000";
 					num_lanes = "4";
@@ -202,19 +251,19 @@
 					active_h = "3168";
 					pixel_t = "bayer_bggr";
 					readout_orientation = "270";
-					line_length = "7108";
+					line_length = "5922";
 					inherent_gain = "1";
-					mclk_multiplier = "31.25";
-					pix_clk_hz = "750000000";
+					mclk_multiplier = "25";
+					pix_clk_hz = "600000000";
 
 					min_gain_val = "1.0";
 					max_gain_val = "15.5";
 					min_hdr_ratio = "1";
 					max_hdr_ratio = "64";
-					min_framerate = "3.220157";
+					min_framerate = "3.09135";
 					max_framerate = "30";
-					min_exp_time = "19";
-					max_exp_time = "310241";
+					min_exp_time = "19.74";
+					max_exp_time = "323094";
 					embedded_metadata_height = "0";
 				};
 				ports {
@@ -300,19 +349,19 @@
 				active_h = "4224";
 				pixel_t = "bayer_bggr";
 				readout_orientation = "270";
-				line_length = "7200";
+				line_length = "6000";
 				inherent_gain = "1";
-				mclk_multiplier = "31.25";
-				pix_clk_hz = "750000000";
+				mclk_multiplier = "25";
+				pix_clk_hz = "600000000";
 
 				min_gain_val = "1.0";
 				max_gain_val = "15.5";
 				min_hdr_ratio = "1";
 				max_hdr_ratio = "64";
-				min_framerate = "3.179011";
-				max_framerate = "20";
+				min_framerate = "3.05185";
+				max_framerate = "20.8";
 				min_exp_time = "20";
-				max_exp_time = "314256";
+				max_exp_time = "327350";
 				embedded_metadata_height = "0";
 			};
 
@@ -328,19 +377,19 @@
 				active_h = "3168";
 				pixel_t = "bayer_bggr";
 				readout_orientation = "270";
-				line_length = "7108";
+				line_length = "5922";
 				inherent_gain = "1";
-				mclk_multiplier = "31.25";
-				pix_clk_hz = "750000000";
+				mclk_multiplier = "25";
+				pix_clk_hz = "600000000";
 
 				min_gain_val = "1.0";
 				max_gain_val = "15.5";
 				min_hdr_ratio = "1";
 				max_hdr_ratio = "64";
-				min_framerate = "3.220157";
+				min_framerate = "3.09135";
 				max_framerate = "30";
-				min_exp_time = "19";
-				max_exp_time = "310467";
+				min_exp_time = "19.74";
+				max_exp_time = "323094";
 				embedded_metadata_height = "0";
 			};
 			ports {
