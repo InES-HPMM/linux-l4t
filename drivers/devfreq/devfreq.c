@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2011 Samsung Electronics
  *	MyungJoo Ham <myungjoo.ham@samsung.com>
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -188,9 +188,6 @@ int update_devfreq(struct devfreq *devfreq)
 	err = devfreq->governor->get_target_freq(devfreq, &freq);
 	if (err)
 		return err;
-
-	if (devfreq->previous_freq == freq)
-		return 0;
 
 	/*
 	 * Adjust the freuqency with user freq and QoS.
