@@ -1,7 +1,7 @@
 /*
  * tegra210-hawkeye-p2290-a00-wifi-00.dts: For wifi sku.
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,8 +47,8 @@
 	gpio@6000d000 {
 		modem-regulator {
 			gpio-output-low = <TEGRA_GPIO(E, 0)
-					   TEGRA_GPIO(E, 5)
 					   TEGRA_GPIO(E, 1)>;
+			gpio-output-high = <TEGRA_GPIO(E, 5)>;
 		};
 	};
 };
