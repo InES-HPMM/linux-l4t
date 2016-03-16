@@ -239,6 +239,9 @@ void camera_common_create_debugfs(struct camera_common_data *s_data,
 
 const struct camera_common_colorfmt *camera_common_find_datafmt(
 		enum v4l2_mbus_pixelcode code);
+int camera_common_enum_mbus_code(struct v4l2_subdev *sd,
+				struct v4l2_subdev_fh *fh,
+				struct v4l2_subdev_mbus_code_enum *code);
 int camera_common_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 			 enum v4l2_mbus_pixelcode *code);
 int camera_common_try_fmt(struct v4l2_subdev *sd,

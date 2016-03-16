@@ -549,9 +549,14 @@ static struct v4l2_subdev_core_ops ov23850_subdev_core_ops = {
 	.s_power	= camera_common_s_power,
 };
 
+static struct v4l2_subdev_pad_ops ov23850_subdev_pad_ops = {
+	.enum_mbus_code = camera_common_enum_mbus_code,
+};
+
 static struct v4l2_subdev_ops ov23850_subdev_ops = {
 	.core	= &ov23850_subdev_core_ops,
 	.video	= &ov23850_subdev_video_ops,
+	.pad	= &ov23850_subdev_pad_ops,
 };
 
 static struct of_device_id ov23850_of_match[] = {
@@ -1274,6 +1279,8 @@ static int ov23850_probe(struct i2c_client *client,
 	common_data->def_mode		= OV23850_DEFAULT_MODE;
 	common_data->def_width		= OV23850_DEFAULT_WIDTH;
 	common_data->def_height		= OV23850_DEFAULT_HEIGHT;
+	common_data->fmt_width		= common_data->def_width;
+	common_data->fmt_height		= common_data->def_height;
 	common_data->def_clk_freq	= OV23850_DEFAULT_CLK_FREQ;
 
 	priv->i2c_client		= client;

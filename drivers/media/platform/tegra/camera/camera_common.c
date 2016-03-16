@@ -347,6 +347,18 @@ const struct camera_common_colorfmt *camera_common_find_datafmt(
 }
 EXPORT_SYMBOL(camera_common_find_datafmt);
 
+int camera_common_enum_mbus_code(struct v4l2_subdev *sd,
+				struct v4l2_subdev_fh *fh,
+				struct v4l2_subdev_mbus_code_enum *code)
+{
+	if ((unsigned int)code->index >= ARRAY_SIZE(camera_common_color_fmts))
+		return -EINVAL;
+
+	code->code = camera_common_color_fmts[code->index].code;
+	return 0;
+}
+EXPORT_SYMBOL(camera_common_enum_mbus_code);
+
 int camera_common_enum_fmt(struct v4l2_subdev *sd, unsigned int index,
 			 enum v4l2_mbus_pixelcode *code)
 {
