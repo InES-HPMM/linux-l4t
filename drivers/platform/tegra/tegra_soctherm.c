@@ -1296,20 +1296,14 @@ static int soctherm_get_gpu_throt_state(unsigned long *cur_state)
 static int soctherm_hw_action_get_cur_state(struct thermal_cooling_device *cdev,
 					    unsigned long *cur_state)
 {
-	struct thermal_trip_info *trip_state = cdev->devdata;
+	char *type = (char *)cdev->devdata;
 	struct soctherm_throttle_dev *devs;
 	int i;
 
 	*cur_state = 0;
-	if (!trip_state)
-		return 0;
-
-	if (trip_state->trip_type != THERMAL_TRIP_HOT)
-		return 0;
 
 	for (i = THROTTLE_LIGHT; i <= THROTTLE_HEAVY; i++) {
-		if (!strnstr(trip_state->cdev_type, throt_names[i],
-			     THERMAL_NAME_LENGTH))
+		if (!strnstr(type, throt_names[i], THERMAL_NAME_LENGTH))
 			continue;
 
 		devs = &pp->throttle[i].devs[THROTTLE_DEV_CPU];
@@ -1708,7 +1702,7 @@ static void soctherm_hot_cdev_register(int i, int trip)
 			soctherm_hw_heavy_cdev =
 				thermal_cooling_device_register(
 					therm->trips[trip].cdev_type,
-					&therm->trips[trip],
+					therm->trips[trip].cdev_type,
 					&soctherm_hw_action_ops);
 			continue;
 		}
@@ -1721,7 +1715,7 @@ static void soctherm_hot_cdev_register(int i, int trip)
 			soctherm_hw_light_cdev =
 				thermal_cooling_device_register(
 					therm->trips[trip].cdev_type,
-					&therm->trips[trip],
+					therm->trips[trip].cdev_type,
 					&soctherm_hw_action_ops);
 			continue;
 		}
@@ -1766,7 +1760,7 @@ static int soctherm_thermal_sys_init(void)
 				soctherm_hw_critical_cdev =
 					thermal_cooling_device_register(
 						therm->trips[j].cdev_type,
-						&therm->trips[j],
+						therm->trips[j].cdev_type,
 						&soctherm_hw_action_ops);
 				break;
 
@@ -4510,7 +4504,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 	struct thermal_cooling_device *cdev, **cdevp;
 	struct soctherm_throttle *throt;
 	struct soctherm_throttle_dev *dev_cpu, *dev_gpu;
-	const char *typ, *mod, *lvl;
+	const char *typ, *mod, *lvl, *data;
 
 	/* parse type 'throttlectl' for HW thermal throttle and OC alarms */
 	while ((np = of_get_next_child(pdev->dev.of_node, np))) {
@@ -4545,15 +4539,18 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 			if (strnstr(typ, "shutdown",
 						THERMAL_NAME_LENGTH)) {
 				cdevp = &soctherm_hw_critical_cdev;
+				data = "shutdown";
 				/* throt = &pp->throttle[none]; */
 			} else if (strnstr(typ, "heavy",
 						THERMAL_NAME_LENGTH)) {
 				cdevp = &soctherm_hw_heavy_cdev;
 				throt = &pp->throttle[THROTTLE_HEAVY];
+				data = throt_names[THROTTLE_HEAVY];
 			} else if (strnstr(typ, "light",
 						THERMAL_NAME_LENGTH)) {
 				cdevp = &soctherm_hw_light_cdev;
 				throt = &pp->throttle[THROTTLE_LIGHT];
+				data = throt_names[THROTTLE_LIGHT];
 			}
 			if (!cdevp) {
 				dev_err(&pdev->dev,
@@ -4565,7 +4562,7 @@ static void soctherm_throttlectl_parse(struct platform_device *pdev)
 #ifdef CONFIG_THERMAL
 			cdev = thermal_cooling_device_register(
 						(char *)typ,
-						NULL,
+						(void *)data,
 						&soctherm_hw_action_ops);
 			if (IS_ERR_OR_NULL(cdev)) {
 				dev_err(&pdev->dev,
