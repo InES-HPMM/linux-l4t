@@ -1601,7 +1601,8 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 		return PTR_ERR(cmdbuf_dmabuf);
 	}
 
-	if (hdr.cmdbuf.offset > cmdbuf_dmabuf->size) {
+	if ((hdr.cmdbuf.offset & 3)
+		|| (hdr.cmdbuf.offset >= cmdbuf_dmabuf->size)) {
 		dev_err(&nvavp->nvhost_dev->dev,
 			"invalid cmdbuf offset %d\n", hdr.cmdbuf.offset);
 		ret = -EINVAL;
@@ -1645,7 +1646,11 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 			goto err_reloc_info;
 		}
 
-		if (clientctx->relocs[i].cmdbuf_offset > cmdbuf_dmabuf->size) {
+		if ((clientctx->relocs[i].cmdbuf_offset & 3)
+			|| (clientctx->relocs[i].cmdbuf_offset >=
+				cmdbuf_dmabuf->size)
+			|| (clientctx->relocs[i].cmdbuf_offset >=
+				(cmdbuf_dmabuf->size - hdr.cmdbuf.offset))) {
 			dev_err(&nvavp->nvhost_dev->dev,
 				"invalid reloc offset in cmdbuf %d\n",
 				clientctx->relocs[i].cmdbuf_offset);
@@ -1662,7 +1667,9 @@ static int nvavp_pushbuffer_submit_ioctl(struct file *filp, unsigned int cmd,
 			goto target_dmabuf_fail;
 		}
 
-		if (clientctx->relocs[i].target_offset > target_dmabuf->size) {
+		if ((clientctx->relocs[i].target_offset & 3)
+			|| (clientctx->relocs[i].target_offset >=
+				target_dmabuf->size)) {
 			dev_err(&nvavp->nvhost_dev->dev,
 				"invalid target offset in reloc %d\n",
 				clientctx->relocs[i].target_offset);
