@@ -307,7 +307,7 @@
 		*/
 		modules {
 			module0 {
-				badge = "hawkeye_a00_rear_BA519C";
+				badge = "hawkeye_a00_rear_5BA508T2";
 				position = "rear";
 				orientation = "1";
 				drivernode0 {
