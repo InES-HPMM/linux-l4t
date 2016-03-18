@@ -2,7 +2,7 @@
  * battery-charger-gauge-comm.c -- Communication between battery charger and
  *	battery gauge driver.
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Laxman Dewangan <ldewangan@nvidia.com>
  *
@@ -387,10 +387,13 @@ int battery_charging_wakeup(struct battery_charger_dev *bc_dev, int after_sec)
 	if (!alarm_time)
 		return 0;
 
-	bc_dev->rtc = alarmtimer_get_rtcdev();
+	bc_dev->rtc = rtc_class_open(CONFIG_RTC_BACKUP_HCTOSYS_DEVICE);
 	if (!bc_dev->rtc) {
-		dev_err(bc_dev->parent_dev, "No RTC device found\n");
-		return -ENODEV;
+		bc_dev->rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
+		if (bc_dev->rtc == NULL) {
+			dev_err(bc_dev->parent_dev, "No RTC device found\n");
+			return -ENODEV;
+		}
 	}
 
 	alm.enabled = true;
