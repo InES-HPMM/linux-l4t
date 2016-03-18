@@ -8224,6 +8224,13 @@ F:	drivers/char/toshiba.c
 F:	include/linux/toshiba.h
 F:	include/uapi/linux/toshiba.h
 
+TOSHIBA TC358840 DRIVER
+M:	Hans Verkuil <hans.verkuil@cisco.com>
+L:	linux-media@vger.kernel.org
+S:	Maintained
+F:	drivers/media/i2c/tc358840*
+F:	include/media/i2c/tc358840.h
+
 TMIO MMC DRIVER
 M:	Guennadi Liakhovetski <g.liakhovetski@gmx.de>
 M:	Ian Molton <ian@mnementh.co.uk>
