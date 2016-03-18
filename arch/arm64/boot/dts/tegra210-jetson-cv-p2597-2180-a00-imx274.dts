@@ -42,7 +42,6 @@
 
 	tegra-camera-platform {
 		modules {
-			/delete-node/ module1;
 			/delete-node/ module2;
 			/delete-node/ module3;
 			/delete-node/ module4;
@@ -59,14 +58,31 @@
 	host1x {
 			vi {
 				ports {
-				/delete-node/ port@1;
-				/delete-node/ port@2;
+				/* keep port0 enabled for E3326 */
+				vi_port0: port@0 {
+					status = "okay";
+					vi_in0: endpoint {
+						status = "okay";
+					};
+				};
+				vi_port1: port@1 {
+					status = "okay";
+					vi_in1: endpoint {
+						status = "okay";
+					};
+				};
+				vi_port2: port@2 {
+					status = "okay";
+					vi_in2: endpoint {
+						status = "okay";
+					};
+				};
 				/delete-node/ port@3;
 				/delete-node/ port@4;
 				/delete-node/ port@5;
 				};
-
 			};
+
 		i2c@546c0000 {
 			/delete-node/ tca9548@77;
 			/delete-node/ ov5693_c@36;
