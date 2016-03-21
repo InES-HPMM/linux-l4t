@@ -1,7 +1,7 @@
 /*
  * virtual.c - Virtual kernel driver
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -399,6 +399,18 @@ static int virtual_device_sanity_check(
 		num--;
 	}
 	dev_dbg(dev, "regulator name size: %d\n", *len);
+
+	if (pvd->pwr_on_size > VIRTUAL_DEV_MAX_POWER_SIZE) {
+		dev_err(dev, "%s power on function size too big %d!\n",
+		__func__, pvd->pwr_on_size);
+		return -ENODEV;
+	}
+
+	if (pvd->pwr_off_size > VIRTUAL_DEV_MAX_POWER_SIZE) {
+		dev_err(dev, "%s power off function size too big %d!\n",
+		__func__, pvd->pwr_off_size);
+		return -ENODEV;
+	}
 
 	return 0;
 }
