@@ -40,7 +40,6 @@
 #include "t210/t210.h"
 #include "vi.h"
 #include "vi_irq.h"
-#include "camera_priv_defs.h"
 
 #ifdef CONFIG_ARCH_TEGRA_18x_SOC
 #include "t186/t186.h"
