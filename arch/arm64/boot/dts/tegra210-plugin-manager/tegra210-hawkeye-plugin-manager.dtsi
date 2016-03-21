@@ -1,0 +1,96 @@
+/*
+- * tegra210-hawkeye-plugin-manager.dtsi: Hawkeye Plugin Manager dtsi.
+- *
+ * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
+
+/ {
+	plugin-manager {
+		fragement@0 {
+			odm-data = "battery-connected";
+			override@0 {
+				target = <&battery_charger>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+
+			override@1 {
+				target = <&battery_gauge>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@1 {
+			odm-data = "enable-debug-console";
+			override@0 {
+				target = <&uart_overjack>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@2 {
+			odm-data = "enable-tegra-wdt";
+			override@0 {
+				target = <&tegra_watchdog>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@3 {
+			odm-data = "enable-pmic-wdt";
+			override@0 {
+				target = <&pmic_watchdog>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@4 {
+			odm-data = "enable-tegra-udc";
+			override@0 {
+				target = <&udc>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@5 {
+			odm-data = "enable-tegra-otg";
+			override@0 {
+				target = <&otg>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+
+		fragement@6 {
+			odm-data = "soft-watchdog-timer";
+			override@0 {
+				target = <&soft_wdt>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+		};
+	};
+};

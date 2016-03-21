@@ -8,7 +8,7 @@
  *	optional features: no NFC + no sensor hub + no barometer
  *	manufacturing phase : POR
  *
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
  */
 
 #include "tegra210-hawkeye-p2290-3303-a02-00-base.dts"
-#include "tegra210-hawkeye-p2290-shim.dtsi"
 
 / {
 	nvidia,dtsfilename = __FILE__;
