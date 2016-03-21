@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/host/vi/vi_irq.h
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -16,8 +16,6 @@
 
 #ifndef __DRIVERS_VIDEO_VI_IRQ_H
 #define __DRIVERS_VIDEO_VI_IRQ_H
-
-#include "camera_priv_defs.h"
 
 int vi_intr_init(struct vi *vi);
 int vi_intr_free(struct vi *vi);
