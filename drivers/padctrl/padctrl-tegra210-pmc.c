@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -71,6 +71,7 @@ struct tegra210_pmc_pads_info {
 	int io_dpd_reg_off;
 	int io_volt_bit_pos;
 	int io_volt_reg_off;
+	bool dynamic_pad_voltage;
 };
 
 #define TEGRA_210_PAD_INFO(_name, _id, _dpd_off, _dpd_bit, _vbit) \
@@ -130,12 +131,15 @@ static struct tegra210_pmc_pads_info tegra210_pads_info[] = {
 static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
 		int pad_id, u32 voltage)
 {
-	u32 offset;
+	u32 offset, curr_volt;
+	unsigned int pad_mask;
 	int val;
 	int i;
 
-	if ((voltage != 1800000) && (voltage != 3300000))
+	if ((voltage != 1800000) && (voltage != 3300000)) {
+		pr_err("Pad voltage %u is not valid\n", voltage);
 		return -EINVAL;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tegra210_pads_info); ++i) {
 		if (tegra210_pads_info[i].pad_id == pad_id)
@@ -149,6 +153,18 @@ static int tegra210_pmc_padctrl_set_voltage(struct padctrl_dev *pad_dev,
 			return -EINVAL;;
 
 	offset = BIT(tegra210_pads_info[i].io_volt_bit_pos);
+
+	if (!tegra210_pads_info[i].dynamic_pad_voltage) {
+		pad_mask = tegra_pmc_pwr_detect_get(offset);
+		curr_volt = (pad_mask & offset) ? 3300000UL : 1800000UL;
+		if (voltage == curr_volt)
+			return 0;
+		pr_err("Pad %s: Dynamic pad voltage is not supported\n",
+			tegra210_pads_info[i].pad_name);
+
+		return -EINVAL;
+	}
+
 	val = (voltage == 3300000) ? offset : 0;
 	tegra_pmc_pwr_detect_update(offset, val);
 	udelay(100);
@@ -242,9 +258,10 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 	int pad_id;
 	const char *pad_name, *name;
 	bool dpd_en, dpd_dis, pad_en, pad_dis, io_dpd_en, io_dpd_dis;
+	bool dyn_pad_volt;
 	int n_config;
 	u32 *volt_configs, *iodpd_configs;
-	int i, index, vcount, dpd_count;
+	int i, index, vcount, dpd_count, pindex;
 	int ret;
 
 	pad_np = of_get_child_by_name(np, "io-pad-defaults");
@@ -294,6 +311,10 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 				vcount += 2;
 			}
 
+			tegra210_pads_info[i].dynamic_pad_voltage =
+				of_property_read_bool(child,
+					"nvidia,enable-dynamic-pad-voltage");
+
 			dpd_en = of_property_read_bool(child,
 						"nvidia,deep-power-down-enable");
 			dpd_dis = of_property_read_bool(child,
@@ -324,9 +345,12 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 		index = i * 2;
 		if (!volt_configs[index + 1])
 			continue;
+		pindex = volt_configs[index];
 		pad_id = tegra210_pads_info[volt_configs[index]].pad_id;
 		pad_name = tegra210_pads_info[volt_configs[index]].pad_name;
 
+		dyn_pad_volt = tegra210_pads_info[pindex].dynamic_pad_voltage;
+		tegra210_pads_info[pindex].dynamic_pad_voltage = true;
 		ret = tegra210_pmc_padctrl_set_voltage(pad_dev,
 				pad_id, volt_configs[index + 1]);
 		if (ret < 0) {
@@ -337,6 +361,7 @@ static int tegra210_pmc_parse_io_pad_init(struct device_node *np,
 			pr_info("PMC: IO pad %s voltage is %d\n",
 				pad_name, volt_configs[index + 1]);
 		}
+		tegra210_pads_info[pindex].dynamic_pad_voltage = dyn_pad_volt;
 	}
 
 	for (i = 0; i < dpd_count / 2; ++i) {
