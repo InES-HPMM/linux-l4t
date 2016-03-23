@@ -831,6 +831,8 @@ static int gk20a_pm_finalize_poweron(struct device *dev)
 		goto done;
 	}
 
+	g->ops.fb.reset(g);
+
 	if (g->ops.ltc.init_fs_state)
 		g->ops.ltc.init_fs_state(g);
 
