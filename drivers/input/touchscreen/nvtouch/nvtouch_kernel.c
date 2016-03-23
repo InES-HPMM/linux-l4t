@@ -51,14 +51,25 @@ struct nvtouch_sample_gpfifo {
 	struct nvtouch_data_frame *frames;
 };
 
+struct nvtouch_rect {
+	u32 left;
+	u32 top;
+	u32 right;
+	u32 bottom;
+};
+
 struct nvtouch_dta_state {
 	spinlock_t slock;
 	u32 client_refcount;
 	u32 authorized_pid;
+	struct nvtouch_rect authorized_win_device;
+	u32 device_height;
+	u32 device_width;
+	u32 orientation;
 	u8 send_debug_touch;
 	struct nvtouch_ioctl_dta_config ioctl_dta_config;
-
-	struct nvtouch_ioctl_dta_admin_data ioctl_dta_admin_data;
+	struct nvtouch_ioctl_dta_admin_config ioctl_dta_admin_config;
+	struct nvtouch_ioctl_dta_admin_update ioctl_dta_admin_update;
 	struct nvtouch_ioctl_dta_admin_query ioctl_dta_admin_query;
 
 	struct nvtouch_ioctl_debug_touch ioctl_dta_debug_touch_send;
@@ -77,6 +88,7 @@ static void nvtouch_kernel_process_locked(void *samples,
 		u64 current_time);
 
 u8 s_frame_immediate_data[NVTOUCH_SENSOR_DATA_RESERVED];
+
 
 static void nvtouch_init_blobs(struct dentry *dfs_nvtouch_dir)
 {
@@ -815,6 +827,7 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 {
 	struct nvtouch_data_frame *data_frame;
 	struct nvtouch_ioctl_data *params;
+	struct nvtouch_userspace_dta_info info;
 	int wait_count;
 	u32 in_tune_param;
 
@@ -861,8 +874,29 @@ int nvtouch_ioctl_do_update(struct file *filp, unsigned int cmd,
 		nvtouch_report_events(&params->detected_events);
 
 	/* update unpacked data */
-	memcpy(&g_state_dta.ioctl_dta.data, params->unpacked_data,
-			NVTOUCH_SENSOR_DATA_RESERVED);
+
+	memset(&g_state_dta.ioctl_dta.detected_events, 0,
+	       sizeof(struct nvtouch_events));
+	memset(&g_state_dta.ioctl_dta.data, 0, NVTOUCH_SENSOR_DATA_RESERVED);
+
+	if (g_state_dta.client_refcount > 0) {
+		int info_offset = NVTOUCH_SENSOR_DATA_RESERVED -
+			sizeof(struct nvtouch_userspace_dta_info);
+		memcpy(&g_state_dta.ioctl_dta.data,
+		       params->unpacked_data, NVTOUCH_SENSOR_DATA_RESERVED);
+
+		info.left_pixels = g_state_dta.authorized_win_device.left;
+		info.top_pixels = g_state_dta.authorized_win_device.top;
+		info.right_pixels = g_state_dta.authorized_win_device.right;
+		info.bottom_pixels = g_state_dta.authorized_win_device.bottom;
+		info.device_height = g_state_dta.device_height;
+		info.device_width = g_state_dta.device_width;
+		info.orientation = g_state_dta.orientation;
+		memcpy(params->unpacked_data+info_offset, &info,
+		       sizeof(struct nvtouch_userspace_dta_info));
+	}
+
+
 	/* save events */
 	memcpy(&g_state_kernel.last_reported,
 			&params->detected_events,
@@ -1255,6 +1289,10 @@ void nvtouch_kernel_init(int sensor_w, int sensor_h, int screen_w,
 	g_state_kernel.userspace_config.screen_h = screen_h;
 	g_state_kernel.userspace_config.invert_x = invert_x;
 	g_state_kernel.userspace_config.invert_y = invert_y;
+	g_state_dta.ioctl_dta.sensor_img_width = sensor_w;
+	g_state_dta.ioctl_dta.sensor_img_height = sensor_h;
+	g_state_dta.ioctl_dta.invert_x = invert_x;
+	g_state_dta.ioctl_dta.invert_y = invert_y;
 
 	wmb();
 	g_state_kernel.is_initialized = 1;
@@ -1272,7 +1310,7 @@ void nvtouch_debug_expose_u32(const char *name, u32 *var)
  */
 long nvtouch_dta_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	long err;
+	long err = 0;
 	if ((_IOC_TYPE(cmd) != NVTOUCH_DTA_IOCTL_MAGIC) ||
 			(_IOC_NR(cmd) == 0) ||
 			(_IOC_NR(cmd) > NVTOUCH_DTA_IOCTL_LAST)) {
@@ -1344,9 +1382,6 @@ long nvtouch_dta_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 			g_state_dta.send_debug_touch = 0;
 		} else {
-			memcpy(&g_state_dta.ioctl_dta.detected_events,
-					&g_state_kernel.last_reported,
-					sizeof(struct nvtouch_events));
 		}
 
 		err = copy_to_user((void __user *)arg,
@@ -1401,11 +1436,10 @@ static const struct file_operations dta_fops = {
 /*
  * DTA admin device
  */
-
 long nvtouch_dta_admin_ioctl(struct file *filp, unsigned int cmd,
 		unsigned long arg)
 {
-	long err;
+	long err = 0;
 	if ((_IOC_TYPE(cmd) != NVTOUCH_DTA_ADMIN_IOCTL_MAGIC) ||
 		(_IOC_NR(cmd) == 0) ||
 		(_IOC_NR(cmd) > NVTOUCH_DTA_ADMIN_IOCTL_LAST) ||
@@ -1422,16 +1456,25 @@ long nvtouch_dta_admin_ioctl(struct file *filp, unsigned int cmd,
 	switch (cmd) {
 	case NVTOUCH_DTA_ADMIN_IOCTL_CONFIG:
 	{
-		pr_err("NVTOUCH_DTA_ADMIN_IOCTL_CONFIG not supported\n");
-		err = 0;
+		if (copy_from_user(&g_state_dta.ioctl_dta_admin_config,
+				(void __user *)arg,
+					_IOC_SIZE(cmd))) {
+			pr_err("NVTOUCH_DTA_ADMIN_IOCTL_CONFIG: _IOC IO fail\n");
+			err = -EFAULT;
+			break;
+		}
+
+		err = copy_to_user((void __user *)arg,
+				&g_state_dta.ioctl_dta_admin_config,
+				_IOC_SIZE(cmd));
 		break;
 	}
 	case NVTOUCH_DTA_ADMIN_IOCTL_UPDATE:
 	{
-		BUG_ON(_IOC_SIZE(cmd) !=
-				sizeof(struct nvtouch_ioctl_dta_admin_data));
+		int sensor_w = g_state_kernel.userspace_config.sensor_w;
+		int sensor_h = g_state_kernel.userspace_config.sensor_h;
 
-		if (copy_from_user(&g_state_dta.ioctl_dta_admin_data,
+		if (copy_from_user(&g_state_dta.ioctl_dta_admin_update,
 				(void __user *)arg,
 					_IOC_SIZE(cmd))) {
 			pr_err("NVTOUCH_DTA_ADMIN_IOCTL_UPDATE IO fail\n");
@@ -1439,15 +1482,40 @@ long nvtouch_dta_admin_ioctl(struct file *filp, unsigned int cmd,
 			break;
 		}
 		g_state_dta.authorized_pid =
-				g_state_dta.ioctl_dta_admin_data.pid;
-		err = 0;
+			g_state_dta.ioctl_dta_admin_update.pid;
+		g_state_dta.authorized_win_device.left =
+			g_state_dta.ioctl_dta_admin_update.left_pixels;
+		g_state_dta.authorized_win_device.right =
+			g_state_dta.ioctl_dta_admin_update.right_pixels;
+		g_state_dta.authorized_win_device.bottom =
+			g_state_dta.ioctl_dta_admin_update.bottom_pixels;
+		g_state_dta.authorized_win_device.top =
+			g_state_dta.ioctl_dta_admin_update.top_pixels;
+		g_state_dta.device_width =
+			g_state_dta.ioctl_dta_admin_update.device_width;
+		g_state_dta.device_height =
+			g_state_dta.ioctl_dta_admin_update.device_height;
+		g_state_dta.orientation =
+			g_state_dta.ioctl_dta_admin_update.orientation;
+
+		switch (g_state_dta.orientation) {
+		case NVTOUCH_DTA_ADMIN_ORIENTATION_90:
+		case NVTOUCH_DTA_ADMIN_ORIENTATION_270:
+			g_state_dta.ioctl_dta.sensor_img_width = sensor_h;
+			g_state_dta.ioctl_dta.sensor_img_height = sensor_w;
+			break;
+		case NVTOUCH_DTA_ADMIN_ORIENTATION_180:
+		default:
+			g_state_dta.ioctl_dta.sensor_img_width = sensor_w;
+			g_state_dta.ioctl_dta.sensor_img_height = sensor_h;
+			break;
+		}
+		g_state_dta.ioctl_dta.orientation = g_state_dta.orientation;
+
 		break;
 	}
 	case NVTOUCH_DTA_ADMIN_IOCTL_QUERY:
 	{
-		BUG_ON(_IOC_SIZE(cmd) !=
-				sizeof(struct nvtouch_ioctl_dta_admin_query));
-
 		g_state_dta.ioctl_dta_admin_query.connected_clients =
 				g_state_dta.client_refcount;
 		err = copy_to_user((void __user *)arg,
@@ -1457,8 +1525,6 @@ long nvtouch_dta_admin_ioctl(struct file *filp, unsigned int cmd,
 	}
 	case NVTOUCH_DTA_ADMIN_IOCTL_SEND_DEBUG_TOUCH:
 	{
-		BUG_ON(_IOC_SIZE(cmd) !=
-				sizeof(struct nvtouch_ioctl_debug_touch));
 		g_state_dta.send_debug_touch = 1;
 		if (copy_from_user(&g_state_dta.ioctl_dta_debug_touch_send,
 				(void __user *)arg,
@@ -1473,8 +1539,6 @@ long nvtouch_dta_admin_ioctl(struct file *filp, unsigned int cmd,
 	}
 	case NVTOUCH_DTA_ADMIN_IOCTL_RECV_DEBUG_TOUCH:
 	{
-		BUG_ON(_IOC_SIZE(cmd) !=
-				sizeof(struct nvtouch_ioctl_debug_touch));
 		if (copy_from_user(&g_state_dta.ioctl_dta_debug_touch_recv,
 				(void __user *)arg,
 					_IOC_SIZE(cmd))) {
@@ -1620,8 +1684,13 @@ static int __init nvtouch_cdev_init(void)
 			NVTOUCH_DRIVER_VERSION;
 
 	g_state_dta.authorized_pid = NVTOUCH_DTA_ADMIN_NULL_PID;
+	memset(&g_state_dta.authorized_win_device, 0,
+	       sizeof(struct nvtouch_rect));
+	g_state_dta.device_width = 1920;
+	g_state_dta.device_height = 1200;
 	g_state_dta.client_refcount = 0;
 	g_state_dta.send_debug_touch = 0;
+	g_state_dta.authorized_pid = NVTOUCH_DTA_ADMIN_NULL_PID;
 
 	g_state_kernel.time_of_last_touch = nvtouch_get_time_us();
 	g_state_kernel.input_slot_bits = 0;

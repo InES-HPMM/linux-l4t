@@ -130,6 +130,7 @@ void nvtouch_set_pm_timeouts(u32 pm_active_to_lp_timeout_ms,
 	u32 pm_active_to_idle_timeout_ms);
 
 void nvtouch_report_events(struct nvtouch_events *touch_events);
+void nvtouch_report_events_dta(struct nvtouch_events *touch_events);
 void nvtouch_set_scan_rate(unsigned int scan_rate);
 void nvtouch_set_system_state(unsigned int state);
 
@@ -166,6 +167,17 @@ struct nvtouch_data_frame {
 	u32 data_format;
 	u32 reserved2;
 	char samples[NVTOUCH_SENSOR_DATA_RESERVED];
+};
+
+struct nvtouch_userspace_dta_info {
+	u16 left_pixels; /* in - pixels */
+	u16 top_pixels; /* in - pixels */
+	u16 right_pixels; /* in - pixels */
+	u16 bottom_pixels; /* in - pixels */
+	u16 pid; /* in */
+	u16 device_width;
+	u16 device_height;
+	u8 orientation;
 };
 
 struct nvtouch_ioctl_data {
@@ -209,6 +221,11 @@ struct nvtouch_ioctl_dta {
 	u64 timestamp;
 	struct nvtouch_events detected_events;
 	char data[NVTOUCH_SENSOR_DATA_RESERVED];
+	u32 sensor_img_width;
+	u32 sensor_img_height;
+	u32 orientation;
+	u32 invert_x;
+	u32 invert_y;
 };
 
 struct nvtouch_ioctl_dta_old {
@@ -222,9 +239,20 @@ struct nvtouch_ioctl_dta_admin_config {
 	u32 driver_version_userspace;  /* in */
 };
 
-struct nvtouch_ioctl_dta_admin_data {
+struct nvtouch_ioctl_dta_admin_update {
+	u32 left_pixels; /* in - pixels */
+	u32 top_pixels; /* in - pixels */
+	u32 right_pixels; /* in - pixels */
+	u32 bottom_pixels; /* in - pixels */
 #define NVTOUCH_DTA_ADMIN_NULL_PID 0
 	u32 pid; /* in */
+	u32 device_width;
+	u32 device_height;
+#define NVTOUCH_DTA_ADMIN_ORIENTATION_0   0
+#define NVTOUCH_DTA_ADMIN_ORIENTATION_90  1
+#define NVTOUCH_DTA_ADMIN_ORIENTATION_180 2
+#define NVTOUCH_DTA_ADMIN_ORIENTATION_270 3
+	u32 orientation;
 };
 
 struct nvtouch_ioctl_dta_admin_query {
@@ -262,7 +290,7 @@ struct nvtouch_ioctl_debug_touch {
 #define NVTOUCH_DTA_ADMIN_IOCTL_CONFIG _IOWR(NVTOUCH_DTA_ADMIN_IOCTL_MAGIC, 1,\
 	struct nvtouch_ioctl_dta_admin_config)
 #define NVTOUCH_DTA_ADMIN_IOCTL_UPDATE _IOWR(NVTOUCH_DTA_ADMIN_IOCTL_MAGIC, 2,\
-	struct nvtouch_ioctl_dta_admin_data)
+	struct nvtouch_ioctl_dta_admin_update)
 #define NVTOUCH_DTA_ADMIN_IOCTL_QUERY _IOWR(NVTOUCH_DTA_ADMIN_IOCTL_MAGIC, 3,\
 	struct nvtouch_ioctl_dta_admin_query)
 #define NVTOUCH_DTA_ADMIN_IOCTL_SEND_DEBUG_TOUCH _IOWR(NVTOUCH_DTA_IOCTL_MAGIC,\
@@ -272,6 +300,6 @@ struct nvtouch_ioctl_debug_touch {
 #define NVTOUCH_DTA_ADMIN_IOCTL_LAST \
 	(_IOC_NR(NVTOUCH_DTA_ADMIN_IOCTL_RECV_DEBUG_TOUCH))
 #define NVTOUCH_DTA_ADMIN_IOCTL_MAX_ARG_SIZE \
-	sizeof(struct nvtouch_ioctl_dta_admin_config)
+	sizeof(struct nvtouch_ioctl_dta_admin_update)
 
 #endif /* NVTOUCH_H_ */
