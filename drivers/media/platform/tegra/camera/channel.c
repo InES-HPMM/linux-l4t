@@ -761,6 +761,7 @@ tegra_channel_enum_format(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 
 	index -= 1;
 	f->pixelformat = tegra_core_get_fourcc_by_idx(index);
+	tegra_core_get_description_by_idx(index, f->description);
 
 	return 0;
 }
@@ -1312,14 +1313,21 @@ static const struct v4l2_ioctl_ops tegra_channel_ioctl_ops = {
 
 static int tegra_channel_open(struct file *fp)
 {
-	int ret = 0;
+	int ret;
 	struct video_device *vdev = video_devdata(fp);
 	struct tegra_channel *chan = video_get_drvdata(vdev);
 	struct tegra_mc_vi *vi;
 	struct tegra_csi_device *csi;
 
-	if (chan->subdev[0] == NULL)
-		return -ENODEV;
+	mutex_lock(&chan->video_lock);
+	ret = v4l2_fh_open(fp);
+	if (ret || !v4l2_fh_is_singular_file(fp))
+		goto unlock;
+
+	if (chan->subdev[0] == NULL) {
+		ret = -ENODEV;
+		goto unlock;
+	}
 
 	vi = chan->vi;
 	csi = vi->csi;
@@ -1336,11 +1344,13 @@ static int tegra_channel_open(struct file *fp)
 		tegra_csi_channel_power_on(csi, chan->port);
 		ret = tegra_channel_set_power(chan, 1);
 		if (ret < 0)
-			return ret;
+			goto unlock;
 	}
 
-	ret = v4l2_fh_open(fp);
 	chan->fh = (struct v4l2_fh *)fp->private_data;
+
+unlock:
+	mutex_unlock(&chan->video_lock);
 	return ret;
 }
 
@@ -1351,8 +1361,16 @@ static int tegra_channel_close(struct file *fp)
 	struct tegra_channel *chan = video_get_drvdata(vdev);
 	struct tegra_mc_vi *vi = chan->vi;
 	struct tegra_csi_device *csi = vi->csi;
+	bool is_singular;
 
-	ret = vb2_fop_release(fp);
+	mutex_lock(&chan->video_lock);
+	is_singular = v4l2_fh_is_singular_file(fp);
+	ret = _vb2_fop_release(fp, NULL);
+
+	if (!is_singular) {
+		mutex_unlock(&chan->video_lock);
+		return ret;
+	}
 
 	if (!vi->pg_mode &&
 		atomic_dec_and_test(&chan->power_on_refcnt)) {
@@ -1369,6 +1387,7 @@ static int tegra_channel_close(struct file *fp)
 		tegra_vi_power_off(vi);
 	}
 
+	mutex_unlock(&chan->video_lock);
 	return ret;
 }
 
