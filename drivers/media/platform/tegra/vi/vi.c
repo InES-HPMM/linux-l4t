@@ -48,6 +48,15 @@
 #define MAX_DEVID_LENGTH	16
 #define TEGRA_VI_NAME		"tegra_vi"
 
+struct vi *tegra_vi;
+
+struct vi *tegra_vi_get(void)
+{
+	return tegra_vi;
+}
+EXPORT_SYMBOL(tegra_vi_get);
+
+
 static struct of_device_id tegra_vi_of_match[] = {
 #ifdef TEGRA_12X_OR_HIGHER_CONFIG
 	{ .compatible = "nvidia,tegra124-vi",
@@ -241,7 +250,6 @@ static int nvhost_vi_slcg_handler(struct notifier_block *nb,
 static int vi_probe(struct platform_device *dev)
 {
 	int err = 0;
-	struct vi *tegra_vi;
 	struct nvhost_device_data *pdata = NULL;
 
 	if (dev->dev.of_node) {

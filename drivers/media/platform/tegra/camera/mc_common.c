@@ -26,7 +26,6 @@
 #include "vi.h"
 #include "registers.h"
 
-#define TPG_CHANNELS 6
 #define INVALID_PORT 100
 
 /* In TPG mode, VI only support 2 formats */
@@ -121,13 +120,6 @@ static void set_vi_mode(struct tegra_mc_vi *vi)
 	}
 }
 
-static void set_v4l2_ctrl(struct v4l2_ctrl *ctrl, int value)
-{
-	v4l2_ctrl_unlock(ctrl);
-	v4l2_ctrl_s_ctrl(ctrl, value);
-	v4l2_ctrl_lock(ctrl);
-}
-
 static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct tegra_mc_vi *vi = container_of(ctrl->handler, struct tegra_mc_vi,
@@ -136,25 +128,23 @@ static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_TEST_PATTERN:
-		/* set all channels to vi mode before TPG is set */
-		/* set bypass port to invalid port */
+		/*
+		 * TPG control is only avaiable to TPG driver,
+		 * it can't be changed to 0 to disable TPG mode.
+		 */
 		if (ctrl->val) {
-			set_v4l2_ctrl(vi->bypass, INVALID_PORT);
-			dev_info(&vi->ndev->dev, "Turning on TPG mode\n");
-		}
-		vi->pg_mode = ctrl->val;
-		vi->csi->pg_mode = vi->pg_mode;
+			dev_info(&vi->ndev->dev, "Set TPG mode to %d\n",
+				 ctrl->val);
+			vi->pg_mode = ctrl->val;
+			vi->csi->pg_mode = vi->pg_mode;
+		} else
+			dev_warn(&vi->ndev->dev,
+				 "TPG mode can't be disabled for TPG driver\n");
 		break;
 	case V4L2_CID_VI_SET_BYPASS_PORT:
 		if (ctrl->val < vi->num_channels) {
 			chan = &vi->chans[ctrl->val];
 			chan->bypass = 1;
-			if (vi->pg_mode) {
-				dev_info(&vi->ndev->dev,
-					"Turning off TPG mode\n");
-				set_v4l2_ctrl(vi->pattern, 0);
-				vi->pg_mode = vi->csi->pg_mode = 0;
-			}
 		} else
 			/* set all channels to vi mode for invalid port */
 			set_vi_mode(vi);
@@ -189,8 +179,10 @@ void tegra_vi_v4l2_cleanup(struct tegra_mc_vi *vi)
 {
 	v4l2_ctrl_handler_free(&vi->ctrl_handler);
 	v4l2_device_unregister(&vi->v4l2_dev);
-	media_device_unregister(&vi->media_dev);
+	if (!vi->pg_mode)
+		media_device_unregister(&vi->media_dev);
 }
+EXPORT_SYMBOL(tegra_vi_v4l2_cleanup);
 
 static void tegra_vi_notify(struct v4l2_subdev *sd,
 					  unsigned int notification, void *arg)
@@ -215,19 +207,29 @@ int tegra_vi_v4l2_init(struct tegra_mc_vi *vi)
 {
 	int ret;
 
-	vi->pg_mode = 0;
 	vi_tpg_fmts_bitmap_init(vi);
 
-	vi->media_dev.dev = vi->dev;
-	strlcpy(vi->media_dev.model, "NVIDIA Tegra Video Input Device",
-		sizeof(vi->media_dev.model));
-	vi->media_dev.hw_revision = 3;
+	/*
+	 * TPG mode need to reuse the real media_device struct of tegra_vi,
+	 * so bypass the media_device_register() here.
+	 */
+	if (vi->pg_mode) {
+		struct vi *tegra_vi = tegra_vi_get();
+		if (tegra_vi)
+			memcpy(&vi->media_dev, &tegra_vi->mc_vi.media_dev,
+					sizeof(struct media_device));
+	} else {
+		vi->media_dev.dev = vi->dev;
+		strlcpy(vi->media_dev.model, "NVIDIA Tegra Video Input Device",
+				sizeof(vi->media_dev.model));
+		vi->media_dev.hw_revision = 3;
 
-	ret = media_device_register(&vi->media_dev);
-	if (ret < 0) {
-		dev_err(vi->dev, "media device registration failed (%d)\n",
-			ret);
-		return ret;
+		ret = media_device_register(&vi->media_dev);
+		if (ret < 0) {
+			dev_err(vi->dev, "media device registration failed (%d)\n",
+					ret);
+			return ret;
+		}
 	}
 
 	vi->v4l2_dev.mdev = &vi->media_dev;
@@ -239,14 +241,16 @@ int tegra_vi_v4l2_init(struct tegra_mc_vi *vi)
 		goto register_error;
 	}
 
-	v4l2_ctrl_handler_init(&vi->ctrl_handler, 2);
-	vi->pattern = v4l2_ctrl_new_std_menu_items(&vi->ctrl_handler,
+	v4l2_ctrl_handler_init(&vi->ctrl_handler, 1);
+	if (vi->pg_mode)
+		vi->pattern = v4l2_ctrl_new_std_menu_items(&vi->ctrl_handler,
 					&vi_ctrl_ops, V4L2_CID_TEST_PATTERN,
 					ARRAY_SIZE(vi_pattern_strings) - 1,
-					0, 0, vi_pattern_strings);
-
-	vi->bypass = v4l2_ctrl_new_custom(&vi->ctrl_handler,
+					0, vi->pg_mode, vi_pattern_strings);
+	else
+		vi->bypass = v4l2_ctrl_new_custom(&vi->ctrl_handler,
 					&bypass_ctrl, NULL);
+
 	if (vi->ctrl_handler.error) {
 		dev_err(vi->dev, "failed to add controls\n");
 		ret = vi->ctrl_handler.error;
@@ -266,7 +270,8 @@ ctrl_error:
 	v4l2_ctrl_handler_free(&vi->ctrl_handler);
 	v4l2_device_unregister(&vi->v4l2_dev);
 register_error:
-	media_device_unregister(&vi->media_dev);
+	if (!vi->pg_mode)
+		media_device_unregister(&vi->media_dev);
 	return ret;
 }
 
@@ -293,7 +298,6 @@ static int vi_parse_dt(struct tegra_mc_vi *vi, struct platform_device *dev)
 	if (err) {
 		dev_err(&dev->dev,
 			"Failed to find num of channels, set TPG mode\n");
-		num_channels = TPG_CHANNELS;
 		vi->pg_mode = TEGRA_VI_PG_PATCH;
 	}
 
@@ -314,7 +318,7 @@ static void set_vi_register_base(struct tegra_mc_vi *mc_vi,
 }
 
 int tegra_vi_media_controller_init(struct tegra_mc_vi *mc_vi,
-			struct platform_device *pdev)
+				   struct platform_device *pdev)
 {
 	int err = 0;
 	struct nvhost_device_data *pdata = pdev->dev.platform_data;
@@ -325,9 +329,18 @@ int tegra_vi_media_controller_init(struct tegra_mc_vi *mc_vi,
 	if (err)
 		return err;
 
-	err = vi_parse_dt(mc_vi, pdev);
-	if (err)
-		goto mc_init_fail;
+	if (mc_vi->pg_mode) {
+		mc_vi->chans = devm_kzalloc(&pdev->dev,
+					    sizeof(struct tegra_channel) *
+					    mc_vi->num_channels,
+					    GFP_KERNEL);
+		if (!mc_vi->chans)
+			return -ENOMEM;
+	} else {
+		err = vi_parse_dt(mc_vi, pdev);
+		if (err)
+			goto mc_init_fail;
+	}
 
 	mc_vi->ndev = pdev;
 	mc_vi->dev = &pdev->dev;
@@ -343,7 +356,10 @@ int tegra_vi_media_controller_init(struct tegra_mc_vi *mc_vi,
 		goto channels_error;
 
 	/* Setup media links between VI and external sensor subdev. */
-	err = tegra_vi_graph_init(mc_vi);
+	if (mc_vi->pg_mode)
+		err = tegra_vi_tpg_graph_init(mc_vi);
+	else
+		err = tegra_vi_graph_init(mc_vi);
 	if (err < 0)
 		goto graph_error;
 

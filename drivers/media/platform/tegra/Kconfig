@@ -272,3 +272,16 @@ config VIDEO_TEGRA_VI
 	  programming of VI hardware registers
 	  To compile this driver as a module, choose M here:
 	  the module will be called nvhost-vi.
+
+config VIDEO_TEGRA_VI_TPG
+	depends on VIDEO_TEGRA_VI
+	tristate "Tegra video input test pattern generator driver"
+	default m
+	help
+	  Driver for the Tegra video input test pattern generator
+	  driver is based on media controller framework and interact
+	  with host1x apis to support both user space as well as kernel
+	  programming of VI hardware registers to generate predefined
+	  test patterns.
+	  To compile this driver as a module, choose M here:
+	  the module will be called nvhost-vi-tpg.

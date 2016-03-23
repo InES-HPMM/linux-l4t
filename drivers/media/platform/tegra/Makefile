@@ -7,6 +7,7 @@ subdir-ccflags-$(CONFIG_ARM) := -Werror
 obj-y				+= cam_dev/
 obj-y				+= vi/
 obj-y				+= csi/
+obj-$(CONFIG_VIDEO_TEGRA_VI_TPG) += tpg/
 obj-$(CONFIG_VIDEO_CAMERA)	+= camera/
 ccflags-y	+= -Idrivers/video/tegra/camera
 ccflags-y	+= -Idrivers/video/tegra/host
