@@ -1065,6 +1065,7 @@ tegra_channel_get_format(struct file *file, void *fh,
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_mbus_framefmt mf;
 	struct v4l2_pix_format *pix = &format->fmt.pix;
+	struct tegra_video_format const *vfmt;
 	int ret = 0;
 	int num_sd = 0;
 
@@ -1078,11 +1079,15 @@ tegra_channel_get_format(struct file *file, void *fh,
 		pix->height = mf.height;
 		pix->field = mf.field;
 		pix->colorspace = mf.colorspace;
-		pix->pixelformat = chan->format.pixelformat;
-		pix->bytesperline = mf.width * chan->fmtinfo->bpp;
-		pix->sizeimage = pix->bytesperline * mf.height;
+		vfmt = tegra_core_get_format_by_code(mf.code);
+		if (vfmt != NULL) {
+			pix->pixelformat = vfmt->fourcc;
+			pix->bytesperline = pix->width * vfmt->bpp;
+			pix->sizeimage = pix->height * pix->bytesperline;
+		}
 
 		return 0;
+
 	}
 
 	return -ENOIOCTLCMD;
