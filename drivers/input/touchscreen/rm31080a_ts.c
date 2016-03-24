@@ -3921,10 +3921,12 @@ static void rm_tch_spi_shutdown(struct spi_device *spi)
 
 	free_irq(ts->irq, ts);
 
-	if (ts->regulator_3v3 && ts->regulator_1v8) {
+	if (ts->regulator_3v3 &&
+			regulator_is_enabled(ts->regulator_3v3))
 		regulator_disable(ts->regulator_3v3);
+	if (ts->regulator_1v8 &&
+		regulator_is_enabled(ts->regulator_1v8))
 		regulator_disable(ts->regulator_1v8);
-	}
 }
 
 static int rm_tch_spi_remove(struct spi_device *spi)
