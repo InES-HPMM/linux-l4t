@@ -500,9 +500,14 @@ static struct v4l2_subdev_core_ops imx185_subdev_core_ops = {
 	.s_power	= camera_common_s_power,
 };
 
+static struct v4l2_subdev_pad_ops imx185_subdev_pad_ops = {
+	.enum_mbus_code = camera_common_enum_mbus_code,
+};
+
 static struct v4l2_subdev_ops imx185_subdev_ops = {
 	.core	= &imx185_subdev_core_ops,
 	.video	= &imx185_subdev_video_ops,
+	.pad = &imx185_subdev_pad_ops,
 };
 
 static struct of_device_id imx185_of_match[] = {
@@ -1049,6 +1054,8 @@ static int imx185_probe(struct i2c_client *client,
 	common_data->def_mode = IMX185_DEFAULT_MODE;
 	common_data->def_width = IMX185_DEFAULT_WIDTH;
 	common_data->def_height = IMX185_DEFAULT_HEIGHT;
+	common_data->fmt_width = common_data->def_width;
+	common_data->fmt_height = common_data->def_height;
 	common_data->def_clk_freq = IMX185_DEFAULT_CLK_FREQ;
 
 	priv->i2c_client = client;
