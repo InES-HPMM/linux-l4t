@@ -2,7 +2,7 @@
  * LR388K7 touchscreen driver
  *
  * Copyright (C) 2014, Sharp Corporation
- * Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Author: Makoto Itsuki <itsuki.makoto@sharp.co.jp>
  *
@@ -2793,10 +2793,12 @@ static void lr388k7_shutdown(struct spi_device *spi)
 
 	free_irq(ts->irq, ts);
 
-	if (ts->regulator_3v3)
+	if (ts->regulator_3v3 &&
+		regulator_is_enabled(ts->regulator_3v3))
 		regulator_disable(ts->regulator_3v3);
 
-	if (ts->regulator_1v8)
+	if (ts->regulator_1v8 &&
+		regulator_is_enabled(ts->regulator_1v8))
 		regulator_disable(ts->regulator_1v8);
 }
 
