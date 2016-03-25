@@ -1096,6 +1096,7 @@ long v4l2_compat_ioctl32(struct file *file, unsigned int cmd, unsigned long arg)
 	case _IOC_NR(VIDIOC_ENUM_FREQ_BANDS):
 	case _IOC_NR(VIDIOC_G_EDID32):
 	case _IOC_NR(VIDIOC_S_EDID32):
+	case _IOC_NR(VIDIOC_QUERY_EXT_CTRL):
 		ret = do_video_ioctl(file, cmd, arg);
 		break;
 

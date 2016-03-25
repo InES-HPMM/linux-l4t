@@ -518,6 +518,20 @@ static void v4l_print_queryctrl(const void *arg, bool write_only)
 			p->step, p->default_value, p->flags);
 }
 
+static void v4l_print_query_ext_ctrl(const void *arg, bool write_only)
+{
+	const struct v4l2_query_ext_ctrl *p = arg;
+
+	pr_cont("id=0x%x, type=%d, name=%.*s, min/max=%lld/%lld, "
+		"step=%lld, default=%lld, flags=0x%08x, elem_size=%u, elems=%u, "
+		"nr_of_dims=%u, dims=%u,%u,%u,%u\n",
+			p->id, p->type, (int)sizeof(p->name), p->name,
+			p->minimum, p->maximum,
+			p->step, p->default_value, p->flags,
+			p->elem_size, p->elems, p->nr_of_dims,
+			p->dims[0], p->dims[1], p->dims[2], p->dims[3]);
+}
+
 static void v4l_print_querymenu(const void *arg, bool write_only)
 {
 	const struct v4l2_querymenu *p = arg;
@@ -1613,6 +1627,54 @@ static int v4l_queryctrl(const struct v4l2_ioctl_ops *ops,
 	return -ENOTTY;
 }
 
+static int v4l_query_ext_ctrl(const struct v4l2_ioctl_ops *ops,
+				struct file *file, void *fh, void *arg)
+{
+	struct video_device *vfd = video_devdata(file);
+	struct v4l2_queryctrl qc = { };
+	struct v4l2_query_ext_ctrl *p = arg;
+	struct v4l2_fh *vfh =
+		test_bit(V4L2_FL_USES_V4L2_FH, &vfd->flags) ? fh : NULL;
+	int ret;
+
+	qc.id = p->id & ~V4L2_CTRL_FLAG_NEXT_COMPOUND;
+	ret = v4l_queryctrl(ops, file, fh, &qc);
+	if (ret)
+		return ret;
+	p->id = qc.id;
+	p->type = qc.type;
+	memcpy(p->name, qc.name, sizeof(p->name));
+	p->minimum = qc.minimum;
+	if (qc.type == V4L2_CTRL_TYPE_BITMASK) {
+		p->maximum = (__u32)qc.maximum;
+		p->default_value = (__u32)qc.default_value;
+	} else {
+		p->maximum = qc.maximum;
+		p->default_value = qc.default_value;
+	}
+	p->step = qc.step;
+	p->flags = qc.flags;
+	p->elems = 1;
+	p->nr_of_dims = 0;
+	memset(p->dims, 0, sizeof(p->dims));
+	switch (p->type) {
+	case V4L2_CTRL_TYPE_INTEGER64:
+		p->elem_size = sizeof(__s64);
+		p->minimum = 0x8000000000000000ULL;
+		p->maximum = 0x7fffffffffffffffULL;
+		p->step = 1;
+		break;
+	case V4L2_CTRL_TYPE_STRING:
+		p->elem_size = qc.maximum + 1;
+		break;
+	default:
+		p->elem_size = sizeof(__s32);
+		break;
+	}
+	memset(p->reserved, 0, sizeof(p->reserved));
+	return 0;
+}
+
 static int v4l_querymenu(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
@@ -2184,6 +2246,7 @@ static struct v4l2_ioctl_info v4l2_ioctls[] = {
 	IOCTL_INFO_STD(VIDIOC_DV_TIMINGS_CAP, vidioc_dv_timings_cap, v4l_print_dv_timings_cap, INFO_FL_CLEAR(v4l2_dv_timings_cap, type)),
 	IOCTL_INFO_FNC(VIDIOC_ENUM_FREQ_BANDS, v4l_enum_freq_bands, v4l_print_freq_band, 0),
 	IOCTL_INFO_FNC(VIDIOC_DBG_G_CHIP_INFO, v4l_dbg_g_chip_info, v4l_print_dbg_chip_info, INFO_FL_CLEAR(v4l2_dbg_chip_info, match)),
+	IOCTL_INFO_FNC(VIDIOC_QUERY_EXT_CTRL, v4l_query_ext_ctrl, v4l_print_query_ext_ctrl, INFO_FL_CTRL | INFO_FL_CLEAR(v4l2_query_ext_ctrl, id)),
 };
 #define V4L2_IOCTLS ARRAY_SIZE(v4l2_ioctls)
 
