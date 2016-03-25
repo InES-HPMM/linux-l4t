@@ -39,6 +39,11 @@
 #include "camera/mc_common.h"
 #include "vi/vi.h"
 
+#define FRAMERATE	30
+#define BPP_MEM		2
+
+extern int _vb2_fop_release(struct file *file, struct mutex *lock);
+
 void tegra_channel_write(struct tegra_channel *chan,
 			unsigned int addr, u32 val)
 {
