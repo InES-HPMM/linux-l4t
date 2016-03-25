@@ -1,7 +1,7 @@
 /*
  * imx214_mode_tbls.h - imx214 sensor mode tables
  *
- * Copyright (c) 2015, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -20,33 +20,29 @@
 #define __IMX214_I2C_TABLES__
 
 #include <media/camera_common.h>
+#include <media/imx2xx.h>
 
-#define IMX214_TABLE_WAIT_MS	0
-#define IMX214_TABLE_END	1
-#define IMX214_MAX_RETRIES	3
 #define IMX214_WAIT_MS		3
 
-#define imx214_reg struct reg_8
-
-static imx214_reg imx214_start[] = {
+static imx2xx_reg imx214_start[] = {
 	{ 0x0100, 0x01 }, /* mode select streaming on */
-	{ IMX214_TABLE_END, 0x00 }
+	{ IMX2XX_TABLE_END, 0x00 }
 };
 
-static imx214_reg imx214_stop[] = {
+static imx2xx_reg imx214_stop[] = {
 	{ 0x0100, 0x00 }, /* mode select streaming off */
-	{ IMX214_TABLE_END, 0x00 }
+	{ IMX2XX_TABLE_END, 0x00 }
 };
 
-static imx214_reg tp_colorbars[] = {
+static imx2xx_reg imx214_tp_colorbars[] = {
 	{0x0600, 0x00},
 	{0x0601, 0x02},
 
-	{IMX214_TABLE_WAIT_MS, IMX214_WAIT_MS},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_WAIT_MS, IMX214_WAIT_MS},
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_4096x2304[] = {
+static imx2xx_reg imx214_mode_4096x2304[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -145,13 +141,13 @@ static imx214_reg mode_4096x2304[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 /* 1.2GHz */
-static imx214_reg mode_4096x3072[] = {
+static imx2xx_reg imx214_mode_4096x3072[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -250,13 +246,13 @@ static imx214_reg mode_4096x3072[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 /* 1.2GHz */
-static imx214_reg mode_3840x2160[] = {
+static imx2xx_reg imx214_mode_3840x2160[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -355,12 +351,12 @@ static imx214_reg mode_3840x2160[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_2048X1536[] = {
+static imx2xx_reg imx214_mode_2048X1536[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -465,12 +461,12 @@ static imx214_reg mode_2048X1536[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_2048X1152[] = {
+static imx2xx_reg imx214_mode_2048X1152[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -570,12 +566,12 @@ static imx214_reg mode_2048X1152[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_1920x1080[] = {
+static imx2xx_reg imx214_mode_1920x1080[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -674,13 +670,13 @@ static imx214_reg mode_1920x1080[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 /* 1.2GHz */
-static imx214_reg mode_1280x720_120fps[] = {
+static imx2xx_reg imx214_mode_1280x720_120fps[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x00},
 	{0x0221, 0x11},
@@ -778,13 +774,13 @@ static imx214_reg mode_1280x720_120fps[] = {
 	{0x4177, 0x3C},
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 
 };
 
-static imx214_reg mode_4096x2304_HDR[] = {
+static imx2xx_reg imx214_mode_4096x2304_HDR[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x01},
 	{0x0221, 0x11},
@@ -883,13 +879,13 @@ static imx214_reg mode_4096x2304_HDR[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 /* 1.2GHz */
-static imx214_reg mode_4096x3072_HDR[] = {
+static imx2xx_reg imx214_mode_4096x3072_HDR[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x01},
 	{0x0221, 0x11},
@@ -988,13 +984,13 @@ static imx214_reg mode_4096x3072_HDR[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 /* 1.2GHz */
-static imx214_reg mode_3840x2160_HDR[] = {
+static imx2xx_reg imx214_mode_3840x2160_HDR[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x01},
 	{0x0221, 0x11},
@@ -1093,12 +1089,12 @@ static imx214_reg mode_3840x2160_HDR[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_1920x1080_HDR[] = {
+static imx2xx_reg imx214_mode_1920x1080_HDR[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x01},
 	{0x0221, 0x11},
@@ -1198,13 +1194,13 @@ static imx214_reg mode_1920x1080_HDR[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 
-static imx214_reg mode_1280x720_120fps_HDR[] = {
+static imx2xx_reg imx214_mode_1280x720_120fps_HDR[] = {
 	{0x0114, 0x03},
 	{0x0220, 0x01},
 	{0x0221, 0x11},
@@ -1303,12 +1299,12 @@ static imx214_reg mode_1280x720_120fps_HDR[] = {
 	{0xAE20, 0x04},
 	{0xAE21, 0x5C},
 
-	{IMX214_TABLE_WAIT_MS, 10},
+	{IMX2XX_TABLE_WAIT_MS, 10},
 	{0x0138, 0x01},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
-static imx214_reg mode_table_common[] = {
+static imx2xx_reg imx214_mode_table_common[] = {
 	/* software reset */
 
 	/* software standby settings */
@@ -1425,11 +1421,11 @@ static imx214_reg mode_table_common[] = {
 	{0x9341, 0x3C},
 	{0x9342, 0x03},
 	{0x9343, 0xFF},
-	{IMX214_TABLE_END, 0x00}
+	{IMX2XX_TABLE_END, 0x00}
 };
 
 enum {
-	IMX214_MODE_4096X3072,
+	IMX214_MODE_4096X3072 = IMX2XX_SENSOR_MODE_BEGIN,
 	IMX214_MODE_4096X2304,
 	IMX214_MODE_3840X2160,
 	IMX214_MODE_2048X1536,
@@ -1441,31 +1437,26 @@ enum {
 	IMX214_MODE_3840X2160_HDR,
 	IMX214_MODE_1920X1080_HDR,
 	IMX214_MODE_1280X720_120FPS_HDR,
-
-	IMX214_MODE_COMMON,
-	IMX214_MODE_START_STREAM,
-	IMX214_MODE_STOP_STREAM,
-	IMX214_MODE_TEST_PATTERN,
 };
 
-static imx214_reg *mode_table[] = {
-	[IMX214_MODE_4096X3072] = mode_4096x3072,
-	[IMX214_MODE_4096X2304] = mode_4096x2304,
-	[IMX214_MODE_3840X2160] = mode_3840x2160,
-	[IMX214_MODE_2048X1536] = mode_2048X1536,
-	[IMX214_MODE_2048X1152] = mode_2048X1152,
-	[IMX214_MODE_1920X1080] = mode_1920x1080,
-	[IMX214_MODE_1280X720_120FPS] = mode_1280x720_120fps,
-	[IMX214_MODE_4096X3072_HDR] = mode_4096x3072_HDR,
-	[IMX214_MODE_4096X2304_HDR] = mode_4096x2304_HDR,
-	[IMX214_MODE_3840X2160_HDR] = mode_3840x2160_HDR,
-	[IMX214_MODE_1920X1080_HDR] = mode_1920x1080_HDR,
-	[IMX214_MODE_1280X720_120FPS_HDR] = mode_1280x720_120fps_HDR,
+static imx2xx_reg *imx214_mode_table[] = {
+	[IMX2XX_MODE_COMMON] = imx214_mode_table_common,
+	[IMX2XX_MODE_START_STREAM] = imx214_start,
+	[IMX2XX_MODE_STOP_STREAM] = imx214_stop,
+	[IMX2XX_MODE_TEST_PATTERN] = imx214_tp_colorbars,
 
-	[IMX214_MODE_COMMON] = mode_table_common,
-	[IMX214_MODE_START_STREAM] = imx214_start,
-	[IMX214_MODE_STOP_STREAM] = imx214_stop,
-	[IMX214_MODE_TEST_PATTERN] = tp_colorbars,
+	[IMX214_MODE_4096X3072] = imx214_mode_4096x3072,
+	[IMX214_MODE_4096X2304] = imx214_mode_4096x2304,
+	[IMX214_MODE_3840X2160] = imx214_mode_3840x2160,
+	[IMX214_MODE_2048X1536] = imx214_mode_2048X1536,
+	[IMX214_MODE_2048X1152] = imx214_mode_2048X1152,
+	[IMX214_MODE_1920X1080] = imx214_mode_1920x1080,
+	[IMX214_MODE_1280X720_120FPS] = imx214_mode_1280x720_120fps,
+	[IMX214_MODE_4096X3072_HDR] = imx214_mode_4096x3072_HDR,
+	[IMX214_MODE_4096X2304_HDR] = imx214_mode_4096x2304_HDR,
+	[IMX214_MODE_3840X2160_HDR] = imx214_mode_3840x2160_HDR,
+	[IMX214_MODE_1920X1080_HDR] = imx214_mode_1920x1080_HDR,
+	[IMX214_MODE_1280X720_120FPS_HDR] = imx214_mode_1280x720_120fps_HDR,
 };
 
 static const struct camera_common_frmfmt imx214_frmfmt[] = {
