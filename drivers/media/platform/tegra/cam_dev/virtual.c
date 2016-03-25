@@ -103,28 +103,8 @@ static int virtual_update(
 		}
 		case UPDATE_GPIO:
 		{
-			struct nvc_gpio *gpio;
-
-			if (upd[idx].index >= cdev->num_gpio) {
-				dev_err(cdev->dev,
-					"gpio index %d out of range.\n",
-					upd[idx].index);
-				err = -ENODEV;
-				break;
-			}
-			gpio = (void *)((unsigned long)upd[idx].arg);
-			if (gpio->gpio >= ARCH_NR_GPIOS) {
-				dev_err(cdev->dev,
-					"gpio index %d out of range.\n",
-					gpio->gpio);
-				err = -ENODEV;
-				break;
-			}
-
-			dev_dbg(cdev->dev, "UPDATE_GPIO: %d %u\n",
-				upd[idx].index, upd[idx].arg);
-			gpio->valid = true;
-			cdev->gpios[upd[idx].index] = *gpio;
+			dev_dbg(cdev->dev, "%s UPDATE_GPIO is deprecated\n",
+				__func__);
 			break;
 		}
 		default:
