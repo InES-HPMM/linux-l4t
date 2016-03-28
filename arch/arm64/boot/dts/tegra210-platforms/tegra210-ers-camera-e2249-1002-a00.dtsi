@@ -64,6 +64,7 @@
 				sensor_model ="imx214";
 				/* V4L2 device node location */
 				devnode = "video0";
+				has-eeprom = <1>;
 
 				/**
 				* Define any required hw resources needed by
@@ -80,6 +81,19 @@
 				avdd-reg = "vana";
 				dvdd-reg = "vdig";
 				iovdd-reg = "vif";
+
+				/* Defaults */
+				default-clk = <24000000>;
+				default-gain = <256>;
+				default-fl = <3194>;
+				default-ct = <3184>;
+				default-width = <4096>;
+				default-height = <3072>;
+
+				/* EEPROM */
+				eeprom-addr = <0x50>;
+				eeprom-size = <1024>;
+				eeprom-blk-size = <256>;
 
 				/**
 				* Generic formula to calculate different
