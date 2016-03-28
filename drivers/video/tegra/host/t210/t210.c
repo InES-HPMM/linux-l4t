@@ -36,7 +36,7 @@
 #include "flcn/flcn.h"
 #include "nvdec/nvdec.h"
 #include "tsec/tsec.h"
-#include "vi.h"
+#include "vi/vi.h"
 #include "isp/isp.h"
 #include "isp/isp_isr_v1.h"
 
