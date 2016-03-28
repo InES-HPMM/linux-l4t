@@ -71,12 +71,7 @@
 						status = "okay";
 					};
 				};
-				vi_port2: port@2 {
-					status = "okay";
-					vi_in2: endpoint {
-						status = "okay";
-					};
-				};
+				/delete-node/ port@2;
 				/delete-node/ port@3;
 				/delete-node/ port@4;
 				/delete-node/ port@5;

@@ -21,37 +21,26 @@
 / {
 	host1x {
 		vi {
-			num-channels = <3>;
-				ports {
-					#address-cells = <1>;
-					#size-cells = <0>;
-
-					port@0 {
-						reg = <0>;
-						imx274_vi_in0: endpoint {
-							remote-endpoint = <&imx274_out0>;
-						};
+			num-channels = <2>;
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					imx274_vi_in0: endpoint {
+						csi-port = <0>;
+						bus-width = <4>;
+						remote-endpoint = <&imx274_out0>;
 					};
-					port@1 {
-						reg = <1>;
-						tc358840_vi_in0: endpoint {
-							csi-port = <2>;
-							bus-width = <4>;
-							remote-endpoint = <&tc358840_out0>;
-							//gang-mode = <1>;
-							//gang-csi-port = <4>;
-						};
+				};
+				port@1 {
+					reg = <1>;
+					tc358840_vi_in0: endpoint {
+						csi-port = <2>;
+						bus-width = <8>;
+						remote-endpoint = <&tc358840_out0>;
 					};
-					port@2 {
-						reg = <2>;
-						tc358840_vi_in1: endpoint {
-							csi-port = <4>;
-							bus-width = <4>;
-							remote-endpoint = <&tc358840_out1>;
-							gang-mode = <1>;
-							gang-csi-port = <2>;
-						};
-					};
+				};
 			};
 		};
 
@@ -225,16 +214,8 @@
 						reg = <0>;
 						tc358840_out0: endpoint {
 							csi-port = <2>;
-							bus-width = <4>;
+							bus-width = <8>;
 							remote-endpoint = <&tc358840_vi_in0>;
-						};
-					};
-					port@1 {
-						reg = <1>;
-						tc358840_out1: endpoint {
-							csi-port = <4>;
-							bus-width = <4>;
-							remote-endpoint = <&tc358840_vi_in1>;
 						};
 					};
 				};
