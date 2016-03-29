@@ -1405,6 +1405,11 @@ static inline unsigned int hcd_index(struct usb_hcd *hcd)
 		return 1;
 }
 
+struct xhci_err_cnt {
+	unsigned int version;
+	unsigned int comp_tx_err;
+};
+
 /* There is one xhci_hcd structure per controller */
 struct xhci_hcd {
 	struct usb_hcd *main_hcd;
@@ -1548,6 +1553,8 @@ struct xhci_hcd {
 	u32			port_status_u0;
 /* Compliance Mode Timer Triggered every 2 seconds */
 #define COMP_MODE_RCVRY_MSECS 2000
+	/* Error collecting struct for sysfs */
+	struct xhci_err_cnt xhci_ereport;
 };
 
 /* convert between an HCD pointer and the corresponding EHCI_HCD */

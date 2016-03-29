@@ -61,6 +61,44 @@
 #include "xhci-tegra-t124-padreg.h"
 #endif
 
+/* SysFS node */
+static bool xhci_err_init;
+static ssize_t show_xhci_stats(struct device *dev,
+		struct device_attribute *attr, char *buf) {
+	struct platform_device *pdev = NULL;
+	struct tegra_xhci_hcd *tegra = NULL;
+	struct xhci_hcd *xhci = NULL;
+	ssize_t ret;
+
+	if (dev != NULL)
+		pdev = to_platform_device(dev);
+
+	if (pdev != NULL)
+		tegra = platform_get_drvdata(pdev);
+
+	if (tegra != NULL) {
+		xhci = tegra->xhci;
+		ret =  snprintf(buf, PAGE_SIZE, "comp_tx_err:%u\nversion:%u\n",
+			xhci->xhci_ereport.comp_tx_err,
+			xhci->xhci_ereport.version);
+	} else
+		ret = snprintf(buf, PAGE_SIZE, "comp_tx_err:0\nversion:0\n");
+
+	return ret;
+}
+
+static DEVICE_ATTR(xhci_stats, 0444, show_xhci_stats, NULL);
+
+static struct attribute *tegra_sysfs_entries_errs[] = {
+	&dev_attr_xhci_stats.attr,
+	NULL,
+};
+
+static struct attribute_group tegra_sysfs_group_errors = {
+	.name = "xhci-stats",
+	.attrs = tegra_sysfs_entries_errs,
+};
+
 /* macros */
 #define FW_IOCTL_LOG_DEQUEUE_LOW	(4)
 #define FW_IOCTL_LOG_DEQUEUE_HIGH	(5)
@@ -5244,6 +5282,27 @@ static void xusb_tegra_program_registers(void)
 
 }
 
+static int tegra_sysfs_register(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct device *dev = NULL;
+
+	if (pdev != NULL)
+		dev = &pdev->dev;
+
+	if (!xhci_err_init && dev != NULL) {
+		ret = sysfs_create_group(&dev->kobj, &tegra_sysfs_group_errors);
+		xhci_err_init = true;
+	}
+
+	if (ret) {
+		pr_err("%s: failed to create tegra sysfs group %s\n",
+			__func__, tegra_sysfs_group_errors.name);
+	}
+
+	return ret;
+}
+
 /* TODO: we have to refine error handling in tegra_xhci_probe() */
 static int tegra_xhci_probe(struct platform_device *pdev)
 {
@@ -5525,6 +5584,8 @@ static int tegra_xhci_probe(struct platform_device *pdev)
 		goto err_deinit_firmware_log;
 	}
 
+	tegra_sysfs_register(pdev);
+
 	for (pad = 0; pad < XUSB_UTMI_COUNT; pad++)
 		set_port_cdp(tegra, true, pad);
 
@@ -5767,9 +5828,17 @@ static int tegra_xhci_remove(struct platform_device *pdev)
 	u32 port;
 #endif
 	int partition_id_xusba, partition_id_xusbc;
+	struct device *dev = NULL;
 
 	if (tegra == NULL)
 		return -EINVAL;
+
+	dev = &pdev->dev;
+
+	if (xhci_err_init && dev != NULL) {
+		sysfs_remove_group(&dev->kobj, &tegra_sysfs_group_errors);
+		xhci_err_init = false;
+	}
 
 	mutex_lock(&tegra->sync_lock);
 
