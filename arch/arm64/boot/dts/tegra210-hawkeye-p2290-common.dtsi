@@ -737,10 +737,15 @@
 
 			sdmmc1 {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+				nvidia,enable-dynamic-pad-voltage;
 			};
 
 			spi {
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
+			};
+
+			sdmmc3 {
+				nvidia,enable-dynamic-pad-voltage;
 			};
 		};
 	};

@@ -74,6 +74,13 @@
 				nvidia,io-pad-init-voltage = <IO_PAD_VOLTAGE_1_8V>;
 				nvidia,deep-power-down-enable;
 			};
+
+			sdmmc1 {
+				nvidia,enable-dynamic-pad-voltage;
+			};
+			sdmmc3 {
+				nvidia,enable-dynamic-pad-voltage;
+			};
 		};
 	};
 
