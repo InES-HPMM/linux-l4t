@@ -117,10 +117,6 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-2306-a05-00-wifi.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-2307-a05-00-wifi.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-p4573-2180.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-p2597-2180-a00-imx274.dtb
-dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34324618.dtb
-dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34324618.dtb
-dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-fpga-cl34563539.dtb
-dtb-$(CONFIG_ARCH_TEGRA_18x_SOC) += tegra186-sim-cl34563539.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
