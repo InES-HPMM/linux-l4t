@@ -132,7 +132,8 @@ static int tegra_channel_capture_setup(struct tegra_channel *chan)
 	u32 bypass_pixel_transform = 1;
 
 	if (chan->vi->pg_mode ||
-	   (chan->fmtinfo->vf_code == TEGRA_VF_YUV422))
+	   (chan->fmtinfo->vf_code == TEGRA_VF_YUV422) ||
+	   (chan->fmtinfo->vf_code == TEGRA_VF_RGB888))
 		bypass_pixel_transform = 0;
 
 	csi_write(chan, TEGRA_VI_CSI_ERROR_STATUS, 0xFFFFFFFF);
@@ -913,6 +914,8 @@ tegra_channel_set_format(struct file *file, void *fh,
 		return -EBUSY;
 
 	ret = __tegra_channel_try_format(chan, &format->fmt.pix, &info);
+	if (ret)
+		return ret;
 
 	chan->format = format->fmt.pix;
 	chan->fmtinfo = info;
