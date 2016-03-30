@@ -319,5 +319,7 @@ struct tegra_dc {
 	bool	vedid;
 	u8	*vedid_data;
 	bool	hdr_cache_dirty;
+
+	u32 dbg_fe_count;
 };
 #endif
