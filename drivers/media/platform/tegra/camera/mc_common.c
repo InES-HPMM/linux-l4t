@@ -26,8 +26,6 @@
 #include "vi.h"
 #include "registers.h"
 
-#define INVALID_PORT 100
-
 void vi_write(struct tegra_mc_vi *vi, unsigned int addr, u32 val)
 {
 	writel(val, vi->iomem + addr);
@@ -113,22 +111,10 @@ static const char *const vi_pattern_strings[] = {
 	"Color Patch Mode",
 };
 
-static void set_vi_mode(struct tegra_mc_vi *vi)
-{
-	int i;
-	struct tegra_channel *chan = NULL;
-
-	for (i = 0; i < vi->num_channels; i++) {
-		chan = &vi->chans[i];
-		chan->bypass = 0;
-	}
-}
-
 static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct tegra_mc_vi *vi = container_of(ctrl->handler, struct tegra_mc_vi,
 					   ctrl_handler);
-	struct tegra_channel *chan = NULL;
 
 	switch (ctrl->id) {
 	case V4L2_CID_TEST_PATTERN:
@@ -145,14 +131,9 @@ static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 			dev_warn(&vi->ndev->dev,
 				 "TPG mode can't be disabled for TPG driver\n");
 		break;
-	case V4L2_CID_VI_SET_BYPASS_PORT:
-		if (ctrl->val < vi->num_channels) {
-			chan = &vi->chans[ctrl->val];
-			chan->bypass = 1;
-		} else
-			/* set all channels to vi mode for invalid port */
-			set_vi_mode(vi);
-		break;
+	default:
+		dev_err(vi->dev, "%s:Not valid ctrl\n", __func__);
+		return -EINVAL;
 	}
 
 	return 0;
@@ -160,23 +141,6 @@ static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 
 static const struct v4l2_ctrl_ops vi_ctrl_ops = {
 	.s_ctrl	= vi_s_ctrl,
-};
-
-/**
- * Default value is invalid port, max 99 channels are available
- * By default all the channels will be in VI mode
- * Idea is to enable the user space to set bypass flag per channel
- */
-static const struct v4l2_ctrl_config bypass_ctrl = {
-	.ops = &vi_ctrl_ops,
-	.id = V4L2_CID_VI_SET_BYPASS_PORT,
-	.name = "Bypass port",
-	.type = V4L2_CTRL_TYPE_INTEGER,
-	.flags = V4L2_CTRL_FLAG_SLIDER,
-	.def = INVALID_PORT,
-	.min = 0,
-	.max = INVALID_PORT,
-	.step = 1,
 };
 
 void tegra_vi_v4l2_cleanup(struct tegra_mc_vi *vi)
@@ -246,14 +210,10 @@ int tegra_vi_v4l2_init(struct tegra_mc_vi *vi)
 	}
 
 	v4l2_ctrl_handler_init(&vi->ctrl_handler, 1);
-	if (vi->pg_mode)
-		vi->pattern = v4l2_ctrl_new_std_menu_items(&vi->ctrl_handler,
-					&vi_ctrl_ops, V4L2_CID_TEST_PATTERN,
-					ARRAY_SIZE(vi_pattern_strings) - 1,
-					0, vi->pg_mode, vi_pattern_strings);
-	else
-		vi->bypass = v4l2_ctrl_new_custom(&vi->ctrl_handler,
-					&bypass_ctrl, NULL);
+	vi->pattern = v4l2_ctrl_new_std_menu_items(&vi->ctrl_handler,
+				&vi_ctrl_ops, V4L2_CID_TEST_PATTERN,
+				ARRAY_SIZE(vi_pattern_strings) - 1,
+				0, vi->pg_mode, vi_pattern_strings);
 
 	if (vi->ctrl_handler.error) {
 		dev_err(vi->dev, "failed to add controls\n");
