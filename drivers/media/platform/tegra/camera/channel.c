@@ -192,7 +192,7 @@ static void tegra_channel_fmts_bitmap_init(struct tegra_channel *chan)
 	if (ret)
 		return;
 
-	chan->fmtinfo = tegra_core_get_format_by_code(init_code);
+	chan->fmtinfo = tegra_core_get_format_by_code(mbus_fmt.code);
 	chan->format.pixelformat = chan->fmtinfo->fourcc;
 	chan->format.colorspace = mbus_fmt.colorspace;
 	chan->format.field = mbus_fmt.field;
@@ -819,12 +819,14 @@ tegra_channel_s_dv_timings(struct file *file, void *fh,
 		int ret = v4l2_subdev_call(sd, video, s_dv_timings, timings);
 
 		if (sd && (ret == 0 || ret != -ENOIOCTLCMD)) {
-			chan->format.width = bt->width;
-			chan->format.height = bt->height;
-			chan->format.bytesperline = bt->width *
-				chan->fmtinfo->bpp;
-			chan->format.sizeimage = chan->format.bytesperline *
-				chan->format.height;
+			if (!ret) {
+				chan->format.width = bt->width;
+				chan->format.height = bt->height;
+				chan->format.bytesperline = bt->width *
+					chan->fmtinfo->bpp;
+				chan->format.sizeimage = chan->format.bytesperline *
+					chan->format.height;
+			}
 
 			if (chan->total_ports > 1)
 				update_gang_mode(chan);
