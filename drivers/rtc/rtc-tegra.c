@@ -183,7 +183,11 @@ static irqreturn_t tegra_rtc_interrupt(int irq, void *dev_id)
 		writel(status, rtc->base + TEGRA_RTC_REG_INTR_STATUS);
 	}
 
-	rtc_update_irq(rtc->rtc, 1, RTC_IRQF | RTC_UF | RTC_AF);
+	if (status & TEGRA_RTC_INTR_STATUS_SEC_ALARM0)
+		rtc_aie_update_irq(rtc->rtc);
+	else
+		rtc_update_irq(rtc->rtc, 1, RTC_IRQF | RTC_UF);
+
 	return IRQ_HANDLED;
 }
 
@@ -316,7 +320,7 @@ static int __tegra_rtc_set_alarm(unsigned long period, bool enabled)
 
 	trace_tegra_rtc_set_alarm(sec * MSEC_PER_SEC + msec,
 				period * MSEC_PER_SEC);
-	dev_info(dev, "alarm set to fire after %lu sec\n", (period - sec));
+	dev_dbg(dev, "alarm set to fire after %lu sec\n", (period - sec));
 
 	return 0;
 }
