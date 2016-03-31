@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,6 +62,8 @@
 				};
 
 				sd2 {
+					maxim,fps-source = <FPS_SRC_1>;
+					maxim,suspend-fps-source = <FPS_SRC_NONE>;
 					regulator-enable-ramp-delay = <176>;
 					regulator-disable-ramp-delay = <32000>;
 					regulator-ramp-delay = <27500>;
@@ -125,6 +127,8 @@
 				};
 
 				ldo7 {
+					maxim,fps-source = <FPS_SRC_1>;
+					maxim,suspend-fps-source = <FPS_SRC_NONE>;
 					regulator-enable-ramp-delay = <24>;
 					regulator-disable-ramp-delay = <2768>;
 					regulator-ramp-delay = <100000>;
