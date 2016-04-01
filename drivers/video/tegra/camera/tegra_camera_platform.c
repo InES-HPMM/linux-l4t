@@ -24,7 +24,8 @@
 
 #include "vi/vi.h"
 #include "tegra_camera_dev_mfi.h"
-#include "tegra_camera_platform.h"
+#include <media/tegra_camera_platform.h>
+#include "camera_priv_defs.h"
 
 #define CAMDEV_NAME "tegra_camera_ctrl"
 
@@ -33,6 +34,19 @@
 
 #define LANE_SPEED_1_GBPS 1000000000
 #define LANE_SPEED_1_5_GBPS 1500000000
+
+struct tegra_camera_info {
+	char devname[64];
+	atomic_t in_use;
+	struct device *dev;
+	struct clk *emc;
+	struct clk *iso_emc;
+	tegra_isomgr_handle isomgr_handle;
+	u64 max_bw;
+	struct mutex update_bw_lock;
+	u32 vi_mode_isobw;
+	u64 bypass_mode_isobw;
+};
 
 static const struct of_device_id tegra_camera_of_ids[] = {
 	{ .compatible = "nvidia, tegra-camera-platform" },
@@ -183,88 +197,152 @@ static int tegra_camera_isomgr_release(struct tegra_camera_info *info)
 
 	return 0;
 }
+int tegra_camera_emc_clk_enable(void)
+{
+	struct tegra_camera_info *info;
+	int ret = 0;
+
+	info = dev_get_drvdata(tegra_camera_misc.parent);
+	if (!info)
+		return -EINVAL;
+	ret = clk_prepare_enable(info->emc);
+	if (ret) {
+		dev_err(info->dev, "Cannot enable camera.emc\n");
+		return ret;
+	}
+
+	ret = clk_prepare_enable(info->iso_emc);
+	if (ret) {
+		dev_err(info->dev, "Cannot enable camera_iso.emc\n");
+		goto err_iso_emc;
+	}
+
+	return 0;
+err_iso_emc:
+	clk_disable_unprepare(info->emc);
+	return ret;
+}
+EXPORT_SYMBOL(tegra_camera_emc_clk_enable);
+
+int tegra_camera_emc_clk_disable(void)
+{
+	struct tegra_camera_info *info;
+
+	info = dev_get_drvdata(tegra_camera_misc.parent);
+	if (!info)
+		return -EINVAL;
+	clk_disable_unprepare(info->emc);
+	clk_disable_unprepare(info->iso_emc);
+	return 0;
+}
+EXPORT_SYMBOL(tegra_camera_emc_clk_disable);
 
 static int tegra_camera_open(struct inode *inode, struct file *file)
 {
 	struct tegra_camera_info *info;
 	struct miscdevice *mdev;
-	int i, ret, index_put, index_disable;
 
 	mdev = file->private_data;
 	info = dev_get_drvdata(mdev->parent);
 
 	file->private_data = info;
-	for (i = 0; i < NUM_CLKS; i++) {
-		info->clks[i] = clk_get_sys(info->devname, clk_names[i]);
-		if (IS_ERR(info->clks[i])) {
-			dev_err(info->dev, "clk_get_sys failed for %s:%s\n",
-				info->devname, clk_names[i]);
-			index_put = i-1;
-			goto err_get_clk;
-		}
 
-		ret = clk_set_rate(info->clks[i], 0);
-		if (ret) {
-			dev_err(info->dev, "Cannot init %s\n", clk_names[i]);
-			index_put = i;
-			goto err_set_clk;
-		}
+	return tegra_camera_emc_clk_enable();
 
-		ret = clk_prepare_enable(info->clks[i]);
-		if (ret) {
-			dev_err(info->dev, "Cannot enable %s\n", clk_names[i]);
-			index_put = i;
-			index_disable = i-1;
-			goto err_prep_clk;
-		}
-	}
-	return 0;
-
-err_prep_clk:
-	for (i = index_disable; i >= 0; i--) {
-		if (!IS_ERR_OR_NULL(info->clks[i]))
-			clk_disable_unprepare(info->clks[i]);
-	}
-
-err_set_clk:
-err_get_clk:
-	for (i = index_put; i >= 0; i--) {
-		if (!IS_ERR_OR_NULL(info->clks[i]))
-			clk_put(info->clks[i]);
-		info->clks[i] = NULL;
-	}
-	return -ENOENT;
 }
 
 static int tegra_camera_release(struct inode *inode, struct file *file)
 {
 
 	struct tegra_camera_info *info;
-	int i;
-	int ret;
+	int ret = 0;
 
 	info = file->private_data;
-	for (i = 0; i < NUM_CLKS; i++) {
-		if (!IS_ERR_OR_NULL(info->clks[i])) {
-			clk_disable_unprepare(info->clks[i]);
-			clk_put(info->clks[i]);
-		}
-		info->clks[i] = NULL;
-	}
+	tegra_camera_emc_clk_disable();
 
 	/* nullify isomgr request */
 	if (info->isomgr_handle) {
 		ret = tegra_camera_isomgr_release(info);
-		if (ret) {
-			dev_err(info->dev,
-			"%s: failed to deallocate memory in isomgr\n",
-			__func__);
-			return -ENOMEM;
-		}
 	}
 
+	return ret;
+}
+
+#ifdef CONFIG_DEBUG_FS
+static u64 vi_mode_d;
+static u64 bypass_mode_d;
+
+static int dbgfs_tegra_camera_init(void)
+{
+	struct dentry *dir;
+	struct dentry *val;
+
+	dir = debugfs_create_dir("tegra_camera_platform", NULL);
+	if (!dir)
+		return -ENOMEM;
+
+	val = debugfs_create_u64("vi", S_IRUGO, dir, &vi_mode_d);
+	if (!val)
+		return -ENOMEM;
+	val = debugfs_create_u64("scf", S_IRUGO, dir, &bypass_mode_d);
+	if (!val)
+		return -ENOMEM;
 	return 0;
 }
+#endif
+
+/*
+ * vi_kbyteps: Iso bw request from V4L2 vi driver.
+ * is_ioctl: Whether this function is called by userspace or kernel.
+ * This function aggregates V4L2 vi driver's request with userspace (SCF)
+ * iso bw request and submit total to isomgr.
+ */
+int vi_v4l2_update_isobw(u32 vi_kbyteps, u32 is_ioctl)
+{
+	struct tegra_camera_info *info;
+	unsigned long total_khz;
+	unsigned long bw;
+	int ret = 0;
+
+	info = dev_get_drvdata(tegra_camera_misc.parent);
+	mutex_lock(&info->update_bw_lock);
+	if (!is_ioctl)
+		info->vi_mode_isobw = vi_kbyteps;
+	bw = info->bypass_mode_isobw + info->vi_mode_isobw;
+
+	/* Use Khz to prevent overflow */
+	total_khz = tegra_emc_bw_to_freq_req(bw);
+	total_khz = min(ULONG_MAX / 1000, total_khz);
+
+	dev_dbg(info->dev, "%s:Set iso bw %lu kbyteps at %lu KHz\n",
+		__func__, bw, total_khz);
+	ret = clk_set_rate(info->iso_emc, total_khz * 1000);
+	if (ret)
+		dev_err(info->dev, "%s:Failed to set iso bw\n",
+			__func__);
+
+	/*
+	 * Request to ISOMGR.
+	 * 3 usec is minimum time to switch PLL source.
+	 * Let's put 4 usec as latency for now.
+	 */
+	ret = tegra_camera_isomgr_request(info, bw, 4);
+	if (ret) {
+		dev_err(info->dev,
+		"%s: failed to reserve %lu KBps with isomgr\n",
+		__func__, bw);
+		mutex_unlock(&info->update_bw_lock);
+		return -ENOMEM;
+	}
+
+#ifdef CONFIG_DEBUG_FS
+	vi_mode_d = info->vi_mode_isobw;
+	bypass_mode_d = info->bypass_mode_isobw;
+#endif
+	mutex_unlock(&info->update_bw_lock);
+	return ret;
+}
+EXPORT_SYMBOL(vi_v4l2_update_isobw);
 
 static long tegra_camera_ioctl(struct file *file,
 	unsigned int cmd, unsigned long arg)
@@ -287,35 +365,17 @@ static long tegra_camera_ioctl(struct file *file,
 				__func__);
 			return -EFAULT;
 		}
-
 		/* Use Khz to prevent overflow */
 		mc_khz = tegra_emc_bw_to_freq_req(kcopy.bw);
 		mc_khz = min(ULONG_MAX / 1000, mc_khz);
 
 		if (kcopy.is_iso) {
-			dev_dbg(info->dev, "%s:Set iso bw %llu at %lu KHz\n",
-				__func__, kcopy.bw, mc_khz);
-			ret = clk_set_rate(info->clks[ISO_EMC], mc_khz * 1000);
-			if (ret)
-				dev_err(info->dev, "%s:Failed to set iso bw\n",
-					__func__);
-
-			/*
-			 * Request to ISOMGR.
-			 * 3 usec is minimum time to switch PLL source.
-			 * Let's put 4 usec as latency for now.
-			 */
-			ret = tegra_camera_isomgr_request(info, kcopy.bw, 4);
-			if (ret) {
-				dev_err(info->dev,
-				"%s: failed to reserve %llu KBps with isomgr\n",
-				__func__, kcopy.bw);
-				return -ENOMEM;
-			}
+			info->bypass_mode_isobw = kcopy.bw;
+			ret = vi_v4l2_update_isobw(0, 1);
 		} else {
 			dev_dbg(info->dev, "%s:Set bw %llu at %lu KHz\n",
 				__func__, kcopy.bw, mc_khz);
-			ret = clk_set_rate(info->clks[EMC], mc_khz * 1000);
+			ret = clk_set_rate(info->emc, mc_khz * 1000);
 			if (ret)
 				dev_err(info->dev, "%s:Failed to set bw\n",
 					__func__);
@@ -325,7 +385,7 @@ static long tegra_camera_ioctl(struct file *file,
 	default:
 		break;
 	}
-	return 0;
+	return ret;
 }
 
 static const struct file_operations tegra_camera_ops = {
@@ -337,6 +397,8 @@ static const struct file_operations tegra_camera_ops = {
 #endif
 	.release = tegra_camera_release,
 };
+
+
 
 static int tegra_camera_probe(struct platform_device *pdev)
 {
@@ -366,11 +428,22 @@ static int tegra_camera_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	memset(info, 0, sizeof(*info));
-
 	strcpy(info->devname, tegra_camera_misc.name);
 	info->dev = tegra_camera_misc.this_device;
 
+	info->emc = devm_clk_get(info->dev, "emc");
+	if (IS_ERR(info->emc)) {
+		dev_err(info->dev, "Failed to get camera.emc\n");
+		return -EINVAL;
+	}
+	clk_set_rate(info->emc, 0);
+	info->iso_emc = devm_clk_get(info->dev, "iso.emc");
+	if (IS_ERR(info->iso_emc)) {
+		dev_err(info->dev, "Failed to get camera_iso.emc\n");
+		return -EINVAL;
+	}
+	clk_set_rate(info->iso_emc, 0);
+	mutex_init(&info->update_bw_lock);
 	/* Register Camera as isomgr client. */
 	ret = tegra_camera_isomgr_register(info);
 	if (ret) {
@@ -384,7 +457,11 @@ static int tegra_camera_probe(struct platform_device *pdev)
 	tegra_vi_register_mfi_cb(tegra_camera_dev_mfi_cb, NULL);
 
 	platform_set_drvdata(pdev, info);
-
+#ifdef CONFIG_DEBUG_FS
+	ret = dbgfs_tegra_camera_init();
+	if (ret)
+		dev_err(info->dev, "Fail to create debugfs");
+#endif
 	return 0;
 
 }
