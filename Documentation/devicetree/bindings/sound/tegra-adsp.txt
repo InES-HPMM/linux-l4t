@@ -12,6 +12,7 @@ Required properties:
 				contains the ASSERT value and the second element should
 				contain the DEASSERT value. The ASSERT is ignored if the
 				value is equal to 0.
+ - nvidia,adsp-evp-base:	should contain the base EVP address and the size of EVP in bytes
 
 Optional properties:
  - nvidia,adsp_freq: should contain adsp boot up freq, multiple of 51.2 MHz
@@ -35,4 +36,5 @@ Example:
 	     nvidia,adsp_freq = <819000>; /* in KHz */
 	     nvidia,ape_freq = <409500>; /* in KHz */
 	     nvidia,ape_emc_freq = <102000>; /* in KHz */
+	     nvidia,adsp-evp-base = <0x702ef700 0x00000040>;
 	};
