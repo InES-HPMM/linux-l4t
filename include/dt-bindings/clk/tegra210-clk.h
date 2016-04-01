@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -336,6 +336,7 @@
 #define TEGRA210_CLK_ID_CXBUS_VI_VIB_USER		373
 #define TEGRA210_CLK_ID_CXBUS_ISP_ISPA_USER		374
 #define TEGRA210_CLK_ID_CXBUS_ISP_ISPB_USER		375
+#define TEGRA210_CLK_ID_CXBUS_VI_V4L2_USER		376
 /* IDs 376 ... 389 are reserved */
 #define TEGRA210_CLK_ID_GBUS				390
 #define TEGRA210_CLK_ID_GBUS_GM20B_USER			391

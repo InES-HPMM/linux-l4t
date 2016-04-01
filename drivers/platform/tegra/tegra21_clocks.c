@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra21_clocks.c
  *
- * Copyright (C) 2013-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2013-2016 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9713,6 +9713,7 @@ static struct clk tegra_visp_clks[] = {
 
 	SHARED_CLK("ispa.isp.cbus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPA_USER),
 	SHARED_CLK("ispb.isp.cbus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPB_USER),
+	SHARED_CLK("vi_v4l2.cbus",	"vi",		"vi_v4l2",	&tegra_visp_clks[0],	"vi",    0, 0, TEGRA210_CLK_ID_CXBUS_VI_V4L2_USER),
 };
 
 /* XUSB clocks */
