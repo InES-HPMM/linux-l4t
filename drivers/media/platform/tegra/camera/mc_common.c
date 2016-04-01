@@ -20,6 +20,7 @@
 #include <media/tegra_v4l2_camera.h>
 #include <media/camera_common.h>
 #include <media/v4l2-event.h>
+#include <media/tegra_camera_platform.h>
 
 #include "dev.h"
 #include "camera/mc_common.h"
@@ -75,14 +76,19 @@ int tegra_vi_power_on(struct tegra_mc_vi *vi)
 
 	/* clock settings */
 	clk_prepare_enable(vi->clk);
-	ret = clk_set_rate(vi->clk, TEGRA_CLOCK_VI_MAX);
+	ret = clk_set_rate(vi->clk, 0);
 	if (ret) {
 		dev_err(vi->dev, "failed to set vi clock\n");
 		goto error_clk_set_rate;
 	}
 
-	return 0;
+	ret = tegra_camera_emc_clk_enable();
+	if (ret)
+		goto err_emc_enable;
 
+	return 0;
+err_emc_enable:
+	clk_disable_unprepare(vi->clk);
 error_clk_set_rate:
 	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
 error_unpowergate:
@@ -95,6 +101,7 @@ error_regulator_fail:
 
 void tegra_vi_power_off(struct tegra_mc_vi *vi)
 {
+	tegra_camera_emc_clk_disable();
 	clk_disable_unprepare(vi->clk);
 	tegra_powergate_partition(TEGRA_POWERGATE_VENC);
 	regulator_disable(vi->reg);
@@ -204,7 +211,7 @@ int tegra_vi_v4l2_init(struct tegra_mc_vi *vi)
 			return ret;
 		}
 	}
-
+	mutex_init(&vi->bw_update_lock);
 	vi->v4l2_dev.mdev = &vi->media_dev;
 	vi->v4l2_dev.notify = tegra_vi_notify;
 	ret = v4l2_device_register(vi->dev, &vi->v4l2_dev);
@@ -248,7 +255,7 @@ static int vi_get_clks(struct tegra_mc_vi *vi, struct platform_device *pdev)
 {
 	int ret = 0;
 
-	vi->clk = devm_clk_get(&pdev->dev, "vi");
+	vi->clk = devm_clk_get(&pdev->dev, "vi_v4l2");
 	if (IS_ERR(vi->clk)) {
 		dev_err(&pdev->dev, "Failed to get vi clock\n");
 		return PTR_ERR(vi->clk);
