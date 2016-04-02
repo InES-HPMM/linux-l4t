@@ -12,7 +12,7 @@
  *
  */
 
-#include "tegra210-jetson-tx1-p2597-2180-a01-devkit.dts"
+#include "tegra210-jetson-tx1-p2597-2180-a01-android-devkit.dts"
 #include "tegra210-platforms/tegra210-overrides/tegra210-power-dvfs-override-ucm2c.dtsi"
 
 / {
