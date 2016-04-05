@@ -22,7 +22,7 @@
 #include <linux/clk.h>
 #include <linux/platform/tegra/mc.h>
 
-#include "vi.h"
+#include "vi/vi.h"
 #include "tegra_camera_dev_mfi.h"
 #include "tegra_camera_platform.h"
 
