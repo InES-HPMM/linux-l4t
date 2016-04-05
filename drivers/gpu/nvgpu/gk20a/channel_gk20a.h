@@ -113,7 +113,6 @@ struct channel_gk20a {
 
 	struct list_head jobs;
 	struct mutex jobs_lock;
-	struct mutex submit_lock;
 
 	struct vm_gk20a *vm;
 

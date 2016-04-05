@@ -1377,24 +1377,6 @@ clean_up:
 	return err;
 }
 
-static inline bool check_gp_put(struct gk20a *g,
-				struct channel_gk20a *c)
-{
-	u32 put;
-	/* gp_put changed unexpectedly since last update? */
-	put = gk20a_bar1_readl(g,
-	       c->userd_gpu_va + 4 * ram_userd_gp_put_w());
-	if (c->gpfifo.put != put) {
-		/*TBD: BUG_ON/teardown on this*/
-		gk20a_err(dev_from_gk20a(g), "gp_put changed unexpectedly "
-			  "since last update, channel put = %u, ram put = %u\n",
-			  c->gpfifo.put, put);
-		c->gpfifo.put = put;
-		return false; /* surprise! */
-	}
-	return true; /* checked out ok */
-}
-
 /* Update with this periodically to determine how the gpfifo is draining. */
 static inline u32 update_gp_get(struct gk20a *g,
 				struct channel_gk20a *c)
@@ -1633,11 +1615,6 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 	vm = c->vm;
 	platform = gk20a_get_platform(c->g->dev);
 
-	mutex_lock(&c->submit_lock);
-
-	/* gp_put check needs to be done inside submit lock */
-	check_gp_put(c->g, c);
-
 	gk20a_channel_cancel_job_clean_up(c, false);
 
 	mutex_lock(&c->jobs_lock);
@@ -1687,7 +1664,6 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 	}
 
 	mutex_unlock(&c->jobs_lock);
-	mutex_unlock(&c->submit_lock);
 
 	if (c->update_fn)
 		schedule_work(&c->update_fn_work);
@@ -1830,20 +1806,20 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		goto clean_up;
 	}
 
-	mutex_lock(&c->submit_lock);
-
 	mutex_lock(&c->sync_lock);
 	if (!c->sync) {
 		c->sync = gk20a_channel_sync_create(c);
 		if (!c->sync) {
 			err = -ENOMEM;
-			mutex_unlock(&c->submit_lock);
+			mutex_unlock(&c->sync_lock);
 			goto clean_up;
 		}
 		if (g->ops.fifo.resetup_ramfc)
 			err = g->ops.fifo.resetup_ramfc(c);
-		if (err)
+		if (err) {
+			mutex_unlock(&c->sync_lock);
 			return err;
+		}
 	}
 	atomic_inc(&c->sync->refcount);
 	mutex_unlock(&c->sync_lock);
@@ -1866,7 +1842,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		}
 	}
 	if (err) {
-		mutex_unlock(&c->submit_lock);
 		goto clean_up;
 	}
 
@@ -1883,7 +1858,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		err = c->sync->incr(c->sync, &incr_cmd,
 				    &post_fence, need_sync_fence);
 	if (err) {
-		mutex_unlock(&c->submit_lock);
 		goto clean_up;
 	}
 
@@ -1947,7 +1921,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 				user_gpfifo,
 				length0 * sizeof(*user_gpfifo));
 			if (err) {
-				mutex_unlock(&c->submit_lock);
 				goto clean_up;
 			}
 
@@ -1955,7 +1928,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 				user_gpfifo + length0,
 				length1 * sizeof(*user_gpfifo));
 			if (err) {
-				mutex_unlock(&c->submit_lock);
 				goto clean_up;
 			}
 
@@ -1968,7 +1940,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 				user_gpfifo,
 				num_entries * sizeof(*user_gpfifo));
 			if (err) {
-				mutex_unlock(&c->submit_lock);
 				goto clean_up;
 			}
 
@@ -2015,8 +1986,6 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		c->userd_gpu_va + 4 * ram_userd_gp_put_w(),
 		c->gpfifo.put);
 
-	mutex_unlock(&c->submit_lock);
-
 	trace_gk20a_channel_submitted_gpfifo(c->g->dev->name,
 					     c->hw_chid,
 					     num_entries,
@@ -2052,7 +2021,6 @@ int gk20a_init_channel_support(struct gk20a *g, u32 chid)
 	init_waitqueue_head(&c->ref_count_dec_wq);
 	mutex_init(&c->ioctl_lock);
 	mutex_init(&c->jobs_lock);
-	mutex_init(&c->submit_lock);
 	mutex_init(&c->last_submit.fence_lock);
 	INIT_DELAYED_WORK(&c->clean_up.wq, gk20a_channel_clean_up_jobs);
 	mutex_init(&c->clean_up.lock);
