@@ -1171,9 +1171,9 @@ static void gk20a_pm_shutdown(struct platform_device *pdev)
 
 		if (gk20a_channel_get(ch)) {
 			gk20a_channel_abort(ch, true);
+			gk20a_channel_cancel_job_clean_up(ch, true);
 			if (ch->update_fn)
 				cancel_work_sync(&ch->update_fn_work);
-			gk20a_channel_cancel_job_clean_up(ch, true);
 			gk20a_channel_put(ch);
 		}
 	}
