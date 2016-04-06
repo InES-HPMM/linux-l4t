@@ -275,6 +275,7 @@ static void tegra_channel_capture_frame(struct tegra_channel *chan,
 		return;
 
 	for (index = 0; index < valid_ports; index++) {
+		tegra_csi_start_frame(chan->vi->csi, chan->port[index]);
 		/* Program buffer address by using surface 0 */
 		csi_write(chan, index, TEGRA_VI_CSI_SURFACE0_OFFSET_MSB, 0x0);
 		csi_write(chan, index,

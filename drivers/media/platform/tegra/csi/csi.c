@@ -281,24 +281,10 @@ EXPORT_SYMBOL(tegra_csi_power);
  * CSI Subdevice Video Operations
  * -----------------------------------------------------------------------------
  */
-
-void tegra_csi_start_streaming(struct tegra_csi_device *csi,
+void tegra_csi_start_frame(struct tegra_csi_device *csi,
 				enum tegra_csi_port_num port_num)
 {
 	struct tegra_csi_port *port = &csi->ports[port_num];
-
-	csi_write(csi, TEGRA_CSI_CLKEN_OVERRIDE, 0, port_num>>1);
-
-	/* Clean up status */
-	pp_write(port, TEGRA_CSI_PIXEL_PARSER_STATUS, 0xFFFFFFFF);
-	cil_write(port, TEGRA_CSI_CIL_STATUS, 0xFFFFFFFF);
-	cil_write(port, TEGRA_CSI_CILX_STATUS, 0xFFFFFFFF);
-
-	cil_write(port, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
-
-	/* CIL PHY registers setup */
-	cil_write(port, TEGRA_CSI_CIL_PAD_CONFIG0, 0x0);
-	cil_write(port, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
 
 	/*
 	 * The CSI unit provides for connection of up to six cameras in
@@ -316,7 +302,6 @@ void tegra_csi_start_streaming(struct tegra_csi_device *csi,
 		cil_write(port_a, TEGRA_CSI_CIL_PAD_CONFIG0,
 			  BRICK_CLOCK_A_4X);
 		cil_write(port_b, TEGRA_CSI_CIL_PAD_CONFIG0, 0x0);
-		cil_write(port_b, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
 		cil_write(port_a, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
 		cil_write(port_b, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
 		csi_write(csi, TEGRA_CSI_PHY_CIL_COMMAND,
@@ -332,6 +317,33 @@ void tegra_csi_start_streaming(struct tegra_csi_device *csi,
 			CSI_B_PHY_CIL_ENABLE;
 		csi_write(csi, TEGRA_CSI_PHY_CIL_COMMAND, val, port_num>>1);
 	}
+}
+
+void tegra_csi_start_streaming(struct tegra_csi_device *csi,
+				enum tegra_csi_port_num port_num)
+{
+	struct tegra_csi_port *port = &csi->ports[port_num];
+
+	csi_write(csi, TEGRA_CSI_CLKEN_OVERRIDE, 0, port_num>>1);
+
+	/* Clean up status */
+	pp_write(port, TEGRA_CSI_PIXEL_PARSER_STATUS, 0xFFFFFFFF);
+	cil_write(port, TEGRA_CSI_CIL_STATUS, 0xFFFFFFFF);
+	cil_write(port, TEGRA_CSI_CILX_STATUS, 0xFFFFFFFF);
+
+	cil_write(port, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
+	if (port->lanes == 4) {
+		int port_val = ((port_num >> 1) << 1);
+		struct tegra_csi_port *port_b = &csi->ports[port_val+1];
+
+		cil_write(port_b, TEGRA_CSI_CIL_INTERRUPT_MASK, 0x0);
+	}
+
+	/* CIL PHY registers setup */
+	cil_write(port, TEGRA_CSI_CIL_PAD_CONFIG0, 0x0);
+	cil_write(port, TEGRA_CSI_CIL_PHY_CONTROL, 0xA);
+
+	tegra_csi_start_frame(csi, port_num);
 
 	/* CSI pixel parser registers setup */
 	pp_write(port, TEGRA_CSI_PIXEL_STREAM_PP_COMMAND,
