@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/powergate.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (c) 2011 - 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011 - 2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -473,6 +473,22 @@ bool tegra_powergate_is_powered(int id)
 	return !!status;
 }
 EXPORT_SYMBOL(tegra_powergate_is_powered);
+
+bool tegra_powergate_is_hotreset_asserted(int mc_client_id)
+{
+	if (!pg_ops) {
+		WARN_ON_ONCE("This SOC doesn't support powergating\n");
+		return -EINVAL;
+	}
+
+	if (pg_ops->powergate_is_hotreset_asserted)
+		return pg_ops->powergate_is_hotreset_asserted(mc_client_id);
+	else
+		WARN_ON_ONCE("This SOC does not support MC hotreset assert\n");
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(tegra_powergate_is_hotreset_asserted);
 
 int tegra_cpu_powergate_id(int cpuid)
 {

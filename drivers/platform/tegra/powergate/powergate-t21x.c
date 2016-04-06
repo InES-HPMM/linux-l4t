@@ -450,6 +450,21 @@ static struct dvfs_rail *gpu_rail;
 
 #define HOTRESET_READ_COUNTS		5
 
+static bool tegra210_pg_is_hotreset_asserted(int mc_client_bit)
+{
+	int reg_idx, reg_bit;
+	u32 rst_control_reg;
+
+	if (mc_client_bit == MC_CLIENT_LAST)
+		return false;
+
+	reg_idx = mc_client_bit / 32;
+	reg_bit = mc_client_bit % 32;
+	rst_control_reg = tegra210_mc_reg[reg_idx].control_reg;
+
+	return mc_read(rst_control_reg) & (1 << reg_bit);
+}
+
 static bool tegra210_pg_hotreset_check(u32 status_reg, u32 *status)
 {
 	int i;
@@ -978,6 +993,8 @@ static struct powergate_ops tegra210_pg_ops = {
 	.powergate_is_powered = tegra210_pg_is_powered,
 
 	.powergate_init_refcount = tegra210_pg_init_refcount,
+
+	.powergate_is_hotreset_asserted = tegra210_pg_is_hotreset_asserted,
 };
 
 struct powergate_ops *tegra210_powergate_init_chip_support(void)

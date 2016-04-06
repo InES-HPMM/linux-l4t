@@ -2,7 +2,7 @@
  * drivers/regulator/tegra-regulator.c
  *
  * Copyright (c) 2010 Google, Inc
- * Copyright (C) 2011-2014 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2016 NVIDIA Corporation. All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -113,6 +113,7 @@ int tegra_powergate_mc_flush(int id);
 int tegra_powergate_mc_flush_done(int id);
 int tegra_powergate_remove_clamping(int id);
 const char *tegra_powergate_get_name(int id);
+bool tegra_powergate_is_hotreset_asserted(int mc_client_id);
 
 /*
  * Functions to powergate/un-powergate partitions.

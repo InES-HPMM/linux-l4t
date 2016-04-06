@@ -3,7 +3,7 @@
  *
  * GK20A Tegra Platform Interface
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -45,6 +45,7 @@
 #define TEGRA_DDR4_BW_PER_FREQ 16
 #define MC_CLIENT_GPU 34
 #define PMC_GPU_RG_CNTRL_0		0x2d4
+#define HOTRESET_RETRY_COUNT	2
 
 extern struct device tegra_vpr_dev;
 
@@ -505,6 +506,7 @@ static int gm20b_tegra_unrailgate(struct platform_device *pdev)
 	struct gk20a_platform *platform = platform_get_drvdata(pdev);
 	int ret = 0;
 	bool first = false;
+	int hotreset_retry_count = 1;
 
 	if (tegra_platform_is_linsim())
 		return 0;
@@ -566,6 +568,19 @@ static int gm20b_tegra_unrailgate(struct platform_device *pdev)
 	tegra_mc_flush_done(MC_CLIENT_GPU);
 
 	udelay(10);
+
+	/* Bug: 200173458: WAR to re-execute hotreset sequence if failed */
+	while ((hotreset_retry_count <= HOTRESET_RETRY_COUNT) &&
+		(tegra_powergate_is_hotreset_asserted(MC_CLIENT_GPU))) {
+		gk20a_err(&pdev->dev, "Flush failed. Retrying again.\n");
+		tegra_mc_flush(MC_CLIENT_GPU);
+		udelay(100);
+		tegra_mc_flush_done(MC_CLIENT_GPU);
+		udelay(100);
+		if (tegra_powergate_is_hotreset_asserted(MC_CLIENT_GPU))
+			gk20a_err(&pdev->dev, "Flush failed again.\n");
+		hotreset_retry_count++;
+	}
 
 	return 0;
 

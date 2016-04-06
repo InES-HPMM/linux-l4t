@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -113,6 +113,8 @@ struct powergate_ops {
 	bool (*powergate_skip)(int id);
 
 	bool (*powergate_is_powered)(int id);
+
+	bool (*powergate_is_hotreset_asserted)(int mc_client_id);
 };
 
 void get_clk_info(struct powergate_partition_info *pg_info);
