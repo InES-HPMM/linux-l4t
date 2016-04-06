@@ -31,15 +31,8 @@
 #include "imx185_mode_tbls.h"
 
 
-#define TESTING_10BIT  1
-
-#ifdef TESTING_10BIT
-#define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP_10BIT
-#define IMX185_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB10_1X10
-#else
 #define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP
 #define IMX185_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB12_1X12
-#endif
 
 #define IMX185_MAX_COARSE_DIFF 2
 #define IMX185_MAX_COARSE_DIFF_HDR 5
@@ -84,12 +77,6 @@ struct imx185 {
 	s32 group_hold_prev;
 	bool group_hold_en;
 	u32	frame_length;
-
-	u32 i2c_channel;
-	struct i2c_client *pca954x_i2c_client;
-	struct i2c_adapter *pca954x_adap;
-	struct i2c_board_info pca954x_brd;
-	struct regmap *pca954x_regmap;
 
 	struct regmap			*regmap;
 	struct camera_common_data	*s_data;
@@ -264,60 +251,6 @@ static int imx185_write_table(struct imx185 *priv,
 					 IMX185_TABLE_END);
 }
 
-static int pca954x_device_release(struct imx185 *priv)
-{
-	if (priv->pca954x_i2c_client != NULL) {
-		i2c_unregister_device(priv->pca954x_i2c_client);
-		priv->pca954x_i2c_client = NULL;
-	}
-	return 0;
-}
-
-static int pca954x_device_init(struct imx185 *priv)
-{
-	int err;
-	char *dev_name = "pca954x";
-
-	static  struct regmap_config pca954x_regmap_config = {
-		.reg_bits = 8,
-		.val_bits = 8,
-		.cache_type = REGCACHE_RBTREE,
-	};
-
-	priv->pca954x_adap = i2c_get_adapter(
-			priv->i2c_client->adapter->nr);
-	memset(&priv->pca954x_brd, 0, sizeof(priv->pca954x_brd));
-	strncpy(priv->pca954x_brd.type, dev_name,
-			sizeof(priv->pca954x_brd.type));
-
-	priv->pca954x_brd.addr = IMX185_PCA954X_I2C_ADDR;
-	priv->pca954x_i2c_client = i2c_new_device(
-			priv->pca954x_adap, &priv->pca954x_brd);
-
-	priv->pca954x_regmap = devm_regmap_init_i2c(
-		priv->pca954x_i2c_client, &pca954x_regmap_config);
-	if (IS_ERR(priv->pca954x_regmap)) {
-		err = PTR_ERR(priv->pca954x_regmap);
-		pca954x_device_release(priv);
-		return err;
-	}
-	return 0;
-}
-
-static int pca954x_write_reg(struct camera_common_data *s_data,
-				u8 addr, u8 val)
-{
-	int err;
-	struct imx185 *priv = (struct imx185 *)s_data->priv;
-
-	err = regmap_write(priv->pca954x_regmap, addr, val);
-	if (err)
-		pr_err("%s:i2c write failed, 0x%x = %x\n",
-			__func__, addr, val);
-
-	return err;
-}
-
 static int imx185_power_on(struct camera_common_data *s_data)
 {
 	int err = 0;
@@ -407,12 +340,7 @@ static int imx185_power_get(struct imx185 *priv)
 			clk_set_parent(pw->mclk, parent);
 	}
 
-	if (pdata->regulators.iovdd != NULL)
-		camera_common_regulator_get(priv->i2c_client,
-				&pw->iovdd, pdata->regulators.iovdd);
-	if (!err)
-		pw->reset_gpio = pdata->reset_gpio;
-
+	pw->reset_gpio = pdata->reset_gpio;
 	pw->state = SWITCH_OFF;
 	return err;
 }
@@ -547,35 +475,15 @@ fail:
 	return err;
 }
 
-static int imx185_calculate_gain(u32 rep, int shift)
-{
-	u8 gain;
-	int i;
-
-	if (rep < IMX185_MIN_GAIN || rep > IMX185_MAX_GAIN) {
-		pr_err("%s: %d is not a valid gain\n", __func__, rep);
-		return -ENODEV;
-	}
-
-	if (rep == (imx185_gain_lookup_table[rep-1].gain_x))
-		gain = imx185_gain_lookup_table[rep-1].reg_val;
-	else
-		pr_err("%s: invalid gain set, rep=%d\n", __func__, rep);
-
-	return gain;
-}
-
 static int imx185_set_gain(struct imx185 *priv, s32 val)
 {
 	imx185_reg reg_list[1];
 	int err;
 	u8 gain;
 
-	/* translate value */
-	gain = (u8)imx185_calculate_gain(val, IMX185_GAIN_SHIFT);
-
+	gain = val;
 	dev_dbg(&priv->i2c_client->dev,
-		 "%s: val: %d gain: %d\n", __func__, val, gain);
+		 "%s:  gain: %d\n", __func__, gain);
 
 	imx185_get_gain_reg(reg_list, gain);
 
@@ -758,29 +666,16 @@ static int imx185_fuse_id_setup(struct imx185 *priv)
 	err = camera_common_s_power(priv->subdev, true);
 	if (err)
 		return -ENODEV;
-	if (pw->iovdd) {
-		err = pca954x_device_init(priv);
-		if (err)
-			dev_err(&client->dev,
-				"Fail to allocate pca954x regmap: %d\n", err);
-		err = regulator_enable(pw->iovdd);
-		if (!err) {
-			usleep_range(500, 510);
-			pca954x_write_reg(priv->s_data, IMX185_PCA954X_I2C_ADDR,
-				priv->i2c_channel);
-			usleep_range(500, 510);
-		} else {
-			pr_err("%s: iovdd regulator_enable faill\n", __func__);
-		}
-	}
 
 	for (i = 0; i < IMX185_FUSE_ID_SIZE; i++) {
 		err |= imx185_read_reg(s_data,
 			IMX185_FUSE_ID_ADDR + i, (unsigned int *) &bak);
 		if (!err)
 			fuse_id[i] = bak;
-		else
+		else {
 			pr_err("%s: can not read fuse id\n", __func__);
+			return -EINVAL;
+		}
 	}
 
 	ctrl = v4l2_ctrl_find(&priv->ctrl_handler, V4L2_CID_FUSE_ID);
@@ -962,19 +857,6 @@ static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
 	if (sts) {
 		dev_err(&client->dev, "reset-gpios not found %d\n", sts);
 		board_priv_pdata->reset_gpio = 0;
-	}
-
-	sts = of_property_read_string(np, "iovdd-reg",
-			&board_priv_pdata->regulators.iovdd);
-	if (sts) {
-		board_priv_pdata->regulators.iovdd = NULL;
-		dev_err(&client->dev, "iovdd-reg not found %d\n", sts);
-	}
-
-	sts = of_property_read_u32(np, "i2c-channel", &priv->i2c_channel);
-	if (sts) {
-		board_priv_pdata->regulators.iovdd = NULL;
-		dev_err(&client->dev, "i2c-channel not found %d\n", sts);
 	}
 
 	return board_priv_pdata;

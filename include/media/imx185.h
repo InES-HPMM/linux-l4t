@@ -39,8 +39,6 @@
 #define IMX185_GAIN_ADDR	0x3014
 #define IMX185_GROUP_HOLD_ADDR	0x3001
 
-#define IMX185_PCA954X_I2C_ADDR (0x70)
-
 struct imx185_mode {
 	__u32 xres;
 	__u32 yres;
