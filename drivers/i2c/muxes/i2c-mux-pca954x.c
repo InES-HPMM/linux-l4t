@@ -67,6 +67,8 @@ struct pca954x {
 	u8 last_chan;		/* last register value */
 	struct regulator *vcc_reg;
 	struct regulator *pullup_reg;
+	struct regulator *lp_reg;
+	const char *lp_reg_name;
 };
 
 struct chip_desc {
@@ -252,6 +254,26 @@ static int pca954x_probe(struct i2c_client *client,
 					__func__, force_bus);
 			}
 		}
+		ret = of_property_read_string(client->dev.of_node, "vcc_lp",
+			&data->lp_reg_name);
+		if (ret) {
+			data->lp_reg_name = NULL;
+			dev_err(&client->dev, "vcc_lp not found %d\n", ret);
+		}
+	}
+
+	data->lp_reg = devm_regulator_get(&client->dev, data->lp_reg_name);
+	if (IS_ERR(data->lp_reg)) {
+		dev_info(&client->dev, "lp_reg get fail\n");
+		data->lp_reg = NULL;
+	}
+
+	if (data->lp_reg) {
+		ret = regulator_enable(data->lp_reg);
+		if (ret) {
+			dev_err(&client->dev, "%s: lp_reg failed to enable\n",
+				__func__);
+		}
 	}
 
 	/* Get regulator pointer for pca954x vcc */
@@ -261,7 +283,7 @@ static int pca954x_probe(struct i2c_client *client,
 	else if (IS_ERR(data->vcc_reg)) {
 		ret = PTR_ERR(data->vcc_reg);
 		dev_err(&client->dev, "vcc regualtor get failed, %d\n", ret);
-		return ret;
+		data->vcc_reg = NULL;
 	}
 
 	/* Get regulator pointer for pca954x vcc-pullup */
