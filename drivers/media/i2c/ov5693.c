@@ -554,8 +554,31 @@ static struct v4l2_subdev_core_ops ov5693_subdev_core_ops = {
 	.s_power	= camera_common_s_power,
 };
 
+static int ov5693_get_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+		struct v4l2_subdev_format *format)
+{
+	return camera_common_g_fmt(sd, &format->format);
+}
+
+static int ov5693_set_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+	struct v4l2_subdev_format *format)
+{
+	int ret;
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		ret = camera_common_try_fmt(sd, &format->format);
+	else
+		ret = camera_common_s_fmt(sd, &format->format);
+
+	return ret;
+}
+
 static struct v4l2_subdev_pad_ops ov5693_subdev_pad_ops = {
 	.enum_mbus_code = camera_common_enum_mbus_code,
+	.set_fmt = ov5693_set_fmt,
+	.get_fmt = ov5693_get_fmt,
 };
 
 static struct v4l2_subdev_ops ov5693_subdev_ops = {
