@@ -37,14 +37,14 @@
 #define OV13860_MIN_GAIN		(1 << OV13860_GAIN_SHIFT)
 #define OV13860_MAX_GAIN \
 	((15 << OV13860_GAIN_SHIFT) | (1 << (OV13860_GAIN_SHIFT - 1)))
-#define OV13860_MIN_FRAME_LENGTH		(0x0DA8)
+#define OV13860_MIN_FRAME_LENGTH		(0x0)
 #define OV13860_MAX_FRAME_LENGTH		(0x7fff)
 #define OV13860_MIN_EXPOSURE_COARSE		(0x8)
 #define OV13860_MAX_EXPOSURE_COARSE	\
 	(OV13860_MAX_FRAME_LENGTH-OV13860_MAX_COARSE_DIFF)
 
 #define OV13860_DEFAULT_GAIN		OV13860_MIN_GAIN
-#define OV13860_DEFAULT_FRAME_LENGTH		OV13860_MIN_FRAME_LENGTH
+#define OV13860_DEFAULT_FRAME_LENGTH		(0x0DA8)
 #define OV13860_DEFAULT_EXPOSURE_COARSE	\
 	(OV13860_DEFAULT_FRAME_LENGTH-OV13860_MAX_COARSE_DIFF)
 
@@ -484,6 +484,10 @@ static int ov13860_s_stream(struct v4l2_subdev *sd, int enable)
 	if (!enable)
 		return ov13860_write_table(priv,
 			mode_table[OV13860_MODE_STOP_STREAM]);
+
+	err = ov13860_write_table(priv, mode_table[OV13860_MODE_COMMON]);
+	if (err)
+		goto exit;
 
 	err = ov13860_write_table(priv, mode_table[s_data->mode]);
 	if (err)
