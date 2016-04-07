@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2008 Atmel Corporation
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -32,6 +32,8 @@ static char *fail_request;
 module_param(fail_request, charp, 0);
 
 #endif /* CONFIG_FAIL_MMC_REQUEST */
+
+static int mmc_speed_opt_get(void *data, u64 *val);
 
 /* The debugfs functions are optimized away when CONFIG_DEBUG_FS isn't set. */
 static int mmc_ios_show(struct seq_file *s, void *data)
@@ -326,6 +328,9 @@ static int mmc_speed_opt_set(void *data, u64 val)
 	u32 prev_timing, prev_maxdtr;
 	u32 timing_req = 0;
 	u32 maxdtr_req = 0;
+	u64 current_mode;
+
+	mmc_speed_opt_get(host, &current_mode);
 
 	if (host->card->type != MMC_TYPE_MMC) {
 		pr_warn("%s: usage error, only MMC device is supported\n",
@@ -336,17 +341,20 @@ static int mmc_speed_opt_set(void *data, u64 val)
 	prev_maxdtr = host->card->sw_caps.uhs_max_dtr;
 
 	/* Currently supporting only DDR50 and HS200 speeds */
-	switch (val) {
-	case UHS_SDR104_BUS_SPEED:
+	if (current_mode == val) {
+		pr_info("%s: current mode is same as requested",
+				mmc_hostname(host));
+		return 0;
+	} else if ((current_mode == UHS_DDR50_BUS_SPEED)
+			&& (val == UHS_SDR104_BUS_SPEED)) {
 		timing_req = MMC_TIMING_MMC_HS200;
 		maxdtr_req = MMC_HS200_MAX_DTR;
-		break;
-	case UHS_DDR50_BUS_SPEED:
+	} else if ((current_mode == UHS_SDR104_BUS_SPEED)
+			&& (val == UHS_DDR50_BUS_SPEED)) {
 		timing_req = MMC_TIMING_UHS_DDR50;
 		maxdtr_req = UHS_DDR50_MAX_DTR;
-		break;
-	default:
-		pr_warn("%s: usage error, set only 3 for HS200 or 4 for DDR50\n",
+	} else {
+		pr_info("%s: usage error, set only 3 for HS200 or 4 for DDR50 \nFollowing are the supported modes: \n\t 1.HS200 to DDR50 \n\t 2.DDR50 to HS200",
 			mmc_hostname(host));
 		return 0;
 	}
