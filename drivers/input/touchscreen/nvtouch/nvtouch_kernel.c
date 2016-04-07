@@ -130,6 +130,8 @@ struct nvtouch_kernel_state {
 	struct nvtouch_sample_gpfifo *sample_gpfifo;
 	struct nvtouch_sample_gpfifo *trace_gpfifo;
 	struct mutex sample_input_mutex;
+	u8 mutithreaded_sample_access_enabled;
+	atomic_t nvtouch_dev_ref_count;
 	u64 frame_counter;
 	u32 last_event_count;
 	u64 time_of_last_touch;
@@ -185,6 +187,8 @@ struct nvtouch_kernel_state {
 	struct trace_state replay_trace;
 
 	struct device *nvtouch_dev;
+
+
 } g_state_kernel;
 
 
@@ -540,6 +544,12 @@ static ssize_t debugfs_write_trace(struct file *filp,
 static int debugfs_replay_open(struct inode *inode,
 	struct file *file)
 {
+	if (!g_state_kernel.mutithreaded_sample_access_enabled) {
+		mutex_init(&g_state_kernel.sample_input_mutex);
+		wmb();
+		g_state_kernel.mutithreaded_sample_access_enabled = true;
+	}
+
 	mutex_lock(&g_state_kernel.sample_input_mutex);
 
 	/* Should not be allocated */
@@ -707,12 +717,21 @@ static void nvtouch_kernel_process_locked(void *samples, int samples_size,
  */
 void nvtouch_kernel_process(void *samples, int samples_size, u8 report_mode)
 {
-	/* Skip update if trace replay is in progress */
-	if (mutex_trylock(&g_state_kernel.sample_input_mutex)) {
+	if (g_state_kernel.mutithreaded_sample_access_enabled) {
+		/* This codepath is only enabled if debugfs replay_trace
+		 * feature was used at least once.
+		 * Skip update if trace replay is in progress */
+		if (mutex_trylock(&g_state_kernel.sample_input_mutex)) {
+			nvtouch_kernel_process_locked(samples, samples_size,
+					report_mode,
+					nvtouch_get_time_us());
+			mutex_unlock(&g_state_kernel.sample_input_mutex);
+		}
+	} else {
+		/* Default codepath, if replay_trace was never used */
 		nvtouch_kernel_process_locked(samples, samples_size,
 				report_mode,
 				nvtouch_get_time_us());
-		mutex_unlock(&g_state_kernel.sample_input_mutex);
 	}
 }
 
@@ -721,13 +740,26 @@ EXPORT_SYMBOL(nvtouch_kernel_process);
 static int device_open(struct inode *inode,
 	struct file *file)
 {
+	int ref_count;
+
 	pr_info("nvtouch device_open(%p)\n", file);
+
+	ref_count = atomic_inc_return(&g_state_kernel.nvtouch_dev_ref_count);
+
+	if (ref_count > 1) {
+		pr_err("nvtouch error: more than a single user "
+				"attempt to access nvtouch dev node\n");
+		atomic_dec(&g_state_kernel.nvtouch_dev_ref_count);
+		return -EBUSY;
+	}
+
 	return 0;
 }
 
 static int device_release(struct inode *inode,
 	struct file *file)
 {
+	atomic_dec(&g_state_kernel.nvtouch_dev_ref_count);
 	pr_info("nvtouch device_release(%p,%p)\n", inode, file);
 	return 0;
 }
@@ -1557,6 +1589,8 @@ static int __init nvtouch_cdev_init(void)
 	int err = 0;
 	int i;
 
+	atomic_set(&g_state_kernel.nvtouch_dev_ref_count, 0);
+
 	if (register_chrdev(NVTOUCH_MAJOR, "nvtouch", &fops)) {
 		pr_err("Nvtouch driver: Unable to register driver\n");
 		return -ENODEV;
@@ -1634,8 +1668,6 @@ static int __init nvtouch_cdev_init(void)
 	init_debug_blink_on_touch();
 	nvtouch_init_blobs(g_state_kernel.debug_dfs);
 	spin_lock_init(&g_state_dta.slock);
-
-	mutex_init(&g_state_kernel.sample_input_mutex);
 
 	g_state_kernel.sample_gpfifo =
 			nvtouch_gpfifo_create(GPFIFO_SIZE_SPI);
