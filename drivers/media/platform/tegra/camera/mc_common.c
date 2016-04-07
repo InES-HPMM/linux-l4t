@@ -212,6 +212,7 @@ int tegra_vi_v4l2_init(struct tegra_mc_vi *vi)
 		}
 	}
 	mutex_init(&vi->bw_update_lock);
+	mutex_init(&vi->mipical_lock);
 	vi->v4l2_dev.mdev = &vi->media_dev;
 	vi->v4l2_dev.notify = tegra_vi_notify;
 	ret = v4l2_device_register(vi->dev, &vi->v4l2_dev);

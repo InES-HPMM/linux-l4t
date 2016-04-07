@@ -39,6 +39,9 @@
 
 #include "camera/mc_common.h"
 #include "vi/vi.h"
+#include "nvhost_acm.h"
+#include "mipi_cal.h"
+
 
 #define FRAMERATE	30
 #define BPP_MEM		2
@@ -594,6 +597,150 @@ static void tegra_channel_queued_buf_done(struct tegra_channel *chan,
 	spin_unlock(lock);
 }
 
+#if defined(CONFIG_ARCH_TEGRA_21x_SOC)
+static int tegra_channel_mipi_cal(struct tegra_channel *chan, char is_bypass)
+{
+	unsigned int lanes, cur_lanes, val;
+	unsigned int csi_phya, csi_phyb, csi_phya_mask, csi_phyb_mask;
+	struct tegra_mc_vi *vi = chan->vi;
+	int j;
+
+	lanes = 0;
+	csi_phya = 0x1 << CSI_A_PHY_CIL_ENABLE_SHIFT;
+	csi_phya_mask = 0x3 << CSI_A_PHY_CIL_ENABLE_SHIFT;
+	csi_phyb = 0x1 << CSI_B_PHY_CIL_ENABLE_SHIFT;
+	csi_phyb_mask = 0x3 << CSI_B_PHY_CIL_ENABLE_SHIFT;
+	if (chan->numlanes == 2 && chan->total_ports == 1) {
+		switch (chan->port[0]) {
+		case PORT_A:
+			lanes = CSIA;
+			val = (host1x_readl(vi->ndev, CSI_PHY_CIL_COMMAND_0) &
+				(~csi_phya_mask)) | csi_phya;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		case PORT_B:
+			lanes = CSIB;
+			val = (host1x_readl(vi->ndev, CSI_PHY_CIL_COMMAND_0) &
+				(~csi_phyb_mask)) | csi_phyb;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		case PORT_C:
+			lanes = CSIC;
+			val = (host1x_readl(vi->ndev, CSI1_PHY_CIL_COMMAND_0) &
+				(~csi_phya_mask)) | csi_phya;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI1_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		case PORT_D:
+			lanes = CSID;
+			val = (host1x_readl(vi->ndev, CSI1_PHY_CIL_COMMAND_0) &
+			      (~csi_phyb_mask)) | csi_phyb;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI1_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		case PORT_E:
+			lanes = CSIE;
+			val = (host1x_readl(vi->ndev, CSI2_PHY_CIL_COMMAND_0) &
+				(~csi_phya_mask)) | csi_phya;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI2_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		case PORT_F:
+			lanes = CSIF;
+			val = (host1x_readl(vi->ndev, CSI2_PHY_CIL_COMMAND_0) &
+				(~csi_phyb_mask)) | csi_phyb;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI2_PHY_CIL_COMMAND_0,
+						val);
+			break;
+		default:
+			dev_err(vi->dev, "csi_port number: %d", chan->port[0]);
+			break;
+		}
+	} else if (chan->numlanes == 4 && chan->total_ports == 1) {
+		switch (chan->port[0]) {
+		case PORT_A:
+		case PORT_B:
+			lanes = CSIA|CSIB;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI_PHY_CIL_COMMAND_0,
+					csi_phya | csi_phyb);
+			break;
+		case PORT_C:
+		case PORT_D:
+			lanes = CSIC|CSID;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI1_PHY_CIL_COMMAND_0,
+					csi_phya | csi_phyb);
+			break;
+		case PORT_E:
+		case PORT_F:
+			lanes = CSIE|CSIF;
+			if (is_bypass)
+				host1x_writel(vi->ndev, CSI2_PHY_CIL_COMMAND_0,
+					csi_phya | csi_phyb);
+			break;
+		default:
+			dev_err(vi->dev, "csi_port number: %d", chan->port[0]);
+			break;
+		}
+	} else if (chan->numlanes == 8) {
+		cur_lanes = 0;
+		for (j = 0; j < chan->valid_ports; ++j) {
+			switch (chan->port[j]) {
+			case PORT_A:
+			case PORT_B:
+				cur_lanes = CSIA|CSIB;
+				if (is_bypass)
+					host1x_writel(vi->ndev,
+							CSI_PHY_CIL_COMMAND_0,
+							csi_phya | csi_phyb);
+				break;
+			case PORT_C:
+			case PORT_D:
+				cur_lanes = CSIC|CSID;
+				if (is_bypass)
+					host1x_writel(vi->ndev,
+							CSI1_PHY_CIL_COMMAND_0,
+							csi_phya | csi_phyb);
+				break;
+			case PORT_E:
+			case PORT_F:
+				cur_lanes = CSIE|CSIF;
+				if (is_bypass)
+					host1x_writel(vi->ndev,
+							CSI2_PHY_CIL_COMMAND_0,
+							csi_phya | csi_phyb);
+				break;
+			default:
+				dev_err(vi->dev, "csi_port number: %d",
+						chan->port[0]);
+				break;
+			}
+			lanes |= cur_lanes;
+		}
+	}
+	if (!lanes) {
+		dev_err(vi->dev, "Selected no CSI lane, cannot do calibration");
+		return -EINVAL;
+	}
+	return tegra_mipi_calibration(lanes);
+
+}
+#else
+static int tegra_channel_mipi_cal(struct tegra_channel *chan)
+{
+	return 0;
+}
+#endif
+
 /*
  * -----------------------------------------------------------------------------
  * subdevice set/unset operations
@@ -692,8 +839,15 @@ static int tegra_channel_start_streaming(struct vb2_queue *vq, u32 count)
 			goto error_set_stream;
 	}
 
-	if (chan->bypass)
+	if (chan->bypass) {
+		nvhost_module_enable_clk(chan->vi->dev);
+		tegra_mipi_bias_pad_enable();
+		mutex_lock(&chan->vi->mipical_lock);
+		tegra_channel_mipi_cal(chan, 1);
+		mutex_unlock(&chan->vi->mipical_lock);
+		nvhost_module_disable_clk(chan->vi->dev);
 		return ret;
+	}
 
 	for (i = 0; i < chan->valid_ports; i++)
 		tegra_csi_start_streaming(chan->vi->csi, chan->port[i]);
@@ -726,7 +880,12 @@ static int tegra_channel_start_streaming(struct vb2_queue *vq, u32 count)
 		goto error_capture_setup;
 	}
 	tegra_channel_update_clknbw(chan, 1);
-
+	tegra_mipi_bias_pad_enable();
+	if (!chan->vi->pg_mode) {
+		mutex_lock(&chan->vi->mipical_lock);
+		tegra_channel_mipi_cal(chan, 0);
+		mutex_unlock(&chan->vi->mipical_lock);
+	}
 	return 0;
 
 error_capture_setup:
@@ -759,6 +918,7 @@ static int tegra_channel_stop_streaming(struct vb2_queue *vq)
 		tegra_channel_set_stream(chan, false);
 		media_entity_pipeline_stop(&chan->video.entity);
 	}
+	tegra_mipi_bias_pad_disable();
 
 	return 0;
 }

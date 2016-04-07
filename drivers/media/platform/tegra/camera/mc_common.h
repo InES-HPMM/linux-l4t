@@ -220,7 +220,7 @@ struct tegra_mc_vi {
 	struct mutex bw_update_lock;
 	unsigned long aggregated_kbyteps;
 	unsigned long max_requested_hz;
-
+	struct mutex mipical_lock;
 };
 
 int tegra_vi_get_port_info(struct tegra_channel *chan,
