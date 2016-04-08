@@ -129,9 +129,9 @@
 					nvidia,bl-device-name = "pwm-backlight";
 				};
 				cmu {
-					nvidia,cmu-csc = < 0x0D6 0x026 0x002
-							   0x00B 0x0F4 0x000
-							   0x002 0x005 0x0F8 >;
+					nvidia,cmu-csc = < 0x0DA 0x027 0x3FD
+							   0x00C 0x0F0 0x004
+							   0x002 0x00A 0x0F4 >;
 					nvidia,cmu-lut1 = < 0 1 2 4 5 6 7 9
 							    10 11 12 14 15 16 18 20
 							    21 23 25 27 29 31 33 35
@@ -286,9 +286,9 @@
 							    254 254 254 254 255 255 255 255 >;
 				};
 				cmu_adobe_rgb {
-						nvidia,cmu-csc = < 0x122 0x3DB 0x009
-							   0x3F6 0x109 0x003
-							   0x3FE 0x3CC 0x153 >;
+						nvidia,cmu-csc = < 0x106 0x3FF 0x3FA
+							   0x001 0x0FB 0x004
+							   0x3FE 0x005 0x0FB >;
 						nvidia,cmu-lut1 = < 0 1 2 4 5 6 7 9
 							    10 11 12 14 15 16 18 20
 							    21 23 25 27 29 31 33 35
