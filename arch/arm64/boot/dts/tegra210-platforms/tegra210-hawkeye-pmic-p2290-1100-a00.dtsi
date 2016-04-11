@@ -150,6 +150,7 @@
 			pmic_watchdog: watchdog {
 				maxim,wdt-boot-timeout = <0>;
 				maxim,wdt-suspend-timeout = <120>;
+				maxim,wdt-suspend-enable-from-user;
 				status = "disabled";
 			};
 
