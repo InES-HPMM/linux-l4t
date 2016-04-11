@@ -230,6 +230,8 @@ Optinal properties:
 			timeout.
 	-maxim,otp-wdtt: Boolean, OTP wdt.
 	-maxim,otp-wdten: Boolean, OTP WDT enable.
+	-maxim,maxim,wdt-suspend-enable-from-user: Boolean, disable wdt on suspend at bootime and
+	enable/disable wdt on suspend from sysfs interface.
 
 	This node status can be disabled and if it is disabled then WDT will
 be OFF on system.

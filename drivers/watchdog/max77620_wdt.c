@@ -50,6 +50,7 @@ struct max77620_wdt {
 	bool				otp_wdtt;
 	bool				otp_wdten;
 	bool				enable_on_off;
+	bool				wdt_suspend_enable;
 	int				suspend_timeout;
 	int				org_suspend_timeout;
 	int				current_timeout;
@@ -405,7 +406,9 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 		wdt->enable_on_off = of_property_read_bool(np,
 					"maxim,enable-wdt-on-off");
 		of_property_read_u32(np, "maxim,wdt-suspend-timeout",
-				&wdt->suspend_timeout);
+				&wdt->org_suspend_timeout);
+		wdt->wdt_suspend_enable = of_property_read_bool(np,
+					"maxim,wdt-suspend-enable-from-user");
 	} else {
 		wdt->boot_timeout = 0;
 		wdt->otp_wdtt = 0;
@@ -420,7 +423,8 @@ static int max77620_wdt_probe(struct platform_device *pdev)
 	wdt_dev->min_timeout = 2;
 	wdt_dev->max_timeout = 128;
 
-	wdt->org_suspend_timeout = wdt->suspend_timeout;
+	if (!wdt->wdt_suspend_enable)
+		wdt->suspend_timeout = wdt->org_suspend_timeout;
 	wdt->org_boot_timeout = wdt->boot_timeout;
 
 	watchdog_set_nowayout(wdt_dev, nowayout);
