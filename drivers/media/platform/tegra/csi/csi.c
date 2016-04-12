@@ -441,56 +441,6 @@ static int tegra_csi_s_stream(struct v4l2_subdev *subdev, int enable)
 	return 0;
 }
 
-/* -----------------------------------------------------------------------------
- * V4L2 Subdevice Pad Operations
- */
-
-static struct v4l2_mbus_framefmt *
-__tegra_csi_get_pad_format(struct tegra_csi_device *csi,
-		      struct v4l2_subdev_fh *cfg,
-		      unsigned int pad, u32 which)
-{
-	enum tegra_csi_port_num port_num = (pad >> 1);
-
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-#if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
-		return v4l2_subdev_get_try_format(cfg, pad);
-#endif
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &csi->ports[port_num].format;
-	default:
-		return NULL;
-	}
-}
-
-static int tegra_csi_get_format(struct v4l2_subdev *subdev,
-			   struct v4l2_subdev_fh *cfg,
-			   struct v4l2_subdev_format *fmt)
-{
-	struct tegra_csi_device *csi = to_csi(subdev);
-
-	fmt->format = *__tegra_csi_get_pad_format(csi, cfg,
-					fmt->pad, fmt->which);
-	return 0;
-}
-
-static int tegra_csi_set_format(struct v4l2_subdev *subdev,
-			   struct v4l2_subdev_fh *cfg,
-			   struct v4l2_subdev_format *fmt)
-{
-	struct tegra_csi_device *csi = to_csi(subdev);
-	struct v4l2_mbus_framefmt *__format;
-	enum tegra_csi_port_num port_num = (fmt->pad >> 1);
-
-	__format = __tegra_csi_get_pad_format(csi, cfg,
-					fmt->pad, fmt->which);
-	if (__format)
-		csi->ports[port_num].format = *__format;
-
-	return 0;
-}
-
 /*
  * Only use this subdevice media bus ops for test pattern generator,
  * because CSI device is an separated subdevice which has 6 source
@@ -558,6 +508,57 @@ static int tegra_csi_g_mbus_fmt(struct v4l2_subdev *sd,
 	return tegra_csi_try_mbus_fmt(sd, fmt);
 }
 
+static int tegra_csi_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct tegra_csi_device *csi = to_csi(sd);
+
+	*status = !!csi->pg_mode;
+
+	return 0;
+}
+
+/* -----------------------------------------------------------------------------
+ * V4L2 Subdevice Pad Operations
+ */
+
+static int tegra_csi_get_format(struct v4l2_subdev *subdev,
+			   struct v4l2_subdev_fh *cfg,
+			   struct v4l2_subdev_format *fmt)
+{
+	struct v4l2_mbus_framefmt mbus_fmt;
+	int ret;
+
+	ret = tegra_csi_g_mbus_fmt(subdev, &mbus_fmt);
+	if (ret)
+		return ret;
+
+	fmt->format = mbus_fmt;
+
+	return 0;
+}
+
+static int tegra_csi_set_format(struct v4l2_subdev *subdev,
+			   struct v4l2_subdev_fh *cfg,
+			   struct v4l2_subdev_format *fmt)
+{
+	int i, ret;
+	struct tegra_csi_device *csi = to_csi(subdev);
+
+	ret = tegra_csi_try_mbus_fmt(subdev, &fmt->format);
+	if (ret)
+		return ret;
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
+		return 0;
+
+	for (i = 0; i < csi->num_ports; i++) {
+		struct v4l2_mbus_framefmt *format = &csi->ports[i].format;
+		memcpy(format, &fmt->format, sizeof(struct v4l2_mbus_framefmt));
+	}
+
+	return 0;
+}
+
 /* -----------------------------------------------------------------------------
  * V4L2 Subdevice Operations
  */
@@ -566,6 +567,7 @@ static struct v4l2_subdev_video_ops tegra_csi_video_ops = {
 	.try_mbus_fmt	= tegra_csi_try_mbus_fmt,
 	.s_mbus_fmt	= tegra_csi_s_mbus_fmt,
 	.g_mbus_fmt	= tegra_csi_g_mbus_fmt,
+	.g_input_status = tegra_csi_g_input_status,
 };
 
 static struct v4l2_subdev_pad_ops tegra_csi_pad_ops = {
