@@ -9714,6 +9714,7 @@ static struct clk tegra_visp_clks[] = {
 	SHARED_CLK("ispa.isp.cbus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPA_USER),
 	SHARED_CLK("ispb.isp.cbus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0, TEGRA210_CLK_ID_CXBUS_ISP_ISPB_USER),
 	SHARED_CLK("vi_v4l2.cbus",	"vi",		"vi_v4l2",	&tegra_visp_clks[0],	"vi",    0, 0, TEGRA210_CLK_ID_CXBUS_VI_V4L2_USER),
+	SHARED_CLK("vi_bypass.cbus",	"tegra_vi",	"vi_bypass",	&tegra_visp_clks[0],	"vi",    0, 0, TEGRA210_CLK_ID_CXBUS_VI_BYPASS_USER),
 };
 
 /* XUSB clocks */
@@ -9961,7 +9962,6 @@ static struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("mclk3", NULL, "cam_mclk1"),
 	CLK_DUPLICATE("mclk", NULL, "cam_mclk2"),
 	CLK_DUPLICATE("mclk2", NULL, "cam_mclk3"),
-	CLK_DUPLICATE("vi.cbus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
 	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
 	CLK_DUPLICATE("vim2_clk", "tegra_vi", "vim2_clk"),
