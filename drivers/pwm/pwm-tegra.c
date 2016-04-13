@@ -3,7 +3,7 @@
  *
  * Tegra pulse-width-modulation controller driver
  *
- * Copyright (c) 2010, NVIDIA Corporation.
+ * Copyright (c) 2010-2016, NVIDIA CORPORATION, All rights reserved.
  * Based on arch/arm/plat-mxc/pwm.c by Sascha Hauer <s.hauer@pengutronix.de>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -128,7 +128,7 @@ static int tegra_pwm_config(struct pwm_chip *chip, struct pwm_device *pwm,
 	 * per (1 << PWM_DUTY_WIDTH) cycles and make sure to round to the
 	 * nearest integer during division.
 	 */
-	c = duty_ns * ((1 << PWM_DUTY_WIDTH) - 1) + period_ns / 2;
+	c = duty_ns * (1 << PWM_DUTY_WIDTH) + period_ns / 2;
 	do_div(c, period_ns);
 
 	val = (u32)c << PWM_DUTY_SHIFT;
