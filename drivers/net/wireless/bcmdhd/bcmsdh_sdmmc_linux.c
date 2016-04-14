@@ -107,7 +107,9 @@ MODULE_PARM_DESC(clockoverride, "SDIO card clock override");
 /* Maximum number of bcmsdh_sdmmc devices supported by driver */
 #define BCMSDH_SDMMC_MAX_DEVICES 1
 
+#ifdef CONFIG_PM_SLEEP
 extern volatile bool dhd_mmc_suspend;
+#endif
 
 static int sdioh_probe(struct sdio_func *func)
 {
@@ -345,7 +347,7 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 
 MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
 {
 	int err;
@@ -424,7 +426,7 @@ static const struct dev_pm_ops bcmsdh_sdmmc_pm_ops = {
 	.resume_noirq   = bcmsdh_sdmmc_resume_noirq,
 #endif
 };
-#endif  /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM) */
+#endif  /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP) */
 
 #if defined(BCMLXSDMMC)
 static struct semaphore *notify_semaphore = NULL;
@@ -471,11 +473,11 @@ static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.remove		= bcmsdh_sdmmc_remove,
 	.name		= "bcmsdh_sdmmc",
 	.id_table	= bcmsdh_sdmmc_ids,
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM)
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP)
 	.drv = {
 	.pm	= &bcmsdh_sdmmc_pm_ops,
 	},
-#endif /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM) */
+#endif /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM_SLEEP) */
 	};
 
 struct sdos_info {

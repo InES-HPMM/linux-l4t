@@ -1189,6 +1189,7 @@ static struct nvs_fn_dev bmp_fn_dev = {
 	.nvs_read			= bmp_nvs_read,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int bmp_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1224,6 +1225,7 @@ static int bmp_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(bmp_pm_ops, bmp_suspend, bmp_resume);
+#endif
 
 static void bmp_shutdown(struct i2c_client *client)
 {
@@ -1958,7 +1960,9 @@ static struct i2c_driver bmp_driver = {
 		.name			= BMP_NAME,
 		.owner			= THIS_MODULE,
 		.of_match_table		= of_match_ptr(bmp_of_match),
+#ifdef CONFIG_PM_SLEEP
 		.pm			= &bmp_pm_ops,
+#endif
 	},
 	.id_table			= bmp_i2c_device_id,
 };

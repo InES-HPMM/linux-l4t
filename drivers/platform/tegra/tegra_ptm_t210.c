@@ -275,6 +275,7 @@ static inline void ptm_check_trace_stable(struct tracectx *t, int id, int bit)
 #define SAVE_RESTORE_PTM(reg) \
 	(addr[cnt++] = readl_relaxed(reg_base + reg))
 
+#ifdef CONFIG_CPU_PM
 static void ptm_save(struct tracectx *t)
 {
 	u32 *addr;
@@ -293,10 +294,12 @@ static void ptm_save(struct tracectx *t)
 	PTM_REG_SAVE_RESTORE_LIST;
 	rmb();
 }
+#endif
 
 #undef SAVE_RESTORE_PTM
 #define SAVE_RESTORE_PTM(reg) ptm_writel(t, id, addr[cnt++], reg)
 
+#ifdef CONFIG_CPU_PM
 static void ptm_restore(struct tracectx *t)
 {
 	u32 *addr;
@@ -312,6 +315,7 @@ static void ptm_restore(struct tracectx *t)
 
 	ptm_os_unlock(t, id);
 }
+#endif
 
 /* Initialise the PTM registers */
 static void ptm_init(void *p_info)

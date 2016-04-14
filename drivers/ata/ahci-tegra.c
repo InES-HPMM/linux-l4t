@@ -466,6 +466,7 @@ static bool tegra_ahci_power_un_gate(struct ata_host *host);
 static bool tegra_ahci_power_gate(struct ata_host *host);
 static void tegra_ahci_abort_power_gate(struct ata_host *host);
 static int tegra_ahci_controller_suspend(struct platform_device *pdev);
+#ifdef CONFIG_PM_SLEEP
 static int tegra_ahci_controller_resume(struct platform_device *pdev);
 #ifndef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static int tegra_ahci_suspend(struct platform_device *pdev, pm_message_t mesg);
@@ -473,6 +474,7 @@ static int tegra_ahci_resume(struct platform_device *pdev);
 #else
 static int tegra_ahci_suspend(struct device *dev);
 static int tegra_ahci_resume(struct device *dev);
+#endif
 #endif
 static enum port_idle_status tegra_ahci_is_port_idle(struct ata_port *ap);
 static bool tegra_ahci_are_all_ports_idle(struct ata_host *host);
@@ -935,6 +937,7 @@ exit:
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static void tegra_first_level_clk_gate(void)
 {
 	if (g_tegra_hpriv->clk_state == CLK_OFF)
@@ -948,6 +951,7 @@ static void tegra_first_level_clk_gate(void)
 		clk_disable_unprepare(g_tegra_hpriv->clk_cml1);
 	g_tegra_hpriv->clk_state = CLK_OFF;
 }
+#endif
 
 #if defined(CONFIG_TEGRA_SATA_IDLE_POWERGATE) && \
 	!defined(CONFIG_TEGRA_AHCI_CONTEXT_RESTORE)
@@ -1788,6 +1792,7 @@ static int tegra_ahci_controller_suspend(struct platform_device *pdev)
 		tegra_hpriv->soc_data->num_sata_regulators);
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int tegra_ahci_controller_resume(struct platform_device *pdev)
 {
 	struct ata_host *host = dev_get_drvdata(&pdev->dev);
@@ -1824,6 +1829,7 @@ static int tegra_ahci_controller_resume(struct platform_device *pdev)
 
 	return 0;
 }
+#endif
 
 #ifndef CONFIG_TEGRA_SATA_IDLE_POWERGATE
 static int tegra_ahci_suspend(struct platform_device *pdev, pm_message_t mesg)
@@ -1993,6 +1999,7 @@ static int tegra_ahci_port_resume(struct ata_port *ap)
 
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int tegra_ahci_suspend_common(struct platform_device *pdev,
 		pm_message_t mesg)
 {
@@ -2027,7 +2034,7 @@ static int tegra_ahci_suspend(struct device *dev)
 	dev_dbg(dev, "Suspending...\n");
 	return tegra_ahci_suspend_common(pdev, PMSG_SUSPEND);
 }
-
+#endif
 
 static int tegra_ahci_runtime_suspend(struct device *dev)
 {
@@ -2063,6 +2070,7 @@ static int tegra_ahci_runtime_suspend(struct device *dev)
 	return err;
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int tegra_ahci_resume(struct device *dev)
 {
 	struct platform_device *pdev = g_tegra_hpriv->pdev;
@@ -2109,6 +2117,7 @@ static int tegra_ahci_resume(struct device *dev)
 #endif
 	return 0;
 }
+#endif
 
 static int tegra_ahci_runtime_resume(struct device *dev)
 {

@@ -745,8 +745,11 @@ static void gpio_remove_key(struct gpio_button_data *bdata)
 	if (gpio_is_valid(bdata->button->gpio))
 		gpio_free(bdata->button->gpio);
 }
+
+#ifdef CONFIG_PM_SLEEP
 static int gpio_keys_pm_notifier(struct notifier_block *nb,
 	unsigned long event, void *data);
+#endif
 
 static int gpio_keys_probe(struct platform_device *pdev)
 {
@@ -823,8 +826,10 @@ static int gpio_keys_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, wakeup);
 
+#ifdef CONFIG_PM_SLEEP
 	ddata->pm_nb.notifier_call = gpio_keys_pm_notifier;
 	tegra_register_pm_notifier(&ddata->pm_nb);
+#endif
 
 	return 0;
 

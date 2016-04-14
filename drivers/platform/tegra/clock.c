@@ -1336,9 +1336,12 @@ static int __init tegra_dvfs_rail_start_scaling(void)
 	unsigned long flags, rate;
 	struct clk *c = tegra_get_clock_by_name("cpu");
 	struct clk *dfll_cpu = tegra_get_clock_by_name("dfll_cpu");
+#ifdef CONFIG_PM_SLEEP
 	bool init_dfll_first = tegra_dvfs_is_dfll_bypass() ||
 		tegra_platform_is_fpga();
-
+#else
+    bool init_dfll_first = tegra_platform_is_fpga();
+#endif
 	BUG_ON(!c);
 	clk_lock_save(c, &flags);
 

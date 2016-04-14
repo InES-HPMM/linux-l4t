@@ -220,6 +220,7 @@ static void softdog_platform_shutdown(struct platform_device *pdev)
 	del_timer_sync(&swdt->watchdog_ticktock);
 }
 
+#ifdef CONFIG_PM_SLEEP
 static int softdog_platform_suspend(struct device *dev)
 {
 	struct softdog_platform_wdt *swdt = dev_get_drvdata(dev);
@@ -246,6 +247,7 @@ static const struct dev_pm_ops softdog_platform_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(softdog_platform_suspend,
 			softdog_platform_resume)
 };
+#endif
 
 static struct of_device_id softdog_platform_of_match[] = {
 	{ .compatible = "softdog-platform", },
@@ -258,7 +260,9 @@ static struct platform_driver softdog_platform_driver = {
 		.name = "softdog-platform",
 		.owner = THIS_MODULE,
 		.of_match_table = softdog_platform_of_match,
+#ifdef CONFIG_PM_SLEEP
 		.pm = &softdog_platform_pm_ops,
+#endif
 	},
 	.probe = softdog_platform_probe,
 	.remove = softdog_platform_remove,

@@ -1686,7 +1686,6 @@ static int tegra_dma_pm_resume(struct device *dev)
 	tegra_dma_runtime_suspend(dev);
 	return 0;
 }
-#endif
 
 int tegra_dma_save(void)
 {
@@ -1697,13 +1696,16 @@ int tegra_dma_restore(void)
 {
 	return tegra_dma_pm_resume(dma_device);
 }
+#endif
 
 static const struct dev_pm_ops tegra_dma_dev_pm_ops = {
 #ifdef CONFIG_PM_RUNTIME
 	.runtime_suspend = tegra_dma_runtime_suspend,
 	.runtime_resume = tegra_dma_runtime_resume,
 #endif
+#ifdef CONFIG_PM_SLEEP
 	SET_SYSTEM_SLEEP_PM_OPS(tegra_dma_pm_suspend, tegra_dma_pm_resume)
+#endif
 };
 
 static struct platform_driver tegra_dmac_driver = {

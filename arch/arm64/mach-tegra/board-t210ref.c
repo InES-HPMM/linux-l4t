@@ -229,6 +229,7 @@ static void __init tegra_t210ref_early_init(void)
 		tegra_soc_device_init("he2290");
 }
 
+#ifdef CONFIG_PM_SLEEP
 static struct tegra_suspend_platform_data t210ref_suspend_data = {
 	.cpu_timer      = 1700,
 	.cpu_off_timer  = 300,
@@ -245,6 +246,7 @@ static int __init t210ref_suspend_init(void)
 	tegra_init_suspend(&t210ref_suspend_data);
 	return 0;
 }
+#endif
 
 static void __init tegra_t210ref_late_init(void)
 {
@@ -257,9 +259,10 @@ static void __init tegra_t210ref_late_init(void)
 
 	t210ref_usb_init();
 	tegra_io_dpd_init();
+#ifdef CONFIG_PM_SLEEP
 	/* FIXME: Assumed all t210ref platforms have sdhci DT support */
 	t210ref_suspend_init();
-
+#endif
 	tegra21_emc_init();
 	isomgr_init();
 

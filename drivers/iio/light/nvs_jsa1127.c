@@ -435,6 +435,7 @@ static struct nvs_fn_dev jsa_fn_dev = {
 	.nvs_read			= jsa_nvs_read,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int jsa_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -464,6 +465,7 @@ static int jsa_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(jsa_pm_ops, jsa_suspend, jsa_resume);
+#endif
 
 static void jsa_shutdown(struct i2c_client *client)
 {
@@ -743,7 +745,9 @@ static struct i2c_driver jsa_driver = {
 		.name		= JSA_NAME,
 		.owner		= THIS_MODULE,
 		.of_match_table	= of_match_ptr(jsa_of_match),
+#ifdef CONFIG_PM_SLEEP
 		.pm		= &jsa_pm_ops,
+#endif
 	},
 	.id_table	= jsa_i2c_device_id,
 };

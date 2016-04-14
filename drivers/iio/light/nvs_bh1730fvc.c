@@ -421,6 +421,7 @@ static struct nvs_fn_dev bh1730_fn_dev = {
 	.nvs_read			= bh1730_nvs_read,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int bh1730_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -456,6 +457,7 @@ static int bh1730_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(bh1730_pm_ops, bh1730_suspend, bh1730_resume);
+#endif
 
 static void bh1730_shutdown(struct i2c_client *client)
 {
@@ -766,7 +768,9 @@ static struct i2c_driver bh1730_driver = {
 		.name		= BH1730_NAME,
 		.owner		= THIS_MODULE,
 		.of_match_table	= of_match_ptr(bh1730_of_match),
+#ifdef CONFIG_PM_SLEEP
 		.pm		= &bh1730_pm_ops,
+#endif
 	},
 	.id_table	= bh1730_i2c_device_id,
 };

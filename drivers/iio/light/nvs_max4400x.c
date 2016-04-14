@@ -766,6 +766,7 @@ static struct nvs_fn_dev mx_fn_dev = {
 	.nvs_read			= mx_nvs_read,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int mx_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -821,6 +822,7 @@ static int mx_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(mx_pm_ops, mx_suspend, mx_resume);
+#endif
 
 static void mx_shutdown(struct i2c_client *client)
 {
@@ -1173,7 +1175,9 @@ static struct i2c_driver mx_driver = {
 		.name		= MX_NAME,
 		.owner		= THIS_MODULE,
 		.of_match_table	= of_match_ptr(mx_of_match),
+#ifdef CONFIG_PM_SLEEP
 		.pm		= &mx_pm_ops,
+#endif
 	},
 	.id_table	= mx_i2c_device_id,
 };

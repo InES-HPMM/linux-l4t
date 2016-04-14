@@ -21,6 +21,8 @@
 #ifndef __LINUX_SYSTEM_WAKEUP_H__
 #define __LINUX_SYSTEM_WAKEUP_H__
 
+#include <linux/err.h>
+
 #ifdef CONFIG_PM_SLEEP
 extern int get_wakeup_reason_irq(void);
 #else

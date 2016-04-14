@@ -71,8 +71,9 @@ static u32 gic_version;
 
 static void __iomem *gic_dist_base;
 static void __iomem *gic_cpu_base;
+#ifdef CONFIG_PM_SLEEP
 static u32 gic_affinity[INT_GIC_NR/4];
-
+#endif
 static int num_ictlrs;
 
 static void __iomem **ictlr_reg_base;

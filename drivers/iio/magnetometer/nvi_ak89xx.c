@@ -1030,6 +1030,7 @@ static struct nvs_fn_dev akm_fn_dev = {
 	.nvs_read			= akm_nvs_read,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int akm_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1059,6 +1060,7 @@ static int akm_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(akm_pm_ops, akm_suspend, akm_resume);
+#endif
 
 static void akm_shutdown(struct i2c_client *client)
 {
@@ -1706,7 +1708,9 @@ static struct i2c_driver akm_driver = {
 		.name			= AKM_NAME,
 		.owner			= THIS_MODULE,
 		.of_match_table		= of_match_ptr(akm_of_match),
+#ifdef CONFIG_PM_SLEEP
 		.pm			= &akm_pm_ops,
+#endif
 	},
 	.id_table			= akm_i2c_device_id,
 };

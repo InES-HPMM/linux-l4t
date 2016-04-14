@@ -123,7 +123,9 @@ obj-$(CONFIG_COMMON_CLK) += common_clock.o
 
 
 obj-$(CONFIG_TEGRA3_PM) += pm-t3.o
+ifeq ($(CONFIG_PM_SLEEP),y)
 obj-$(CONFIG_ARCH_TEGRA_21x_SOC) += wakeups-t21x.o
+endif
 
 
 obj-$(CONFIG_TEGRA_KFUSE) += kfuse.o

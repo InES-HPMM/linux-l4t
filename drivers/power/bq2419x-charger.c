@@ -781,6 +781,7 @@ static struct regulator_ops bq2419x_tegra_regulator_ops = {
 	.set_current_limit = bq2419x_set_charging_current,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int bq2419x_set_charging_current_suspend(struct bq2419x_chip *bq2419x,
 			int in_current_limit)
 {
@@ -810,6 +811,7 @@ static int bq2419x_set_charging_current_suspend(struct bq2419x_chip *bq2419x,
 	}
 	return 0;
 }
+#endif
 
 static int bq2419x_reconfigure_charger_param(struct bq2419x_chip *bq2419x,
 		const char *from)

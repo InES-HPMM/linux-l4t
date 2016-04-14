@@ -1472,8 +1472,10 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 static int __init tegra_cpufreq_init(void)
 {
 	int ret = 0;
+#ifdef CONFIG_PM_SLEEP
 	unsigned int cpu_suspend_freq = 0;
 	unsigned int i;
+#endif
 
 	struct tegra_cpufreq_table_data *table_data =
 		tegra_cpufreq_table_get();
@@ -1482,6 +1484,7 @@ static int __init tegra_cpufreq_init(void)
 
 	freq_table = table_data->freq_table;
 
+#ifdef CONFIG_PM_SLEEP
 	preserve_cpu_speed = table_data->preserve_across_suspend;
 	cpu_suspend_freq = tegra_cpu_suspend_freq();
 	if (cpu_suspend_freq == 0) {
@@ -1493,6 +1496,7 @@ static int __init tegra_cpufreq_init(void)
 		}
 		suspend_index = i;
 	}
+#endif
 
 	cpu_clk = clk_get_sys(NULL, "cpu");
 	if (IS_ERR(cpu_clk))

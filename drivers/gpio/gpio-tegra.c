@@ -522,12 +522,14 @@ fail:
 #define tegra_update_lp1_gpio_wake NULL
 #endif
 
+#ifdef CONFIG_PM_SLEEP
 static struct syscore_ops tegra_gpio_syscore_ops = {
 	.suspend = tegra_gpio_suspend,
 	.resume = tegra_gpio_resume,
 	.save = tegra_gpio_suspend,
 	.restore = tegra_gpio_resume,
 };
+#endif
 
 static struct irq_chip tegra_gpio_irq_chip = {
 	.name		= "GPIO",
@@ -698,7 +700,9 @@ static struct platform_driver tegra_gpio_driver = {
 
 static int __init tegra_gpio_init(void)
 {
+#ifdef CONFIG_PM_SLEEP
 	register_syscore_ops(&tegra_gpio_syscore_ops);
+#endif
 	return platform_driver_register(&tegra_gpio_driver);
 }
 postcore_initcall(tegra_gpio_init);

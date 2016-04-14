@@ -1318,6 +1318,7 @@ static const struct i2c_algorithm tegra_vi_i2c_algo = {
 	.functionality	= tegra_vi_i2c_func,
 };
 
+#ifdef CONFIG_PM_SLEEP
 static int __tegra_vi_i2c_suspend_noirq(struct tegra_vi_i2c_dev *i2c_dev);
 static int __tegra_vi_i2c_resume_noirq(struct tegra_vi_i2c_dev *i2c_dev);
 
@@ -1334,6 +1335,7 @@ static int tegra_vi_i2c_pm_notifier(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
+#endif
 
 static struct tegra_i2c_platform_data *parse_i2c_tegra_dt(
 	struct platform_device *pdev)
@@ -1598,9 +1600,11 @@ skip_pinctrl:
 		return ret;
 	}
 
+#ifdef CONFIG_PM_SLEEP
 	i2c_dev->pm_nb.notifier_call = tegra_vi_i2c_pm_notifier;
 
 	tegra_register_pm_notifier(&i2c_dev->pm_nb);
+#endif
 
 	pm_runtime_enable(&i2c_dev->adapter.dev);
 	of_i2c_register_devices(&i2c_dev->adapter);
