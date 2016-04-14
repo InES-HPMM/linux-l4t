@@ -205,6 +205,11 @@
 		};
 	};
 
+	gpio-timed-keys {
+		status="disabled";
+		disable-on-recovery-kernel;
+	};
+
 	gpu-dvfs-rework {
 		status = "disabled";
 	};
