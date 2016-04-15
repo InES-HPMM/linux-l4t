@@ -2331,15 +2331,27 @@ static const ov5693_reg *mode_table[] = {
 	[OV5693_MODE_TEST_PATTERN]		= tp_colorbars,
 };
 
+static const int ov5693_24fps[] = {
+	24,
+};
+
+static const int ov5693_30fps[] = {
+	30,
+};
+
+static const int ov5693_120fps[] = {
+	120,
+};
+
 static const struct camera_common_frmfmt ov5693_frmfmt[] = {
-	{{2592, 1944},	0, OV5693_MODE_2592X1944},
-	{{2592, 1458},	0, OV5693_MODE_2592X1458},
-	{{1920, 1080},	0, OV5693_MODE_1920X1080},
-	{{1296, 972},	0, OV5693_MODE_1296X972},
-	{{1280, 720},	0, OV5693_MODE_1280X720_120FPS},
-	{{2592, 1944},	1, OV5693_MODE_2592X1944_HDR},
-	{{1920, 1080},	1, OV5693_MODE_1920X1080_HDR},
-	{{1296, 972},	1, OV5693_MODE_1296X972_HDR},
+	{{2592, 1944},	ov5693_30fps,	1, 0,	OV5693_MODE_2592X1944},
+	{{2592, 1458},	ov5693_30fps,	1, 0,	OV5693_MODE_2592X1458},
+	{{1920, 1080},	ov5693_30fps,	1, 0,	OV5693_MODE_1920X1080},
+	{{1296, 972},	ov5693_30fps,	1, 0,	OV5693_MODE_1296X972},
+	{{1280, 720},	ov5693_120fps,	1, 0,	OV5693_MODE_1280X720_120FPS},
+	{{2592, 1944},	ov5693_24fps,	1, 1,	OV5693_MODE_2592X1944_HDR},
+	{{1920, 1080},	ov5693_30fps,	1, 1,	OV5693_MODE_1920X1080_HDR},
+	{{1296, 972},	ov5693_30fps,	1, 1,	OV5693_MODE_1296X972_HDR},
 };
 #endif  /* __OV5693_TABLES__ */
 
