@@ -53,6 +53,9 @@
 				physical_w = "3.674";
 				physical_h = "2.738";
 
+				/* Sensor Model */
+				sensor_model ="ov5693";
+
 				/* Define any required hw resources needed by driver */
 				/* ie. clocks, io pins, power sources */
 				avdd-reg = "vana";
@@ -166,6 +169,10 @@
 				* min_framerate = "";
 				* max_framerate = "";
 				* Framerate limits for mode (fps)
+				*
+				* embedded_metadata_height = "";
+				* Sensor embedded metadata height in units of rows.
+				* If sensor does not support embedded metadata value should be 0.
 				*/
 				mode0 { // OV5693_MODE_2592X1944
 					mclk_khz = "24000";
@@ -192,6 +199,7 @@
 					max_framerate = "30";
 					min_exp_time = "34";
 					max_exp_time = "550385";
+					embedded_metadata_height = "0";
 				};
 
 				mode1 { //OV5693_MODE_2592X1458
@@ -219,6 +227,7 @@
 					max_framerate = "30";
 					min_exp_time = "34";
 					max_exp_time = "550385";
+					embedded_metadata_height = "0";
 				};
 
 				mode2 { //OV5693_MODE_1280X720
@@ -246,6 +255,7 @@
 					max_framerate = "120";
 					min_exp_time = "22";
 					max_exp_time = "358733";
+					embedded_metadata_height = "0";
 				};
 
 				// HDR Modes
@@ -274,6 +284,7 @@
 					max_framerate = "24";
 					min_exp_time = "42";
 					max_exp_time = "687981";
+					embedded_metadata_height = "0";
 				};
 
 				ports {

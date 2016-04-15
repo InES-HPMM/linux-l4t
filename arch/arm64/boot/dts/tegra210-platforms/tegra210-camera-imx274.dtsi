@@ -53,6 +53,9 @@
 				physical_w = "3.674";
 				physical_h = "2.738";
 
+				/* Sensor Model */
+				sensor_model ="imx274";
+
 				/* Define any required hw resources needed by driver */
 				/* ie. clocks, io pins, power sources */
 				avdd-reg = "vana";
@@ -148,6 +151,10 @@
 				* min_framerate = "";
 				* max_framerate = "";
 				* Framerate limits for mode (fps)
+				*
+				* embedded_metadata_height = "";
+				* Sensor embedded metadata height in units of rows.
+				* If sensor does not support embedded metadata value should be 0.
 				*/
 				mode0 { // IMX274_MODE_3840X2160
 					mclk_khz = "24000";
@@ -173,6 +180,7 @@
 					max_framerate = "30";
 					min_exp_time = "16.165";
 					max_exp_time = "33191";
+					embedded_metadata_height = "0";
 				};
 
 				ports {

@@ -62,6 +62,7 @@
 
 				/* Sensor Model */
 				sensor_model ="imx214";
+
 				/* V4L2 device node location */
 				devnode = "video0";
 				has-eeprom = <1>;
@@ -203,6 +204,9 @@
 				* max_framerate = "";
 				* Framerate limits for mode (fps)
 				*
+				* embedded_metadata_height = "";
+				* Sensor embedded metadata height in units of rows.
+				* If sensor does not support embedded metadata value should be 0.
 				*/
 
 				mode0 { // IMX214_MODE_4096X3072

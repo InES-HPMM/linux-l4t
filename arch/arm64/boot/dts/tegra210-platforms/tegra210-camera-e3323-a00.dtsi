@@ -65,6 +65,9 @@
 				physical_w = "7.3998";
 				physical_h = "5.5998";
 
+				/* Sensor Model */
+				sensor_model ="ov23850";
+
 				/* Define any required hw resources needed by driver */
 				/* ie. clocks, io pins, power sources */
 				avdd-reg = "vana";
@@ -166,6 +169,9 @@
 				* max_framerate = "";
 				* Framerate limits for mode (fps)
 				*
+				* embedded_metadata_height = "";
+				* Sensor embedded metadata height in units of rows.
+				* If sensor does not support embedded metadata value should be 0.
 				*/
 
 				mode0 { // OV23850_MODE_5632X4224
@@ -193,6 +199,7 @@
 					max_framerate = "21";
 					min_exp_time = "20";
 					max_exp_time = "314256";
+					embedded_metadata_height = "0";
 				};
 
 				mode1 { // OV23850_MODE_5632X3168
@@ -220,6 +227,7 @@
 					max_framerate = "30";
 					min_exp_time = "19";
 					max_exp_time = "310241";
+					embedded_metadata_height = "0";
 				};
 				ports {
 					#address-cells = <1>;
@@ -277,6 +285,9 @@
 			physical_w = "7.3998";
 			physical_h = "5.5998";
 
+			/* Sensor Model */
+			sensor_model ="ov23850";
+
 			/* Define any required hw resources needed by driver */
 			/* ie. clocks, io pins, power sources */
 			avdd-reg = "vana";
@@ -310,6 +321,7 @@
 				max_framerate = "20";
 				min_exp_time = "20";
 				max_exp_time = "314256";
+				embedded_metadata_height = "0";
 			};
 
 			mode1 { // OV23850_MODE_5632X3168
@@ -337,6 +349,7 @@
 				max_framerate = "30";
 				min_exp_time = "19";
 				max_exp_time = "310467";
+				embedded_metadata_height = "0";
 			};
 			ports {
 				#address-cells = <1>;
