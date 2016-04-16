@@ -1,7 +1,7 @@
 /*
  * pwm_fan.c fan driver that is controlled by pwm
  *
- * Copyright (c) 2013-2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Anshul Jain <anshulj@nvidia.com>
  *
@@ -121,8 +121,8 @@ static int fan_target_pwm_set(void *data, u64 val)
 	if (!fan_data)
 		return -EINVAL;
 
-	if (val >= fan_data->fan_pwm_max)
-		val = fan_data->fan_pwm_max - 1;
+	if (val > fan_data->fan_cap_pwm)
+		val = fan_data->fan_cap_pwm;
 
 	mutex_lock(&fan_data->fan_state_lock);
 	target_pwm = (int)val;
@@ -198,8 +198,8 @@ static int fan_cap_pwm_set(void *data, u64 val)
 	if (!fan_data)
 		return -EINVAL;
 
-	if (val >= fan_data->fan_pwm_max)
-		val = fan_data->fan_pwm_max - 1;
+	if (val > fan_data->fan_pwm_max)
+		val = fan_data->fan_pwm_max;
 	mutex_lock(&fan_data->fan_state_lock);
 	fan_data->fan_cap_pwm = (int)val;
 	target_pwm = min(fan_data->fan_cap_pwm, fan_data->next_target_pwm);
@@ -653,8 +653,8 @@ static ssize_t set_fan_pwm_cap_sysfs(struct device *dev,
 
 	if (val < 0)
 		val = 0;
-	else if (val >= fan_data->fan_pwm_max)
-		val = fan_data->fan_pwm_max - 1;
+	else if (val > fan_data->fan_pwm_max)
+		val = fan_data->fan_pwm_max;
 
 	fan_data->fan_cap_pwm = val;
 	target_pwm = min(fan_data->fan_cap_pwm, fan_data->next_target_pwm);
@@ -733,7 +733,7 @@ static ssize_t set_fan_pwm_state_map_sysfs(struct device *dev,
 
 	mutex_lock(&fan_data->fan_state_lock);
 
-	if ((pwm_val < 0) || (pwm_val >= fan_data->fan_pwm_max)) {
+	if ((pwm_val < 0) || (pwm_val > fan_data->fan_cap_pwm)) {
 		mutex_unlock(&fan_data->fan_state_lock);
 		return -EINVAL;
 	}
