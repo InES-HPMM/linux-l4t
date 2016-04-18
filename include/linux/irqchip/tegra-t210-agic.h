@@ -3,7 +3,7 @@
  *
  * Header file for managing AGIC interrupt controller
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -22,6 +22,7 @@
 #define TEGRA_AGIC_COMPAT "nvidia,tegra210-agic"
 
 /* AMISC Mailbox Full Interrupts */
+#define INT_AGIC_START			32
 #define INT_AMISC_MBOX_FULL0		32
 #define INT_AMISC_MBOX_FULL1		33
 #define INT_AMISC_MBOX_FULL2		34
@@ -103,5 +104,7 @@
 
 /* AMISC Actmon interrupt */
 #define INT_ADSP_ACTMON			87
+
+#define INT_AGIC_END			87
 
 #endif /* _TEGRA_T210_AGIC_H_ */

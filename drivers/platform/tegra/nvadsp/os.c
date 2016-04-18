@@ -978,11 +978,11 @@ static void print_agic_irq_states(void)
 	struct device *dev = &priv.pdev->dev;
 	int i;
 
-	for (i = INT_AMISC_MBOX_FULL0; i <= INT_ADSP_ACTMON; i++) {
+	for (i = INT_AGIC_START; i < INT_AGIC_END; i++) {
 		dev_info(dev, "irq %d is %s and %s\n", i,
-		tegra_agic_irq_is_pending(INT_ADSP_WDT) ?
+		tegra_agic_irq_is_pending(i) ?
 			"pending" : "not pending",
-		tegra_agic_irq_is_active(INT_ADSP_WDT) ?
+		tegra_agic_irq_is_active(i) ?
 			"active" : "not active");
 	}
 }
