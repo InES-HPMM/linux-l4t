@@ -337,7 +337,6 @@ static void channel_gk20a_bind(struct channel_gk20a *ch_gk20a)
 void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a)
 {
 	struct gk20a *g = ch_gk20a->g;
-	struct gk20a_platform *platform = gk20a_get_platform(g->dev);
 
 	gk20a_dbg_fn("");
 
@@ -347,19 +346,6 @@ void channel_gk20a_unbind(struct channel_gk20a *ch_gk20a)
 			ccsr_channel_inst_bind_false_f());
 
 	ch_gk20a->bound = false;
-
-	/*
-	 * if we are agrressive then we can destroy the syncpt
-	 * resource at this point
-	 * if not, then it will be destroyed at channel_free()
-	 */
-	mutex_lock(&ch_gk20a->sync_lock);
-	if (ch_gk20a->sync && platform->aggressive_sync_destroy) {
-
-		ch_gk20a->sync->destroy(ch_gk20a->sync);
-		ch_gk20a->sync = NULL;
-	}
-	mutex_unlock(&ch_gk20a->sync_lock);
 }
 
 int channel_gk20a_alloc_inst(struct gk20a *g, struct channel_gk20a *ch)
@@ -850,7 +836,7 @@ static void gk20a_free_channel(struct channel_gk20a *ch)
 	/* sync must be destroyed before releasing channel vm */
 	mutex_lock(&ch->sync_lock);
 	if (ch->sync) {
-		ch->sync->destroy(ch->sync);
+		gk20a_channel_sync_destroy(ch->sync);
 		ch->sync = NULL;
 	}
 	mutex_unlock(&ch->sync_lock);
@@ -1662,8 +1648,18 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 		if (!completed)
 			break;
 
-		if (c->sync)
+		mutex_lock(&c->sync_lock);
+		if (c->sync) {
 			c->sync->signal_timeline(c->sync);
+			if (atomic_dec_and_test(&c->sync->refcount) &&
+					platform->aggressive_sync_destroy) {
+				gk20a_channel_sync_destroy(c->sync);
+				c->sync = NULL;
+			}
+		} else {
+			WARN_ON(1);
+		}
+		mutex_unlock(&c->sync_lock);
 
 		if (job->num_mapped_buffers)
 			gk20a_vm_put_buffers(vm, job->mapped_buffers,
@@ -1690,23 +1686,6 @@ static void gk20a_channel_clean_up_jobs(struct work_struct *work)
 		gk20a_idle(g->dev);
 	}
 
-	/*
-	 * If job list is empty then channel is idle and we can free
-	 * the syncpt here (given aggressive_destroy flag is set)
-	 * Note: check if last submit is complete before destroying
-	 * the sync resource
-	 */
-	if (list_empty(&c->jobs)) {
-		mutex_lock(&c->sync_lock);
-		mutex_lock(&c->last_submit.fence_lock);
-		if (c->sync && platform->aggressive_sync_destroy &&
-			  gk20a_fence_is_expired(c->last_submit.post_fence)) {
-			c->sync->destroy(c->sync);
-			c->sync = NULL;
-		}
-		mutex_unlock(&c->last_submit.fence_lock);
-		mutex_unlock(&c->sync_lock);
-	}
 	mutex_unlock(&c->jobs_lock);
 	mutex_unlock(&c->submit_lock);
 
@@ -1866,6 +1845,7 @@ int gk20a_submit_channel_gpfifo(struct channel_gk20a *c,
 		if (err)
 			return err;
 	}
+	atomic_inc(&c->sync->refcount);
 	mutex_unlock(&c->sync_lock);
 
 	/*
