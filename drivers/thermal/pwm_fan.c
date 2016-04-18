@@ -94,10 +94,18 @@ static void fan_update_target_pwm(struct fan_dev_data *fan_data, int val)
 	if (fan_data) {
 		fan_data->next_target_pwm = min(val, fan_data->fan_cap_pwm);
 
-		if (fan_data->next_target_pwm != fan_data->fan_cur_pwm)
+		if (fan_data->next_target_pwm != fan_data->fan_cur_pwm) {
+			if (!cancel_delayed_work(&fan_data->fan_ramp_work)) {
+				/* if zero is returned, entry could already
+				 * started on a different processor.
+				 * Therefore, flush workqueue to be
+				 * certain of canceling the work. */
+				flush_workqueue(fan_data->workqueue);
+			}
 			queue_delayed_work(fan_data->workqueue,
 					&fan_data->fan_ramp_work,
 					msecs_to_jiffies(fan_data->step_time));
+		}
 	}
 }
 
