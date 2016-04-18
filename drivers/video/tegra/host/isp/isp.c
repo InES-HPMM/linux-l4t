@@ -1,7 +1,7 @@
 /*
  * Tegra Graphics ISP
  *
- * Copyright (c) 2012-2015, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -433,15 +433,17 @@ static int isp_set_la(struct isp *tegra_isp, u32 isp_bw, u32 la_client)
 {
 	int ret = 0;
 	int la_id;
+	/* BW needs to be in MBps */
+	u32 isp_bw_mbps = isp_bw / 1000;
 
 	if (tegra_isp->dev_id == ISPB_DEV_ID)
 		la_id = TEGRA_LA_ISP_WAB;
 	else
 		la_id = TEGRA_LA_ISP_WA;
 
-	ret = tegra_set_camera_ptsa(la_id, isp_bw, la_client);
+	ret = tegra_set_camera_ptsa(la_id, isp_bw_mbps, la_client);
 	if (!ret) {
-		ret = tegra_set_latency_allowance(la_id, isp_bw);
+		ret = tegra_set_latency_allowance(la_id, isp_bw_mbps);
 		if (ret)
 			pr_err("%s: set latency failed for ISP %d: %d\n",
 				__func__, tegra_isp->dev_id, ret);
@@ -510,7 +512,7 @@ static long isp_ioctl(struct file *file,
 				ISP_HARD_ISO_CLIENT : ISP_SOFT_ISO_CLIENT);
 		if (ret) {
 			dev_err(&tegra_isp->ndev->dev,
-			"%s: failed to set la isp_bw %u MBps\n",
+			"%s: failed to set la isp_bw %u KBps\n",
 			__func__, isp_info.isp_la_bw);
 			return -ENOMEM;
 		}
@@ -541,7 +543,7 @@ static long isp_ioctl(struct file *file,
 		ret = isp_set_la(tegra_isp, isp_bw, la_client);
 		if (ret) {
 			dev_err(&tegra_isp->ndev->dev,
-			"%s: failed to set la for isp_bw %u MBps\n",
+			"%s: failed to set la for isp_bw %u KBps\n",
 			__func__, isp_bw);
 			return -ENOMEM;
 		}
