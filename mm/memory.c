@@ -1475,6 +1475,8 @@ int zap_vma_ptes(struct vm_area_struct *vma, unsigned long address,
 }
 EXPORT_SYMBOL_GPL(zap_vma_ptes);
 
+#define FOLL_CMA 0x10000000
+
 /**
  * follow_page_mask - look up a page descriptor from a user-virtual address
  * @vma: vm_area_struct mapping @address
@@ -1499,6 +1501,7 @@ struct page *follow_page_mask(struct vm_area_struct *vma,
 	spinlock_t *ptl;
 	struct page *page;
 	struct mm_struct *mm = vma->vm_mm;
+	bool replace_page = false;
 
 	*page_mask = 0;
 
@@ -1593,8 +1596,16 @@ split_fallthrough:
 		page = pte_page(pte);
 	}
 
-	if (flags & FOLL_GET)
+	if ((flags & FOLL_CMA) && (flags & FOLL_GET) &&
+	    dma_contiguous_should_replace_page(page))
+		/*
+		 * Don't get ref on page.
+		 * Let __get_user_pages replace the CMA page with non-CMA.
+		 */
+		replace_page = true;
+	else if (flags & FOLL_GET)
 		get_page_foll(page);
+
 	if (flags & FOLL_TOUCH) {
 		if ((flags & FOLL_WRITE) &&
 		    !pte_dirty(pte) && !PageDirty(page))
@@ -1631,6 +1642,8 @@ split_fallthrough:
 unlock:
 	pte_unmap_unlock(ptep, ptl);
 out:
+	if (replace_page)
+		return (struct page *)((ulong)page + 1);
 	return page;
 
 bad_page:
@@ -1868,9 +1881,8 @@ follow_page_again:
 				return i ? i : -ERESTARTSYS;
 
 			cond_resched();
-			mutex_lock(&s_follow_page_lock);
 			while (!(page = follow_page_mask(vma, start,
-						foll_flags, &page_mask))) {
+					    foll_flags | FOLL_CMA, &page_mask))) {
 				int ret;
 				unsigned int fault_flags = 0;
 
@@ -1878,10 +1890,8 @@ follow_page_again:
 
 				/* For mlock, just skip the stack guard page. */
 				if (foll_flags & FOLL_MLOCK) {
-					if (stack_guard_page(vma, start)) {
-						mutex_unlock(&s_follow_page_lock);
+					if (stack_guard_page(vma, start))
 						goto next_page;
-					}
 				}
 				if (foll_flags & FOLL_WRITE)
 					fault_flags |= FAULT_FLAG_WRITE;
@@ -1890,15 +1900,10 @@ follow_page_again:
 				if (foll_flags & FOLL_NOWAIT)
 					fault_flags |= (FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_RETRY_NOWAIT);
 
-				if (vma->vm_file)
-					mutex_unlock(&s_follow_page_lock);
 				ret = handle_mm_fault(mm, vma, start,
 							fault_flags);
-				if (vma->vm_file)
-					mutex_lock(&s_follow_page_lock);
 
 				if (ret & VM_FAULT_ERROR) {
-					mutex_unlock(&s_follow_page_lock);
 					if (ret & VM_FAULT_OOM)
 						return i ? i : -ENOMEM;
 					if (ret & (VM_FAULT_HWPOISON |
@@ -1924,7 +1929,6 @@ follow_page_again:
 				}
 
 				if (ret & VM_FAULT_RETRY) {
-					mutex_unlock(&s_follow_page_lock);
 					if (nonblocking)
 						*nonblocking = 0;
 					return i;
@@ -1948,17 +1952,17 @@ follow_page_again:
 
 				cond_resched();
 			}
-			if (IS_ERR(page)) {
-				mutex_unlock(&s_follow_page_lock);
+			if (IS_ERR(page))
 				return i ? i : PTR_ERR(page);
-			}
 
-			if (dma_contiguous_should_replace_page(page) &&
-				(foll_flags & FOLL_GET)) {
-				struct page *old_page = page;
+			/* Page would have lsb set when CMA page need replacement. */
+			if (((ulong)page & 0x1) == 0x1) {
+				struct page *old_page;
 				unsigned int fault_flags = 0;
 
-				put_page(page);
+				mutex_lock(&s_follow_page_lock);
+				page = (struct page *)((ulong)page & ~0x1);
+				old_page = page;
 				wait_on_page_locked_timeout(page);
 				page = migrate_replace_cma_page(page);
 				/* migration might be successful. vma mapping
@@ -1992,7 +1996,6 @@ follow_page_again:
 				goto follow_page_again;
 			}
 
-			mutex_unlock(&s_follow_page_lock);
 			BUG_ON(dma_contiguous_should_replace_page(page) &&
 				(foll_flags & FOLL_GET));
 
