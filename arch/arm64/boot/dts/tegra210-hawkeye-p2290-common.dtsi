@@ -1189,6 +1189,9 @@
 				disp-default-out {
 					nvidia,out-rotation = <180>;
 				};
+				smartdimmer {
+					nvidia,sd-enable = <0>;
+				};
 			};
 			panel-s-wuxga-7-0 {
 				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
@@ -1216,6 +1219,9 @@
 						nvidia,h-ref-to-sync = <1>;
 						nvidia,v-ref-to-sync = <11>;
 					};
+				};
+				smartdimmer {
+					nvidia,sd-enable = <0>;
 				};
 			};
 			panel-s-wuxga-8-0 {
@@ -1247,6 +1253,9 @@
 						nvidia,h-ref-to-sync = <1>;
 						nvidia,v-ref-to-sync = <11>;
 					};
+				};
+				smartdimmer {
+					nvidia,sd-enable = <0>;
 				};
 			};
 		};

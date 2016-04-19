@@ -197,6 +197,10 @@ NVIDIA TEGRA210 Display Serial Interface
  - nvidia,use-vpulse2: With enabled, run histogram on vpulse2 rather than vsync.
  - nvidia,bl-device-name: Backlight device name.
 
+ Optional properties:
+ - nvidia,sd-enable: By default, smartdimmer will be enabled if its device tree node
+   is present. This node can be used to override it by specifiying a value of 0.
+
 1.A.l) NVIDIA Display Controller Color Management Unit Settings
  This must be contained in dsi parent node. This is color management unit settings.
 
