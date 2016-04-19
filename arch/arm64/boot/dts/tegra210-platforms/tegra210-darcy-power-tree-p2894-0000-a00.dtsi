@@ -23,6 +23,11 @@
 
 	i2c@7000d000 {
 		max77620@3c {
+
+			low-battery-monitor {
+				maxim,low-battery-shutdown-enable;
+			};
+
 			regulators {
 				sd0 {
 					regulator-enable-ramp-delay = <146>;
