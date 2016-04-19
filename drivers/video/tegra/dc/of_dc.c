@@ -649,8 +649,11 @@ static int parse_sd_settings(struct device_node *np,
 #ifdef CONFIG_TEGRA_NVDISPLAY
 	sd_settings->enable = 0;
 #endif
-
-	OF_DC_LOG("nvidia,sd-enable %d\n", sd_settings->enable);
+	if (!of_property_read_u32(np, "nvidia,sd-enable", &temp)) {
+		sd_settings->enable = (u8) temp;
+		sd_settings->enable_int = (u8) temp;
+		OF_DC_LOG("nvidia,sd-enable %d\n", temp);
+	}
 	if (!of_property_read_u32(np, "nvidia,turn-off-brightness", &temp)) {
 		sd_settings->turn_off_brightness = (u8) temp;
 		OF_DC_LOG("nvidia,turn-off-brightness %d\n", temp);
