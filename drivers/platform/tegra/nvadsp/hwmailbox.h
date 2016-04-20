@@ -112,5 +112,6 @@ struct hwmbox_queue {
 int nvadsp_hwmbox_init(struct platform_device *);
 status_t nvadsp_hwmbox_send_data(uint16_t, uint32_t, uint32_t);
 void dump_mailbox_regs(void);
+void reset_hwmbox_queue(void);
 
 #endif /* __HWMAILBOX_H */

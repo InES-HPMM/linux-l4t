@@ -3,7 +3,7 @@
  *
  * A header file containing data structures shared with ADSP OS
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -145,4 +145,5 @@ void unload_adsp_module(struct adsp_module *);
 int allocate_memory_from_adsp(void **, unsigned int);
 bool is_adsp_dram_addr(u64);
 int wait_for_adsp_os_load_complete(void);
+void unload_all_apps(void);
 #endif /* __TEGRA_NVADSP_OS_H */

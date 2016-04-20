@@ -79,8 +79,8 @@
 #define ENABLE_MBOX2_FULL_INT	0xFFFFFFFF
 
 #define LOGGER_TIMEOUT		20 /* in ms */
-#define ADSP_WFE_TIMEOUT	5000 /* in ms */
-#define LOGGER_COMPLETE_TIMEOUT	5000 /* in ms */
+#define ADSP_WFE_TIMEOUT	1000 /* in ms */
+#define LOGGER_COMPLETE_TIMEOUT	1000 /* in ms */
 
 #define MIN_ADSP_FREQ 51200000lu /* in Hz */
 
@@ -96,6 +96,11 @@ struct nvadsp_debug_log {
 	struct completion	complete;
 };
 
+struct crash_handler {
+	nvadsp_crash_handler	handler;
+	void			*arg;
+};
+
 struct nvadsp_os_data {
 	void __iomem		*unit_fpga_reset_reg;
 	const struct firmware	*os_firmware;
@@ -104,7 +109,7 @@ struct nvadsp_os_data {
 	void __iomem		*misc_base;
 	struct resource		**dram_region;
 	struct nvadsp_debug_log	logger;
-	struct nvadsp_cnsl   console;
+	struct nvadsp_cnsl	console;
 	struct work_struct	restart_os_work;
 	int			adsp_num_crashes;
 	bool			adsp_os_fw_loaded;
@@ -115,6 +120,7 @@ struct nvadsp_os_data {
 	size_t			adsp_os_size;
 	dma_addr_t		app_alloc_addr;
 	size_t			app_size;
+	struct crash_handler	crash_handler;
 };
 
 static struct nvadsp_os_data priv;
@@ -694,6 +700,14 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_load);
 
+
+void nvadsp_register_crash_handler(nvadsp_crash_handler handler, void *arg)
+{
+	priv.crash_handler.handler = handler;
+	priv.crash_handler.arg = arg;
+}
+EXPORT_SYMBOL(nvadsp_register_crash_handler);
+
 /*
  * Static adsp freq to emc freq lookup table
  *
@@ -1134,11 +1148,9 @@ static void __nvadsp_os_stop(bool reload)
 	 * required (happens on next APE power domain cycle).
 	 */
 	assert_adsp(drv_data);
-	/* Don't reload ADSPOS if ADSP state is not WFI/WFE */
-	if (WARN_ON(err <= 0)) {
+
+	if (WARN_ON(err <= 0))
 		dev_err(dev, "ADSP is unable to enter wfi state\n");
-		goto end;
-	}
 
 	if (reload) {
 		struct nvadsp_debug_log *logger = &priv.logger;
@@ -1157,9 +1169,11 @@ static void __nvadsp_os_stop(bool reload)
 		/* load a fresh copy of adsp.elf */
 		if (nvadsp_os_elf_load(fw))
 			dev_err(dev, "failed to reload %s\n", NVADSP_FIRMWARE);
+		unload_all_apps();
+		reset_hwmbox_queue();
+		clear_mbox_queue();
 	}
 
- end:
 	return;
 }
 
@@ -1179,20 +1193,14 @@ void nvadsp_os_stop(void)
 	drv_data = platform_get_drvdata(priv.pdev);
 
 	mutex_lock(&priv.os_run_lock);
-	/* check if os is running else exit */
-	if (!priv.os_running)
-		goto end;
-
-	__nvadsp_os_stop(true);
-
 	priv.os_running = drv_data->adsp_os_running = false;
 
+	__nvadsp_os_stop(true);
 #ifdef CONFIG_PM_RUNTIME
 	err = pm_runtime_put_sync(dev);
 	if (err)
 		dev_err(dev, "failed in pm_runtime_put_sync\n");
 #endif
-end:
 	mutex_unlock(&priv.os_run_lock);
 }
 EXPORT_SYMBOL(nvadsp_os_stop);
@@ -1242,16 +1250,17 @@ end:
 }
 EXPORT_SYMBOL(nvadsp_os_suspend);
 
-static void nvadsp_os_restart(struct work_struct *work)
+static void nvadsp_wdt_worker(struct work_struct *work)
 {
 	struct nvadsp_os_data *data =
 		container_of(work, struct nvadsp_os_data, restart_os_work);
+	struct nvadsp_drv_data *drv_data = platform_get_drvdata(priv.pdev);
 	int wdt_virq = tegra_agic_irq_get_virq(INT_ADSP_WDT);
 	struct device *dev = &data->pdev->dev;
 
 	disable_irq(wdt_virq);
 	dump_adsp_sys();
-	nvadsp_os_stop();
+	assert_adsp(drv_data);
 
 	if (tegra_agic_irq_is_active(INT_ADSP_WDT)) {
 		dev_info(dev, "wdt interrupt is active hence clearing\n");
@@ -1266,17 +1275,14 @@ static void nvadsp_os_restart(struct work_struct *work)
 	dev_info(dev, "wdt interrupt is not pending or active...enabling\n");
 	enable_irq(wdt_virq);
 
+	if (priv.crash_handler.handler)
+		priv.crash_handler.handler(priv.crash_handler.arg);
+
 	data->adsp_num_crashes++;
-	if (data->adsp_num_crashes >= ALLOWED_CRASHES) {
+	if (data->adsp_num_crashes >= ALLOWED_CRASHES)
 		/* making pdev NULL so that externally start is not called */
-		priv.pdev = NULL;
 		dev_crit(dev, "ADSP has crashed too many times(%d)\n",
 			 data->adsp_num_crashes);
-		return;
-	}
-
-	if (nvadsp_os_start())
-		dev_crit(dev, "Unable to restart ADSP OS\n");
 }
 
 static  irqreturn_t adsp_wfi_handler(int irq, void *arg)
@@ -1346,7 +1352,7 @@ int __init nvadsp_os_probe(struct platform_device *pdev)
 
 	writel(DISABLE_MBOX2_FULL_INT, priv.misc_base + HWMBOX2_REG);
 
-	INIT_WORK(&priv.restart_os_work, nvadsp_os_restart);
+	INIT_WORK(&priv.restart_os_work, nvadsp_wdt_worker);
 	mutex_init(&priv.fw_load_lock);
 	mutex_init(&priv.os_run_lock);
 

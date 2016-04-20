@@ -3,7 +3,7 @@
  *
  * adsp dynamic frequency scaling
  *
- * Copyright (C) 2014-2015, NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -34,7 +34,7 @@ void actmon_rate_change(unsigned long freq)
 }
 #endif
 
-#define MBOX_TIMEOUT 5000 /* in ms */
+#define MBOX_TIMEOUT 1000 /* in ms */
 #define HOST_ADSP_DFS_MBOX_ID 3
 #define BOOST_COUNT 10
 enum adsp_dfs_reply {

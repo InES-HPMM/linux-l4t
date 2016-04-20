@@ -1,7 +1,7 @@
 /*
  * A Header file for managing ADSP/APE
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -184,12 +184,15 @@ void nvadsp_aram_release(char *start, size_t size);
  */
 
 typedef const void *nvadsp_os_handle_t;
+typedef void (*nvadsp_crash_handler)(void *arg);
 
 void nvadsp_adsp_init(void);
 int __must_check nvadsp_os_load(void);
 int __must_check nvadsp_os_start(void);
 void nvadsp_os_stop(void);
 int __must_check nvadsp_os_suspend(void);
+void nvadsp_register_crash_handler(nvadsp_crash_handler crash_handler,
+			void *arg);
 
 /*
  * ADSP TSC

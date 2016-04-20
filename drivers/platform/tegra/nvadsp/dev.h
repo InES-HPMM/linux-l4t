@@ -3,7 +3,7 @@
  *
  * A header file for Host driver for ADSP and APE
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -154,5 +154,7 @@ int ape_actmon_probe(struct platform_device *pdev);
 status_t emc_dfs_init(struct platform_device *pdev);
 void emc_dfs_exit(void);
 #endif
+
+void clear_mbox_queue(void);
 
 #endif /* __TEGRA_NVADSP_DEV_H */

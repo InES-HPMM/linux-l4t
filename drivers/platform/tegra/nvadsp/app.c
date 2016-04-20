@@ -3,7 +3,7 @@
  *
  * ADSP OS App management
  *
- * Copyright (C) 2014-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2014-2016 NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -821,31 +821,10 @@ int nvadsp_app_stop(nvadsp_app_info_t *app)
 }
 EXPORT_SYMBOL(nvadsp_app_stop);
 
-void nvadsp_app_unload(nvadsp_app_handle_t handle)
+static void __nvadsp_app_unload(struct nvadsp_app_service *ser)
 {
-	struct nvadsp_drv_data *drv_data;
-	struct nvadsp_app_service *ser;
-	struct device *dev;
+	struct device *dev = &priv.pdev->dev;
 
-	if (!priv.pdev) {
-		pr_err("ADSP Driver is not initialized\n");
-		return;
-	}
-
-	drv_data = platform_get_drvdata(priv.pdev);
-	dev = &priv.pdev->dev;
-
-	if (!drv_data->adsp_os_running)
-		return;
-
-	if (IS_ERR_OR_NULL(handle))
-		return;
-
-	ser = (struct nvadsp_app_service *)handle;
-	if (!ser->mod->dynamic)
-		return;
-
-	mutex_lock(&priv.service_lock_list);
 	if (ser->instance) {
 		dev_err(dev, "cannot unload app %s, has instances %d\n",
 				ser->name, ser->instance);
@@ -858,6 +837,32 @@ void nvadsp_app_unload(nvadsp_app_handle_t handle)
 #endif
 	unload_adsp_module(ser->mod);
 	devm_kfree(dev, ser);
+}
+
+void nvadsp_app_unload(nvadsp_app_handle_t handle)
+{
+	struct nvadsp_drv_data *drv_data;
+	struct nvadsp_app_service *ser;
+
+	if (!priv.pdev) {
+		pr_err("ADSP Driver is not initialized\n");
+		return;
+	}
+
+	drv_data = platform_get_drvdata(priv.pdev);
+
+	if (!drv_data->adsp_os_running)
+		return;
+
+	if (IS_ERR_OR_NULL(handle))
+		return;
+
+	ser = (struct nvadsp_app_service *)handle;
+	if (!ser->mod->dynamic)
+		return;
+
+	mutex_lock(&priv.service_lock_list);
+	__nvadsp_app_unload((struct nvadsp_app_service *)handle);
 	mutex_unlock(&priv.service_lock_list);
 }
 EXPORT_SYMBOL(nvadsp_app_unload);
@@ -1004,4 +1009,27 @@ int __init nvadsp_app_module_probe(struct platform_device *pdev)
 #endif
 end:
 	return ret;
+}
+
+void unload_all_apps(void)
+{
+	struct nvadsp_app_service *ser, *ser_next;
+
+	mutex_lock(&priv.service_lock_list);
+	list_for_each_entry_safe(ser, ser_next, &priv.service_list, node) {
+		nvadsp_app_info_t *app, *app_next;
+
+		list_for_each_entry_safe(app, app_next, &ser->app_head, node) {
+			if (app->state == NVADSP_APP_STATE_STARTED) {
+				app->status_msg = ADSP_APP_COMPLETE_STATUS;
+				app->return_status = -ETIMEDOUT;
+				if (app->complete_status_notifier)
+					app->complete_status_notifier(app,
+					app->status_msg, app->return_status);
+			}
+			delete_app_instance(app);
+		}
+		__nvadsp_app_unload(ser);
+	}
+	mutex_unlock(&priv.service_lock_list);
 }

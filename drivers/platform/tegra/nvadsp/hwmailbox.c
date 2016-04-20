@@ -111,6 +111,20 @@ static status_t hwmboxq_enqueue(struct hwmbox_queue *queue,
 	return ret;
 }
 
+void reset_hwmbox_queue(void)
+{
+	struct hwmbox_queue *queue = &nvadsp_drv_data->hwmbox_send_queue;
+	spinlock_t *lock = &queue->lock;
+	unsigned long flags;
+
+	spin_lock_irqsave(lock, flags);
+	queue->count = 0;
+	queue->tail = 0;
+	queue->head = 0;
+	is_hwmbox_busy = false;
+	spin_unlock_irqrestore(lock, flags);
+}
+
 status_t nvadsp_hwmbox_send_data(uint16_t mid, uint32_t data, uint32_t flags)
 {
 	spinlock_t *lock = &nvadsp_drv_data->hwmbox_send_queue.lock;
