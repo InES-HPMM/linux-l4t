@@ -121,6 +121,11 @@ struct tegra210_adsp {
 	struct mutex mutex;
 	int init_done;
 	int adsp_started;
+
+	struct task_struct *audio_task;
+	int recovery_enabled;
+	int recovery_count;
+
 	struct tegra210_adsp_path {
 		uint32_t fe_reg;
 		uint32_t be_reg;
@@ -226,6 +231,7 @@ static struct snd_compr_codec_caps adsp_compr_codec_caps[] = {
 static status_t tegra210_adsp_msg_handler(uint32_t msg, void *data);
 static int tegra210_adsp_app_default_msg_handler(struct tegra210_adsp_app *app,
 					apm_msg_t *apm_msg);
+static void tegra210_adsp_crash_handler(void *arg);
 
 /*
  * Utility functions
@@ -328,6 +334,8 @@ static int tegra210_adsp_init(struct tegra210_adsp *adsp)
 		}
 	}
 
+	nvadsp_register_crash_handler(tegra210_adsp_crash_handler, adsp);
+
 	/* Suspend OS for now. Resume will happen via runtime pm calls */
 	ret = nvadsp_os_suspend();
 	if (ret < 0) {
@@ -364,6 +372,22 @@ static void tegra210_adsp_deinit(struct tegra210_adsp *adsp)
 
 		memset(adsp->reg_val, 0, sizeof(adsp->reg_val));
 		nvadsp_os_stop();
+	}
+	mutex_unlock(&adsp->mutex);
+}
+
+void tegra210_adsp_crash_handler(void *arg)
+{
+	struct tegra210_adsp *adsp = (struct tegra210_adsp *)arg;
+	tegra210_adsp_deinit(adsp);
+
+	mutex_lock(&adsp->mutex);
+	if (adsp->recovery_enabled && adsp->audio_task) {
+		send_sig(SIGKILL, adsp->audio_task, 0);
+		adsp->recovery_count++;
+		adsp->audio_task = NULL;
+		dev_err(adsp->dev, "%s recovery count %d\n", __func__,
+			adsp->recovery_count);
 	}
 	mutex_unlock(&adsp->mutex);
 }
@@ -447,8 +471,10 @@ static int tegra210_adsp_send_msg(struct tegra210_adsp_app *app,
 	ret = wait_for_completion_interruptible_timeout(
 		app->msg_complete,
 		msecs_to_jiffies(ADSP_RESPONSE_TIMEOUT));
-	if (WARN_ON(ret == 0))
+	if (WARN_ON(ret == 0)) {
 		pr_err("%s: ACK timed out %d\n", __func__, app->reg);
+		tegra210_adsp_crash_handler(app->adsp);
+	}
 
 	return ret;
 }
@@ -1748,8 +1774,10 @@ static int tegra210_adsp_runtime_suspend(struct device *dev)
 	}
 
 	ret = nvadsp_os_suspend();
-	if (ret)
+	if (ret) {
 		dev_err(adsp->dev, "Failed to suspend ADSP OS");
+		tegra210_adsp_crash_handler(adsp);
+	}
 
 	adsp->adsp_started = 0;
 
@@ -1769,7 +1797,7 @@ static int tegra210_adsp_runtime_resume(struct device *dev)
 	ret = nvadsp_os_start();
 	if (ret) {
 		dev_err(adsp->dev, "Failed to start ADSP OS ret 0x%x", ret);
-		adsp->adsp_started = 0;
+		tegra210_adsp_crash_handler(adsp);
 		return ret;
 	}
 	adsp->adsp_started = 1;
@@ -1880,38 +1908,47 @@ err_put:
 }
 
 /* ALSA control get/put call-back implementation */
-static int tegra210_adsp_init_get(struct snd_kcontrol *kcontrol,
+static int tegra210_adsp_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_platform *platform = snd_kcontrol_chip(kcontrol);
 	struct tegra210_adsp *adsp = snd_soc_platform_get_drvdata(platform);
 
-	ucontrol->value.enumerated.item[0] = adsp->init_done;
+	if (strstr(kcontrol->id.name, "ADSP init"))
+		ucontrol->value.enumerated.item[0] = adsp->init_done;
+	else if (strstr(kcontrol->id.name, "ADSP Recovery Enable"))
+		ucontrol->value.enumerated.item[0] = adsp->recovery_enabled;
+	else if (strstr(kcontrol->id.name, "ADSP Recovery Count"))
+		ucontrol->value.enumerated.item[0] = adsp->recovery_count;
 	return 0;
 }
 
-static int tegra210_adsp_init_put(struct snd_kcontrol *kcontrol,
+static int tegra210_adsp_put(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_platform *platform = snd_kcontrol_chip(kcontrol);
 	struct tegra210_adsp *adsp = snd_soc_platform_get_drvdata(platform);
-	int init = ucontrol->value.enumerated.item[0];
+	int val = ucontrol->value.enumerated.item[0];
 	int ret = 0;
 
-	if (init == adsp->init_done)
-		return 0;
+	if (strstr(kcontrol->id.name, "ADSP init")) {
+		adsp->audio_task = current;
+		if (val == adsp->init_done)
+			return 0;
 
-	if (init) {
-		ret = tegra210_adsp_init(adsp);
-		if (ret < 0) {
-			dev_err(adsp->dev, "Failed to init ADSP.");
-			return ret;
+		if (val) {
+			ret = tegra210_adsp_init(adsp);
+			if (ret < 0) {
+				dev_err(adsp->dev, "Failed to init ADSP.");
+				return ret;
+			}
+		} else {
+			tegra210_adsp_deinit(adsp);
 		}
-	} else {
-		tegra210_adsp_deinit(adsp);
-	}
+	} else if (strstr(kcontrol->id.name, "ADSP Recovery Enable"))
+		adsp->recovery_enabled = val;
 
-	return 1;
+	return 0;
 }
 
 /* DAPM widget event */
@@ -2690,7 +2727,7 @@ static int tegra210_adsp_apm_put(struct snd_kcontrol *kcontrol,
 
 static const struct snd_kcontrol_new tegra210_adsp_controls[] = {
 	SOC_SINGLE_BOOL_EXT("ADSP init", 0,
-		tegra210_adsp_init_get, tegra210_adsp_init_put),
+		tegra210_adsp_get, tegra210_adsp_put),
 	SND_SOC_PARAM_EXT("PLUGIN1 set params",
 		TEGRA210_ADSP_PLUGIN1),
 	SND_SOC_PARAM_EXT("PLUGIN2 set params",
@@ -2733,6 +2770,10 @@ static const struct snd_kcontrol_new tegra210_adsp_controls[] = {
 		TEGRA210_ADSP_PLUGIN_ADMA10),
 	APM_CONTROL("Priority", APM_PRIORITY_MAX),
 	APM_CONTROL("Min ADSP Clock", INT_MAX),
+	SOC_SINGLE_EXT("ADSP Recovery Enable", 0, 0, 1, 0,
+		tegra210_adsp_get, tegra210_adsp_put),
+	SOC_SINGLE_EXT("ADSP Recovery Count", 0, 0, INT_MAX, 0,
+		tegra210_adsp_get, NULL),
 };
 
 static const struct snd_soc_component_driver tegra210_adsp_component = {
@@ -2800,6 +2841,8 @@ static int tegra210_adsp_audio_platform_probe(struct platform_device *pdev)
 
 	/* TODO: Add mixer control to set I2S playback rate */
 	adsp->i2s_rate = 48000;
+	adsp->recovery_enabled = 0;
+	adsp->recovery_count = 0;
 	mutex_init(&adsp->mutex);
 	pdev->dev.dma_mask = &tegra_dma_mask;
 	pdev->dev.coherent_dma_mask = tegra_dma_mask;
