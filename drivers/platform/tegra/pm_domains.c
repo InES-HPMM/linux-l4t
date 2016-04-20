@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/pm_domains.c
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -494,8 +494,11 @@ static int __init tegra_init_pd(struct device_node *np)
 
 	pm_genpd_init(gpd, &simple_qos_governor, is_off);
 
-	if (tegra_init_mc_clk != match->data)
-		pm_genpd_set_poweroff_delay(gpd, 3000);
+	/* If some domain specific initializations need to be done,
+	 * they can be done by defining tegra_init_* functions as done
+	 * above, and assigning that function to data field of the above
+	 * table.
+	 */
 
 	of_genpd_add_provider_simple(np, gpd);
 	gpd->of_node = of_node_get(np);
