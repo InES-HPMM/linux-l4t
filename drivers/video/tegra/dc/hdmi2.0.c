@@ -147,9 +147,9 @@ static inline void tegra_hdmi_reset(struct tegra_hdmi *hdmi)
 		return;
 
 	tegra_periph_reset_assert(hdmi->sor->sor_clk);
-	mdelay(20);
+	udelay(10);
 	tegra_periph_reset_deassert(hdmi->sor->sor_clk);
-	mdelay(20);
+	udelay(10);
 }
 
 static inline void _tegra_hdmi_ddc_enable(struct tegra_hdmi *hdmi)
