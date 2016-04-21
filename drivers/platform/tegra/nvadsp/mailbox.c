@@ -30,7 +30,7 @@ static inline bool is_mboxq_empty(struct nvadsp_mbox_queue *queue)
 
 static inline bool is_mboxq_full(struct nvadsp_mbox_queue *queue)
 {
-	return (queue->head == NVADSP_MBOX_QUEUE_SIZE);
+	return (queue->count == NVADSP_MBOX_QUEUE_SIZE);
 }
 
 static void mboxq_init(struct nvadsp_mbox_queue *queue)
