@@ -62,6 +62,11 @@
 				avdd-reg = "vana";
 				iovdd-reg = "vif";
 
+				/* Defines number of frames to be dropped by driver internally after applying */
+				/* sensor crop settings. Some sensors send corrupt frames after applying */
+				/* crop co-ordinates */
+				post_crop_frame_drop = "0";
+
 				/**
 				* A modeX node is required to support v4l2 driver
 				* implementation with NVIDIA camera software stack

@@ -119,6 +119,11 @@
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 
+				/* Defines number of frames to be dropped by driver internally after applying */
+				/* sensor crop settings. Some sensors send corrupt frames after applying */
+				/* crop co-ordinates */
+				post_crop_frame_drop = "0";
+
 				/**
 				* A modeX node is required to support v4l2 driver
 				* implementation with NVIDIA camera software stack
@@ -362,6 +367,11 @@
 				pwdn-gpios = <&gpio CAM_PWDN_FQ GPIO_ACTIVE_HIGH>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
+
+				/* Defines number of frames to be dropped by driver internally after applying */
+				/* sensor crop settings. Some sensors send corrupt frames after applying */
+				/* crop co-ordinates */
+				post_crop_frame_drop = "0";
 
 				/**
 				* A modeX node is required to support v4l2 driver

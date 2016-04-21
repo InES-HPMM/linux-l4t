@@ -67,6 +67,11 @@
 				devnode = "video0";
 				has-eeprom = <1>;
 
+				/* Defines number of frames to be dropped by driver internally after applying */
+				/* sensor crop settings. Some sensors send corrupt frames after applying */
+				/* crop co-ordinates */
+				post_crop_frame_drop = "1";
+
 				/**
 				* Define any required hw resources needed by
 				* driver
@@ -397,6 +402,9 @@
 				physical_w = "3.674";
 				physical_h = "2.738";
 
+				/* Sensor Model */
+				sensor_model ="ov5693";
+
 				/* V4L2 device node location */
 				devnode = "video1";
 
@@ -414,6 +422,11 @@
 				iovdd-reg = "vif";
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
+
+				/* Defines number of frames to be dropped by driver internally after applying */
+				/* sensor crop settings. Some sensors send corrupt frames after applying */
+				/* crop co-ordinates */
+				post_crop_frame_drop = "0";
 
 				mode0 { // OV5693_MODE_2592X1944
 					mclk_khz = "24000";
@@ -440,6 +453,7 @@
 					max_framerate = "30";
 					min_exp_time = "34";
 					max_exp_time = "550385";
+					embedded_metadata_height = "0";
 				};
 
 				mode1 { //OV5693_MODE_2592X1458
@@ -467,6 +481,7 @@
 					max_framerate = "30";
 					min_exp_time = "34";
 					max_exp_time = "550385";
+					embedded_metadata_height = "0";
 				};
 
 				mode2 { //OV5693_MODE_1280X720
@@ -494,6 +509,7 @@
 					max_framerate = "120";
 					min_exp_time = "22";
 					max_exp_time = "358733";
+					embedded_metadata_height = "0";
 				};
 
 				// HDR Modes
@@ -522,6 +538,7 @@
 					max_framerate = "24";
 					min_exp_time = "42";
 					max_exp_time = "687981";
+					embedded_metadata_height = "0";
 				};
 
 				ports {
