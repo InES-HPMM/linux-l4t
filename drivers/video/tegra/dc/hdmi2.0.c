@@ -310,6 +310,12 @@ static bool tegra_hdmi_fb_mode_filter(const struct tegra_dc *dc,
 	if (mode->xres > 4096)
 		return false;
 
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+	/* L4T does not support YUV */
+	if (mode->vmode & FB_VMODE_YUV_MASK)
+		return false;
+#endif
+
 	/* some non-compliant edids list 420vdb modes in vdb */
 	if ((mode->vmode & FB_VMODE_Y420) &&
 		!(tegra_edid_is_hfvsdb_present(hdmi->edid) &&
