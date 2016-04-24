@@ -24,6 +24,9 @@
 #include <linux/fs.h>
 #include <linux/tegra_throttle.h>
 
+#define	CPU_EMC_TABLE_SRC_DT		1
+#define	CPU_EMC_TABLE_SRC_DEFAULT	0
+
 unsigned int tegra_getspeed(unsigned int cpu);
 int tegra_update_cpu_speed(unsigned long rate);
 int tegra_cpu_set_speed_cap(unsigned int *speed_cap);
@@ -72,9 +75,15 @@ int tegra_update_mselect_rate(unsigned long cpu_rate);
 #endif
 #if defined(CONFIG_ARCH_TEGRA_13x_SOC) || defined(CONFIG_ARCH_TEGRA_21x_SOC)
 unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate);
+int set_cpu_emc_limit_table_source(int table_source);
+int get_cpu_emc_limit_table_source(void);
 #else
 static inline unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 { return 0; }
+static inline int set_cpu_emc_limit_table_source(int table_source)
+{ return -1; }
+static inline int get_cpu_emc_limit_table_source(void)
+{ return -1; }
 #endif
 int tegra_suspended_target(unsigned int target_freq);
 #else

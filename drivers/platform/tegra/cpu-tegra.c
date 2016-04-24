@@ -1330,6 +1330,33 @@ static struct notifier_block tegra_cpu_pm_notifier = {
 	.notifier_call = tegra_pm_notify,
 };
 
+static ssize_t table_src_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", get_cpu_emc_limit_table_source());
+}
+
+static ssize_t table_src_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int val;
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val != CPU_EMC_TABLE_SRC_DT &&
+			val != CPU_EMC_TABLE_SRC_DEFAULT)
+		return -EINVAL;
+
+	set_cpu_emc_limit_table_source(val);
+
+	return count;
+}
+
+static struct kobj_attribute table_src_attr =
+	__ATTR(table_src, 0644, table_src_show, table_src_store);
+
+static struct kobject *tegra_cpu_emc_table_src_kobj;
+
 static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
 	int idx, ret;
@@ -1364,6 +1391,23 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	policy->cpuinfo.transition_latency = 300 * 1000;
 
 	cpumask_copy(policy->cpus, cpu_possible_mask);
+
+	tegra_cpu_emc_table_src_kobj =
+		kobject_create_and_add("tegra_cpu_emc",
+			kernel_kobj);
+
+	if (!tegra_cpu_emc_table_src_kobj) {
+		pr_err("%s: Couldn't create kobj\n", __func__);
+		return -ENOMEM;
+	}
+
+	ret = sysfs_create_file(tegra_cpu_emc_table_src_kobj,
+		&table_src_attr.attr);
+
+	if (ret) {
+		pr_err("%s, Couldn't create sysfs files\n", __func__);
+		return ret;
+	}
 
 	return 0;
 }

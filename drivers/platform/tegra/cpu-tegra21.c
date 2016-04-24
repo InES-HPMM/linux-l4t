@@ -39,6 +39,7 @@ static DEFINE_MUTEX(scaling_data_lock);
 
 static struct cpufreq_frequency_table freq_table[CPU_FREQ_TABLE_MAX_SIZE];
 static struct tegra_cpufreq_table_data freq_table_data;
+static int cpu_emc_table_src;
 
 static struct tegra_cpufreq_table_data *cpufreq_table_make_from_dvfs(void)
 {
@@ -380,16 +381,37 @@ unsigned long tegra_emc_cpu_limit(unsigned long cpu_rate)
 	}
 
 	mutex_lock(&scaling_data_lock);
-	if (!emc_cpu_table)
-		emc_cpu_table = cpufreq_emc_table_get(&emc_cpu_table_size);
 
-	if (IS_ERR(emc_cpu_table))
-		emc_rate = default_emc_cpu_limit(cpu_rate, emc_max_rate);
+	if (!emc_cpu_table)
+		emc_cpu_table =
+			cpufreq_emc_table_get(&emc_cpu_table_size);
+
+	if ((cpu_emc_table_src == CPU_EMC_TABLE_SRC_DEFAULT) ||
+			IS_ERR(emc_cpu_table))
+		emc_rate =
+			default_emc_cpu_limit(cpu_rate, emc_max_rate);
 	else
 		emc_rate = dt_emc_cpu_limit(cpu_rate, emc_max_rate);
 
 	mutex_unlock(&scaling_data_lock);
+
 	return emc_rate;
+}
+
+int set_cpu_emc_limit_table_source(int table_src)
+{
+	if (table_src != CPU_EMC_TABLE_SRC_DT &&
+		table_src != CPU_EMC_TABLE_SRC_DEFAULT)
+			return -1;
+
+	cpu_emc_table_src = table_src;
+
+	return 0;
+}
+
+int get_cpu_emc_limit_table_source(void)
+{
+	return cpu_emc_table_src;
 }
 
 unsigned long tegra_emc_to_cpu_ratio(unsigned long cpu_rate)
