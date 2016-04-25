@@ -505,6 +505,17 @@ static int imx274_set_fmt(struct v4l2_subdev *sd,
 	return ret;
 }
 
+static int imx274_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct imx274 *priv = (struct imx274 *)s_data->priv;
+	struct camera_common_power_rail *pw = &priv->power;
+
+	*status = pw->state == SWITCH_ON;
+	return 0;
+}
+
 static struct v4l2_subdev_video_ops imx274_subdev_video_ops = {
 	.s_stream	= imx274_s_stream,
 	.s_mbus_fmt	= camera_common_s_fmt,
@@ -514,6 +525,7 @@ static struct v4l2_subdev_video_ops imx274_subdev_video_ops = {
 	.g_mbus_config	= camera_common_g_mbus_config,
 	.enum_framesizes	= camera_common_enum_framesizes,
 	.enum_frameintervals	= camera_common_enum_frameintervals,
+	.g_input_status		= imx274_g_input_status,
 };
 
 static struct v4l2_subdev_core_ops imx274_subdev_core_ops = {
