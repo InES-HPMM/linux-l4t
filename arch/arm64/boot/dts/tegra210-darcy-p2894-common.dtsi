@@ -53,11 +53,6 @@
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 			nvidia,dc-or-node = "/host1x/sor1";
 		};
-		sor1 {
-			hdmi-display {
-				nvidia,hdmi-vrr-caps = <1>;
-			};
-		};
 	};
 
 	pmc@7000e400 {
