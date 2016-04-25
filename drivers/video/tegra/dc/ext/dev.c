@@ -710,7 +710,6 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 		struct tegra_dc_ext_flip_data *temp = NULL;
 		s64 head_timestamp = 0;
 		int j = 0;
-		u32 reg_val = 0;
 
 		if (index < 0 || !test_bit(index, &dc->valid_windows))
 			continue;
@@ -788,16 +787,6 @@ static void tegra_dc_ext_flip_worker(struct kthread_work *work)
 
 		if (!skip_flip)
 			tegra_dc_ext_set_windowattr(ext, win, &data->win[i]);
-
-		if (dc->yuv_bypass) {
-			reg_val = tegra_dc_readl(dc,
-				DC_DISP_DISP_COLOR_CONTROL);
-			reg_val &= ~CMU_ENABLE;
-			tegra_dc_writel(dc, reg_val,
-				DC_DISP_DISP_COLOR_CONTROL);
-			reg_val = GENERAL_ACT_REQ;
-			tegra_dc_writel(dc, reg_val, DC_CMD_STATE_CONTROL);
-		}
 
 		if (flip_win->attr.swap_interval && !no_vsync)
 			wait_for_vblank = true;
@@ -1882,10 +1871,6 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 
 		bypass = !!(args.flags & TEGRA_DC_EXT_FLIP_HEAD_FLAG_YUVBYPASS);
 
-		if (!!(user->ext->dc->mode.vmode & FB_VMODE_YUV_MASK) !=
-		    bypass)
-			return -EINVAL;
-
 		user->ext->dc->yuv_bypass = bypass;
 		win_num = args.win_num;
 		win = kzalloc(sizeof(*win) * win_num, GFP_KERNEL);
@@ -1924,10 +1909,6 @@ static long tegra_dc_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 
 		bypass = !!(args.flags & TEGRA_DC_EXT_FLIP_HEAD_FLAG_YUVBYPASS);
-
-		if (!!(user->ext->dc->mode.vmode & FB_VMODE_YUV_MASK) !=
-		    bypass)
-			return -EINVAL;
 
 		user->ext->dc->yuv_bypass = bypass;
 		win_num = args.win_num;

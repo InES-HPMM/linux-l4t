@@ -1043,6 +1043,18 @@ static int _tegra_dc_program_windows(struct tegra_dc *dc,
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
 		update_mask |= NC_HOST_TRIG;
 
+	if (dc->yuv_bypass) {
+		uint32_t reg_val = tegra_dc_readl(dc,
+			DC_DISP_DISP_COLOR_CONTROL);
+
+		if (reg_val & CMU_ENABLE) {
+			reg_val &= ~CMU_ENABLE;
+			tegra_dc_writel(dc, reg_val,
+				DC_DISP_DISP_COLOR_CONTROL);
+			update_mask |= GENERAL_ACT_REQ;
+		}
+	}
+
 	tegra_dc_writel(dc, update_mask, DC_CMD_STATE_CONTROL);
 
 	if (!wait_for_vblank) {
