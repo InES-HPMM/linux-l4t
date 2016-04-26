@@ -2115,8 +2115,6 @@ static void rm_tch_init_ts_structure_part(void)
 	g_st_ts.u8_scan_mode_state = RM_SCAN_ACTIVE_MODE;
 	mutex_unlock(&g_st_ts.mutex_scan_mode);
 
-	g_st_ctrl.u8_event_report_mode = EVENT_REPORT_MODE_STYLUS_ERASER_FINGER;
-
 	g_pu8_burstread_buf = NULL;
 #if (ISR_POST_HANDLER == WORK_QUEUE)
 	g_worker_queue_is_flush = false;
