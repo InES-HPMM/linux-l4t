@@ -1970,9 +1970,6 @@ int gk20a_fifo_disable_engine_activity(struct gk20a *g,
 				eng_info->runlist_id));
 	gk20a_writel(g, fifo_sched_disable_r(), disable);
 
-	if (eng_info->engine_id == ENGINE_GR_GK20A)
-		gr_gk20a_submit_fecs_method_wfi(g);
-
 	/* chid from pbdma status */
 	pbdma_stat = gk20a_readl(g, fifo_pbdma_status_r(eng_info->pbdma_id));
 	chan_stat  = fifo_pbdma_status_chan_status_v(pbdma_stat);
