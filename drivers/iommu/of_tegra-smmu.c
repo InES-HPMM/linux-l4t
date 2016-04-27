@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -164,14 +164,16 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 {
 	struct of_phandle_iter iter;
 	u64 fixup, swgids = 0;
+	struct device_node *np = dev->of_node;
 
 	if (dev_is_pci(dev)) {
-		return SWGIDS_ERROR_CODE;
-		swgids = TEGRA_SWGROUP_BIT(AFI);
-		goto try_fixup;
+		struct pci_bus *bus = to_pci_dev(dev)->bus;
+		if (!pci_is_root_bus(bus))
+			dev = bus->bridge;
+		np = of_get_parent(dev->of_node);
 	}
 
-	of_property_for_each_phandle_with_args(iter, dev->of_node, "iommus",
+	of_property_for_each_phandle_with_args(iter, np, "iommus",
 					       "#iommu-cells", 0) {
 		struct of_phandle_args *ret = &iter.out_args;
 
@@ -187,9 +189,11 @@ u64 tegra_smmu_of_get_swgids(struct device *dev,
 		swgids |= (1ULL << ret->args[0]);
 	}
 
+	if (dev_is_pci(dev))
+		of_node_put(np);
+
 	swgids = swgids ? swgids : SWGIDS_ERROR_CODE;
 
-try_fixup:
 	fixup = tegra_smmu_fixup_swgids(dev, area);
 
 	if (swgids_is_error(fixup))
