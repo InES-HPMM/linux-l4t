@@ -111,6 +111,7 @@ struct tegra_channel {
 
 	struct tegra_mc_vi *vi;
 	struct v4l2_subdev *subdev[MAX_SUBDEVICES];
+	struct v4l2_subdev *subdev_on_csi;
 
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct v4l2_pix_format format;
@@ -158,6 +159,7 @@ struct tegra_channel {
 	atomic_t is_hdmiin_unplug;
 	int requested_kbyteps;
 	unsigned long requested_hz;
+	int grp_id;
 };
 
 #define to_tegra_channel(vdev) \

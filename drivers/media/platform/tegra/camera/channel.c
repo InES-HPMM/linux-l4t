@@ -154,7 +154,7 @@ static void update_gang_mode(struct tegra_channel *chan)
 static void tegra_channel_fmts_bitmap_init(struct tegra_channel *chan)
 {
 	int ret, pixel_format_index = 0, init_code = 0;
-	struct v4l2_subdev *subdev = chan->subdev[0];
+	struct v4l2_subdev *subdev = chan->subdev_on_csi;
 	struct v4l2_mbus_framefmt mbus_fmt;
 	struct v4l2_subdev_mbus_code_enum code = {
 		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
@@ -440,47 +440,41 @@ void tegra_channel_query_hdmiin_unplug(struct tegra_channel *chan,
 {
 	struct v4l2_dv_timings timings;
 	struct v4l2_bt_timings *bt;
-	struct v4l2_subdev *sd;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 	bool is_hdmiin = false;
-	int num_sd, ret, index = 0;
+	int ret, index = 0;
 	int valid_ports = chan->valid_ports;
 
 	if (event->type != V4L2_EVENT_SOURCE_CHANGE)
 		return;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		if (v4l2_subdev_has_op(sd, video, s_dv_timings))
-			is_hdmiin = true;
-	}
+	if (v4l2_subdev_has_op(sd, video, s_dv_timings))
+		is_hdmiin = true;
 
 	if (!is_hdmiin)
 		return;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		sd = chan->subdev[num_sd];
-		ret = v4l2_subdev_call(sd, video, query_dv_timings,
-				&timings);
+	ret = v4l2_subdev_call(sd, video, query_dv_timings,
+			&timings);
 
-		/* Stop capture threads when unplug HDMI-IN */
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD)) {
-			bt = &timings.bt;
-			if (bt->width == 0 && bt->height == 0) {
-				dev_info(&chan->video.dev,
-					 "Got unplug event during capture!\n");
+	/* Stop capture threads when unplug HDMI-IN */
+	if (sd && (ret == 0 || ret != -ENOIOCTLCMD)) {
+		bt = &timings.bt;
+		if (bt->width == 0 && bt->height == 0) {
+			dev_info(&chan->video.dev,
+				 "Got unplug event during capture!\n");
 
-				/* required to block immediate unplug event */
-				if (atomic_read(&chan->is_hdmiin_unplug))
-					return;
+			/* required to block immediate unplug event */
+			if (atomic_read(&chan->is_hdmiin_unplug))
+				return;
 
-				atomic_set(&chan->is_hdmiin_unplug, 1);
-				for (index = 0; index < valid_ports; index++)
-					nvhost_syncpt_cpu_incr_ext(
-							chan->vi->ndev,
-							chan->syncpt[index]);
+			atomic_set(&chan->is_hdmiin_unplug, 1);
+			for (index = 0; index < valid_ports; index++)
+				nvhost_syncpt_cpu_incr_ext(
+						chan->vi->ndev,
+						chan->syncpt[index]);
 
-				tegra_channel_stop_kthreads(chan);
-			}
+			tegra_channel_stop_kthreads(chan);
 		}
 	}
 }
@@ -710,44 +704,14 @@ static int tegra_channel_mipi_cal(struct tegra_channel *chan, char is_bypass)
  */
 static int tegra_channel_set_stream(struct tegra_channel *chan, bool on)
 {
-	int num_sd = 0;
-	int ret = 0;
-	struct v4l2_subdev *subdev = chan->subdev[num_sd];
-
-	while (subdev != NULL) {
-		ret = v4l2_subdev_call(subdev, video, s_stream, on);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
-			return ret;
-
-		num_sd++;
-		if (num_sd >= chan->num_subdevs)
-			break;
-
-		subdev = chan->subdev[num_sd];
-	}
-
-	return 0;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, s_stream, on);
 }
 
 static int tegra_channel_set_power(struct tegra_channel *chan, bool on)
 {
-	int num_sd = 0;
-	int ret = 0;
-	struct v4l2_subdev *subdev = chan->subdev[num_sd];
-
-	while (subdev != NULL) {
-		ret = v4l2_subdev_call(subdev, core, s_power, on);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
-			return ret;
-
-		num_sd++;
-		if (num_sd >= chan->num_subdevs)
-			break;
-
-		subdev = chan->subdev[num_sd];
-	}
-
-	return 0;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, core, s_power, on);
 }
 
 static int update_clk(struct tegra_mc_vi *vi)
@@ -954,16 +918,9 @@ tegra_channel_enum_framesizes(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, video, enum_framesizes, sizes);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, enum_framesizes, sizes);
 }
 
 static int
@@ -972,17 +929,10 @@ tegra_channel_enum_frameintervals(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, video, enum_frameintervals,
-					   intervals);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, enum_frameintervals,
+			intervals);
 }
 
 
@@ -1017,16 +967,9 @@ tegra_channel_g_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, pad, get_edid, edid);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_subdev_call(sd, pad, get_edid, edid);
 }
 
 static int
@@ -1034,16 +977,9 @@ tegra_channel_s_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, pad, set_edid, edid);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_subdev_call(sd, pad, set_edid, edid);
 }
 
 static int
@@ -1053,30 +989,24 @@ tegra_channel_s_dv_timings(struct file *file, void *fh,
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_bt_timings *bt = &timings->bt;
-	int num_sd;
+	int ret;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, video, s_dv_timings, timings);
+	ret = v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, s_dv_timings, timings);
 
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD)) {
-			if (!ret) {
-				chan->format.width = bt->width;
-				chan->format.height = bt->height;
-				chan->format.bytesperline = bt->width *
-					chan->fmtinfo->bpp;
-				chan->format.sizeimage = chan->format.bytesperline *
-					chan->format.height;
-			}
-
-			if (chan->total_ports > 1)
-				update_gang_mode(chan);
-
-			return ret;
-		}
+	if (!ret) {
+		chan->format.width = bt->width;
+		chan->format.height = bt->height;
+		chan->format.bytesperline = bt->width *
+			chan->fmtinfo->bpp;
+		chan->format.sizeimage = chan->format.bytesperline *
+			chan->format.height;
 	}
 
-	return -ENOIOCTLCMD;
+	if (chan->total_ports > 1)
+		update_gang_mode(chan);
+
+	return ret;
 }
 
 static int
@@ -1085,16 +1015,9 @@ tegra_channel_g_dv_timings(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, video, g_dv_timings, timings);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, g_dv_timings, timings);
 }
 
 static int
@@ -1103,17 +1026,9 @@ tegra_channel_query_dv_timings(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, video, query_dv_timings,
-				timings);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, query_dv_timings, timings);
 }
 
 static int
@@ -1122,16 +1037,9 @@ tegra_channel_enum_dv_timings(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, pad, enum_dv_timings, timings);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_subdev_call(sd, pad, enum_dv_timings, timings);
 }
 
 static int
@@ -1140,16 +1048,9 @@ tegra_channel_dv_timings_cap(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret = v4l2_subdev_call(sd, pad, dv_timings_cap, cap);
-
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD))
-			return ret;
-	}
-	return -ENOIOCTLCMD;
+	return v4l2_subdev_call(sd, pad, dv_timings_cap, cap);
 }
 
 static void tegra_channel_fmt_align(struct v4l2_pix_format *pix,
@@ -1262,6 +1163,8 @@ int tegra_channel_init_subdevices(struct tegra_channel *chan)
 	struct media_pad *pad;
 	int index = 0;
 	int num_sd = 0;
+	int grp_id = chan->port[0] + 1;
+	struct v4l2_subdev *sd;
 
 	/* set_stream of CSI */
 	entity = &chan->video.entity;
@@ -1269,8 +1172,20 @@ int tegra_channel_init_subdevices(struct tegra_channel *chan)
 	if (!pad)
 		return -ENODEV;
 
+	/* the remote source entity */
 	entity = pad->entity;
-	chan->subdev[num_sd++] = media_entity_to_v4l2_subdev(entity);
+	sd = media_entity_to_v4l2_subdev(entity);
+	sd->grp_id = grp_id;
+	chan->grp_id = grp_id;
+	chan->subdev[num_sd++] = sd;
+	/* Each CSI channel has only one pad, thus there
+	 * is only one subdev directly attached to this
+	 * CSI channel. Set this subdev to subdev_on_csi */
+	chan->subdev_on_csi = sd;
+
+	/* Append subdev name to this video dev name*/
+	snprintf(chan->video.name, sizeof(chan->video.name), "%s, %s",
+	chan->video.name, sd->name);
 
 	index = pad->index - 1;
 	while (index >= 0) {
@@ -1287,7 +1202,9 @@ int tegra_channel_init_subdevices(struct tegra_channel *chan)
 			break;
 
 		entity = pad->entity;
-		chan->subdev[num_sd++] = media_entity_to_v4l2_subdev(entity);
+		sd = media_entity_to_v4l2_subdev(entity);
+		sd->grp_id = grp_id;
+		chan->subdev[num_sd++] = sd;
 
 		index = pad->index - 1;
 	}
@@ -1307,36 +1224,23 @@ __tegra_channel_get_format(struct tegra_channel *chan,
 	struct tegra_video_format const *vfmt;
 	struct v4l2_subdev_format fmt;
 	int ret = 0;
-	struct v4l2_subdev *sd = chan->subdev[0];
-	int num_sd = 0;
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
-	while (sd != NULL) {
-		memset(&fmt, 0x0, sizeof(fmt));
-		fmt.pad = 0;
-		ret = v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt);
-		if (ret) {
-			if (ret == -ENOIOCTLCMD) {
-				num_sd++;
-				if (num_sd < chan->num_subdevs) {
-					sd = chan->subdev[num_sd];
-					continue;
-				} else
-					break;
-			}
-		}
+	memset(&fmt, 0x0, sizeof(fmt));
+	fmt.pad = 0;
+	ret = v4l2_subdev_call(sd, pad, get_fmt, NULL, &fmt);
+	if (ret == -ENOIOCTLCMD)
+		return -ENOTTY;
 
-		v4l2_fill_pix_format(pix, &fmt.format);
-		vfmt = tegra_core_get_format_by_code(fmt.format.code);
-		if (vfmt != NULL) {
-			pix->pixelformat = vfmt->fourcc;
-			pix->bytesperline = pix->width * vfmt->bpp;
-			pix->sizeimage = pix->height * pix->bytesperline;
-		}
-
-		return ret;
+	v4l2_fill_pix_format(pix, &fmt.format);
+	vfmt = tegra_core_get_format_by_code(fmt.format.code);
+	if (vfmt != NULL) {
+		pix->pixelformat = vfmt->fourcc;
+		pix->bytesperline = pix->width * vfmt->bpp;
+		pix->sizeimage = pix->height * pix->bytesperline;
 	}
 
-	return -ENOTTY;
+	return ret;
 }
 
 static int
@@ -1356,8 +1260,7 @@ __tegra_channel_try_format(struct tegra_channel *chan,
 {
 	const struct tegra_video_format *vfmt;
 	struct v4l2_subdev_format fmt;
-	int num_sd = 0;
-	struct v4l2_subdev *sd = chan->subdev[0];
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 	int ret = 0;
 
 	/* Use the channel format if pixformat is not supported */
@@ -1373,31 +1276,19 @@ __tegra_channel_try_format(struct tegra_channel *chan,
 	fmt.pad = 0;
 	v4l2_fill_mbus_format(&fmt.format, pix, vfmt->code);
 
-	while (sd != NULL) {
-		ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &fmt);
-		if (ret) {
-			if (ret == -ENOIOCTLCMD) {
-				num_sd++;
-				if (num_sd < chan->num_subdevs) {
-					sd = chan->subdev[num_sd];
-					continue;
-				} else
-					break;
-			}
-		}
+	ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &fmt);
+	if (ret == -ENOIOCTLCMD)
+		return -ENOTTY;
 
-		v4l2_fill_pix_format(pix, &fmt.format);
-		if (ret)
-			pix->bytesperline = pix->width * chan->fmtinfo->bpp;
-		else
-			pix->bytesperline = pix->width * vfmt->bpp;
+	v4l2_fill_pix_format(pix, &fmt.format);
+	if (ret)
+		pix->bytesperline = pix->width * chan->fmtinfo->bpp;
+	else
+		pix->bytesperline = pix->width * vfmt->bpp;
 
-		pix->sizeimage = pix->height * pix->bytesperline;
+	pix->sizeimage = pix->height * pix->bytesperline;
 
-		return ret;
-	}
-
-	return -ENOTTY;
+	return ret;
 }
 
 static int
@@ -1416,8 +1307,7 @@ __tegra_channel_set_format(struct tegra_channel *chan,
 {
 	const struct tegra_video_format *vfmt;
 	struct v4l2_subdev_format fmt;
-	int num_sd = 0;
-	struct v4l2_subdev *sd = chan->subdev[0];
+	struct v4l2_subdev *sd = chan->subdev_on_csi;
 	int ret = 0;
 
 	vfmt = tegra_core_get_format_by_fourcc(pix->pixelformat);
@@ -1426,34 +1316,22 @@ __tegra_channel_set_format(struct tegra_channel *chan,
 	fmt.pad = 0;
 	v4l2_fill_mbus_format(&fmt.format, pix, vfmt->code);
 
-	while (sd != NULL) {
-		ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &fmt);
-		if (ret) {
-			if (ret == -ENOIOCTLCMD) {
-				num_sd++;
-				if (num_sd < chan->num_subdevs) {
-					sd = chan->subdev[num_sd];
-					continue;
-				} else
-					break;
-			}
-		}
+	ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &fmt);
+	if (ret == -ENOIOCTLCMD)
+		return -ENOTTY;
 
-		v4l2_fill_pix_format(pix, &fmt.format);
-		pix->bytesperline = pix->width * vfmt->bpp;
-		pix->sizeimage = pix->height * pix->bytesperline;
+	v4l2_fill_pix_format(pix, &fmt.format);
+	pix->bytesperline = pix->width * vfmt->bpp;
+	pix->sizeimage = pix->height * pix->bytesperline;
 
-		if (!ret) {
-			chan->format = *pix;
-			chan->fmtinfo = vfmt;
-			if (chan->total_ports > 1)
-				update_gang_mode(chan);
-		}
-
-		return ret;
+	if (!ret) {
+		chan->format = *pix;
+		chan->fmtinfo = vfmt;
+		if (chan->total_ports > 1)
+			update_gang_mode(chan);
 	}
 
-	return -ENOTTY;
+	return ret;
 }
 
 static int
@@ -1528,34 +1406,30 @@ tegra_channel_enum_input(struct file *file, void *fh, struct v4l2_input *inp)
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	int num_sd;
+	struct v4l2_subdev *sd_on_csi = chan->subdev_on_csi;
+	int ret;
 
 	if (inp->index)
 		return -EINVAL;
 
-	for (num_sd = 0; num_sd < chan->num_subdevs; num_sd++) {
-		struct v4l2_subdev *sd = chan->subdev[num_sd];
-		int ret;
+	ret = v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, g_input_status, &inp->status);
 
-		ret = v4l2_subdev_call(sd,
-			video, g_input_status, &inp->status);
+	if (ret != -ENODEV) {
+		if (v4l2_subdev_has_op(sd_on_csi, video, s_dv_timings))
+			inp->capabilities = V4L2_IN_CAP_DV_TIMINGS;
 
-		if (sd && (ret == 0 || ret != -ENOIOCTLCMD)) {
-			if (v4l2_subdev_has_op(sd, video, s_dv_timings))
-				inp->capabilities = V4L2_IN_CAP_DV_TIMINGS;
+		inp->type = V4L2_INPUT_TYPE_CAMERA;
+		if (inp->capabilities == V4L2_IN_CAP_DV_TIMINGS)
+			snprintf(inp->name,
+				sizeof(inp->name), "HDMI %u",
+				chan->port[0]);
+		else
+			snprintf(inp->name,
+				sizeof(inp->name), "Camera %u",
+				chan->port[0]);
 
-			inp->type = V4L2_INPUT_TYPE_CAMERA;
-			if (inp->capabilities == V4L2_IN_CAP_DV_TIMINGS)
-				snprintf(inp->name,
-					sizeof(inp->name), "HDMI %u",
-					chan->port[0]);
-			else
-				snprintf(inp->name,
-					sizeof(inp->name), "Camera %u",
-					chan->port[0]);
-
-			return ret;
-		}
+		return ret;
 	}
 
 	return -ENOTTY;
@@ -1620,7 +1494,7 @@ static int tegra_channel_open(struct file *fp)
 	if (ret || !v4l2_fh_is_singular_file(fp))
 		goto unlock;
 
-	if (chan->subdev[0] == NULL) {
+	if (chan->subdev_on_csi == NULL) {
 		ret = -ENODEV;
 		goto unlock;
 	}
