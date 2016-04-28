@@ -306,6 +306,8 @@
 		vddio-pex-ctl-supply = <&max77620_sd3>;
 		status = "okay";
 
+		iommus = <&smmu TEGRA_SWGROUP_AFI>;
+
 		pci@1,0 {
 			status = "okay";
 		};
