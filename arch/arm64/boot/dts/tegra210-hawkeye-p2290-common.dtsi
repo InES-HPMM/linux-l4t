@@ -1259,11 +1259,6 @@
 				};
 			};
 		};
-		sor1 {
-			hdmi-display {
-				nvidia,hdmi-vrr-caps = <1>;
-			};
-		};
 		i2c@546c0000 {
 			avdd_dsi_csi-supply = <&mipi_1v2>;
 			status = "okay";
