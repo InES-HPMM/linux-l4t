@@ -826,6 +826,12 @@ static int imx230_set_crop_data(struct imx230 *priv, struct v4l2_rect *rect)
 	imx230_get_crop_regs(reg_list_crop, rect);
 	imx230_set_group_hold(priv);
 
+	err = imx230_write_reg(priv->s_data, IMX230_MASK_CORRUPT_FRAME_ADDR,
+		IMX230_MASK_CORRUPT_FRAME_TRANSMIT);
+	if (err)
+		dev_err(&priv->i2c_client->dev,
+			"%s: SENSOR_CROP: MASK_CORR_FRAME error\n", __func__);
+
 	for (i = 0; i < IMX230_NUM_CROP_REGS; i++) {
 		err = imx230_write_reg(priv->s_data, reg_list_crop[i].addr,
 			 reg_list_crop[i].val);
