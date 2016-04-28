@@ -72,7 +72,7 @@ struct imx230 {
 	struct camera_common_power_rail	power;
 	int				num_ctrls;
 	struct v4l2_ctrl_handler	ctrl_handler;
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 	struct camera_common_eeprom_data eeprom[IMX230_EEPROM_NUM_BLOCKS];
 	u8				eeprom_buf[IMX230_EEPROM_SIZE];
 #endif /* if IMX230_EEPROM_PRESENT */
@@ -169,7 +169,7 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.def = 0,
 		.qmenu_int = switch_ctrl_qmenu,
 	},
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 	{
 		.ops = &imx230_ctrl_ops,
 		.id = V4L2_CID_EEPROM_DATA,
@@ -884,16 +884,13 @@ static int imx230_get_crop_data(struct imx230 *priv, struct v4l2_rect *rect)
 	return 0;
 }
 
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 static int imx230_eeprom_device_release(struct imx230 *priv)
 {
-	int i;
-
-	for (i = 0; i < IMX230_EEPROM_NUM_BLOCKS; i++) {
-		if (priv->eeprom[i].i2c_client != NULL) {
-			i2c_unregister_device(priv->eeprom[i].i2c_client);
-			priv->eeprom[i].i2c_client = NULL;
-		}
+	/* Unregister eeprom device */
+	if (priv->eeprom[0].i2c_client != NULL) {
+		i2c_unregister_device(priv->eeprom[0].i2c_client);
+		priv->eeprom[0].i2c_client = NULL;
 	}
 
 	return 0;
@@ -903,28 +900,49 @@ static int imx230_eeprom_device_init(struct imx230 *priv)
 {
 	char *dev_name = "eeprom_imx230";
 	static struct regmap_config eeprom_regmap_config = {
-		.reg_bits = 8,
+		.reg_bits = 16,
 		.val_bits = 8,
 	};
 	int i;
 	int err;
+	struct i2c_client *client;
 
 	for (i = 0; i < IMX230_EEPROM_NUM_BLOCKS; i++) {
 		priv->eeprom[i].adap = i2c_get_adapter(
 				priv->i2c_client->adapter->nr);
+
 		memset(&priv->eeprom[i].brd, 0, sizeof(priv->eeprom[i].brd));
+
 		strncpy(priv->eeprom[i].brd.type, dev_name,
 				sizeof(priv->eeprom[i].brd.type));
-		priv->eeprom[i].brd.addr = IMX230_EEPROM_ADDRESS + i;
-		priv->eeprom[i].i2c_client = i2c_new_device(
-				priv->eeprom[i].adap, &priv->eeprom[i].brd);
+		priv->eeprom[i].brd.addr = IMX230_EEPROM_ADDRESS;
 
-		priv->eeprom[i].regmap = devm_regmap_init_i2c(
-			priv->eeprom[i].i2c_client, &eeprom_regmap_config);
-		if (IS_ERR(priv->eeprom[i].regmap)) {
-			err = PTR_ERR(priv->eeprom[i].regmap);
-			imx230_eeprom_device_release(priv);
-			return err;
+		/* Create new eeprom device and regmap for first block.
+		 * Other blocks point to same thing */
+		if (i == 0) {
+			client = i2c_new_device(priv->eeprom[i].adap,
+					&priv->eeprom[i].brd);
+			if (client) {
+				priv->eeprom[i].i2c_client = client;
+				priv->eeprom[i].regmap = devm_regmap_init_i2c(
+					priv->eeprom[i].i2c_client,
+					&eeprom_regmap_config);
+				if (IS_ERR(priv->eeprom[i].regmap)) {
+					dev_err(&priv->i2c_client->dev,
+						"eeprom regmap failed\n");
+					err = PTR_ERR(priv->eeprom[i].regmap);
+					imx230_eeprom_device_release(priv);
+					return err;
+				}
+			} else {
+				dev_err(&priv->i2c_client->dev,
+					"can't add eeprom i2c device 0x%x\n",
+					IMX230_EEPROM_ADDRESS);
+				return err;
+			}
+		} else {
+			priv->eeprom[i].i2c_client = priv->eeprom[0].i2c_client;
+			priv->eeprom[i].regmap = priv->eeprom[0].regmap;
 		}
 	}
 
@@ -937,16 +955,27 @@ static int imx230_read_eeprom(struct imx230 *priv,
 	int err, i;
 
 	for (i = 0; i < IMX230_EEPROM_NUM_BLOCKS; i++) {
-		err = regmap_bulk_read(priv->eeprom[i].regmap, 0,
+		err = regmap_bulk_read(priv->eeprom[i].regmap,
+			(i * IMX230_EEPROM_BLOCK_SIZE),
 			&priv->eeprom_buf[i * IMX230_EEPROM_BLOCK_SIZE],
 			IMX230_EEPROM_BLOCK_SIZE);
 		if (err)
 			return err;
 	}
 
-	for (i = 0; i < IMX230_EEPROM_SIZE; i++)
+	for (i = 0; i < IMX230_EEPROM_SIZE; i++) {
 		sprintf(&ctrl->string[i*2], "%02x",
 			priv->eeprom_buf[i]);
+
+		/* Print the ASCII string in first block */
+		if (i == 0) {
+			dev_dbg(&priv->i2c_client->dev, "eeprom:%c%c%c%c%c%c\n",
+				priv->eeprom_buf[0], priv->eeprom_buf[1],
+				priv->eeprom_buf[2], priv->eeprom_buf[3],
+				priv->eeprom_buf[4], priv->eeprom_buf[5]);
+		}
+	}
+
 	return 0;
 }
 
@@ -972,7 +1001,7 @@ static int imx230_write_eeprom(struct imx230 *priv,
 
 		priv->eeprom_buf[i] = (u8)data;
 		err = regmap_write(priv->eeprom[i >> 8].regmap,
-				   i & 0xFF, (u8)data);
+				   (i & 0x3FFF), (u8)data);
 		if (err)
 			return err;
 		msleep(20);
@@ -1110,7 +1139,7 @@ static int imx230_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		return 0;
 
 	switch (ctrl->id) {
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 	case V4L2_CID_EEPROM_DATA:
 		err = imx230_read_eeprom(priv, ctrl);
 		if (err)
@@ -1155,7 +1184,7 @@ static int imx230_s_ctrl(struct v4l2_ctrl *ctrl)
 			err = imx230_set_group_hold(priv);
 		}
 		break;
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 	case V4L2_CID_EEPROM_DATA:
 		pr_debug("%s: eeprom %d\n", __func__, ctrl->id);
 		if (!ctrl->string[0])
@@ -1379,7 +1408,7 @@ static int imx230_probe(struct i2c_client *client,
 	if (err)
 		return err;
 
-#ifdef IMX230_EEPROM_PRESENT
+#if IMX230_EEPROM_PRESENT
 	/* eeprom interface */
 	err = imx230_eeprom_device_init(priv);
 	if (err)
