@@ -635,24 +635,33 @@ static int _tegra_dc_program_windows(struct tegra_dc *dc,
 		if (!WIN_IS_ENABLED(win)) {
 		#define RGB_TO_YUV420_8BPC_BLACK_PIX 0x00801010
 		#define RGB_TO_YUV422_10BPC_BLACK_PIX 0x00001080
+		#define RGB_TO_YUV444_8BPC_BLACK_PIX 0x00801080
 
 			dc_win->dirty = no_vsync ? 0 : 1;
 			tegra_dc_writel(dc, 0, DC_WIN_WIN_OPTIONS);
 			if (dc->yuv_bypass) {
-				if (dc->mode.vmode &
-					(FB_VMODE_Y420 | FB_VMODE_Y420_ONLY |
-					 FB_VMODE_Y24))
+				switch(dc->mode.vmode & FB_VMODE_YUV_MASK) {
+				case FB_VMODE_Y420 | FB_VMODE_Y24:
+				case FB_VMODE_Y420_ONLY | FB_VMODE_Y24:
 					tegra_dc_writel(dc,
 						RGB_TO_YUV420_8BPC_BLACK_PIX,
 						DC_DISP_BLEND_BACKGROUND_COLOR);
-				else if (dc->mode.vmode &
-					(FB_VMODE_Y422 | FB_VMODE_Y30))
+					break;
+				case FB_VMODE_Y422 | FB_VMODE_Y30:
 					tegra_dc_writel(dc,
 						RGB_TO_YUV422_10BPC_BLACK_PIX,
 						DC_DISP_BLEND_BACKGROUND_COLOR);
+					break;
+				case FB_VMODE_Y444 | FB_VMODE_Y24:
+					tegra_dc_writel(dc,
+						RGB_TO_YUV444_8BPC_BLACK_PIX,
+						DC_DISP_BLEND_BACKGROUND_COLOR);
+					break;
+				}
 			}
 			continue;
 
+		#undef RGB_TO_YUV444_8BPC_BLACK_PIX
 		#undef RGB_TO_YUV422_10BPC_BLACK_PIX
 		#undef RGB_TO_YUV420_8BPC_BLACK_PIX
 		}
