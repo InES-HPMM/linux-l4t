@@ -2037,6 +2037,7 @@ nvudc_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	*/
 	if (!udc_req->first_trb) {
 		req_done(udc_ep, udc_req, -ECONNRESET);
+		spin_unlock_irqrestore(&nvudc->lock, flags);
 		return 0;
 	}
 
