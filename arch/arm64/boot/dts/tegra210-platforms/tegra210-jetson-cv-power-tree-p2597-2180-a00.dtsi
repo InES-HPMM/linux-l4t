@@ -344,6 +344,10 @@
 			avdd_io_edp-supply = <&max77620_gpio7>;
 		};
 
+		i2c@546c0000 {
+			bus-pullup-supply = <&max77620_sd3>;
+			avdd_dsi_csi-supply = <&max77620_sd3>;
+		};
 		vi {
 			avdd_dsi_csi-supply = <&max77620_ldo0>;
 		};
