@@ -157,6 +157,7 @@ struct priv_cmd_queue {
 	u32 put;	/* put for priv cmd queue */
 	u32 get;	/* get for priv cmd queue */
 	struct list_head free;	/* list of buffered entries */
+	struct mutex lock; /* lock to protect list accesses */
 };
 
 struct priv_cmd_entry {
