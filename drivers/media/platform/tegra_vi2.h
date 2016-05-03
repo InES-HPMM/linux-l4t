@@ -308,8 +308,10 @@ struct v4l2_subdev *tegra_tpg_init(
 int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 			struct tegra_vi_input *input);
 
-void tegra_vi_input_start(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
-void tegra_vi_input_stop(struct tegra_vi2 *vi2, struct tegra_vi_input *input);
+void tegra_vi_input_start(const struct tegra_vi2 *vi2,
+                       const struct tegra_vi_input *input);
+void tegra_vi_input_stop(const struct tegra_vi2 *vi2,
+                       const struct tegra_vi_input *input);
 
 int v4l2_pix_format_set_sizeimage(struct v4l2_pix_format *pf);
 
