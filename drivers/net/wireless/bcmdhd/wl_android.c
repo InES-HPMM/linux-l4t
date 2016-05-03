@@ -93,6 +93,7 @@
 #define CMD_GETBAND		"GETBAND"
 #define CMD_COUNTRY		"COUNTRY"
 #define CMD_NV_COUNTRY         "NV_COUNTRY"
+#define CMD_RESTRICT_BW_20	"RESTRICT_BW_20"
 #define CMD_P2P_SET_NOA		"P2P_SET_NOA"
 #if !defined WL_ENABLE_P2P_IF
 #define CMD_P2P_GET_NOA			"P2P_GET_NOA"
@@ -2406,7 +2407,7 @@ static int wl_android_get_link_status(struct net_device *dev, char *command,
 	return bytes_written;
 }
 
-
+extern u32 restrict_bw_20;
 int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
 #define PRIVATE_COMMAND_MAX_LEN	8192
@@ -2567,6 +2568,14 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		bytes_written = wldev_set_country(net, country_code, true, false);
 	}
 #endif /* WL_CFG80211 */
+	else if (strnicmp(command, CMD_RESTRICT_BW_20, strlen(CMD_GETBAND)) == 0) {
+		bytes_written = -1;
+		uint val = *(command + strlen(CMD_RESTRICT_BW_20) + 1) - '0';
+		if (val == 0 || val == 1) {
+			restrict_bw_20 = val;
+			bytes_written = 0;
+		}
+	}
 	else if (strnicmp(command, CMD_SET_CSA, strlen(CMD_SET_CSA)) == 0) {
 		bytes_written = wl_android_set_csa(net, command, priv_cmd.total_len);
 	} else if (strnicmp(command, CMD_80211_MODE, strlen(CMD_80211_MODE)) == 0) {
