@@ -77,7 +77,7 @@
 			enable_hdcp = <0>;
 
 			/* CSI Output */
-			csi_port = <1>;			/* Enable TX0 only */
+			csi_port = <3>;			/* Enable TX0 (4 lanes) & TX1 (4 lanes) */
 
 			lineinitcnt = <0x00000FA0>;
 			lptxtimecnt = <0x00000004>;
@@ -196,11 +196,18 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			/* HDMI IN A */
-			port@0 {
+			/* HDMI IN A (dual-link) */
+			vi_port_0: port@0 {
 				reg = <0>;
 
-				csi_a: endpoint {
+				csi_a: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&hdmi_in_a>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+				};
+				csi_a: endpoint@1 {
+					reg = <1>;
 					remote-endpoint = <&hdmi_in_a>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
@@ -211,7 +218,8 @@
 			port@2 {
 				reg = <2>;
 
-				csi_b: endpoint {
+				csi_c: endpoint {
+					reg = <0>;
 					remote-endpoint = <&hdmi_in_b>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
