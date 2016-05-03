@@ -209,6 +209,8 @@ struct tegra_vi_input {
 
 	struct tegra_mipi_cil_regs *cil_regs[2];
 	struct v4l2_subdev *sensor;
+	/* For sensors with multiple endpoints */
+	unsigned sensor_ep;
 	struct v4l2_async_subdev asd;
 
 	/* Supported MBUS flags on this input */
@@ -232,6 +234,7 @@ struct tegra_vi_input {
 	struct v4l2_mbus_framefmt framefmt;
 };
 
+#if 0
 /* Pixel processing channel */
 struct tegra_vi_channel {
 	unsigned id;
@@ -274,6 +277,79 @@ struct tegra_vi_channel {
 	struct tegra_formats formats[16];
 	unsigned formats_count;
 };
+#else
+/* Pixel processing channel */
+struct tegra_vi_pp {
+	unsigned id;
+
+	struct tegra_vi_input tpg;
+
+	struct tegra_vi_csi_regs __iomem *vi_regs;
+	struct tegra_mipi_csi_regs __iomem *mipi_regs;
+
+	struct clk *sensor_clk;
+
+	/* Currently selected input */
+	struct tegra_vi_input *input;
+
+	/* Generic lock for the register and global state */
+	struct mutex lock;
+	unsigned use_count;
+
+	/* Format currently set */
+	struct v4l2_pix_format pixfmt;
+	unsigned origin[2];
+
+	int syncpt_id;
+};
+
+struct tegra_vi_channel_input {
+	const char *name;
+	struct tegra_vi_input *endpoint[2];
+	unsigned endpoint_count;
+};
+
+struct tegra_vi_channel {
+	struct video_device vdev;
+	unsigned id;
+
+	/* Channels used by this video device */
+	struct tegra_vi_pp *pp[2];
+	unsigned pp_count, pp_used;
+
+	/* ID of the last input used */
+	int input_id;
+	struct tegra_vi_channel_input *input;
+
+	/* All supported input configuration */
+	struct tegra_vi_channel_input *available_input;
+	unsigned available_input_count;
+
+	struct mutex lock;
+	unsigned use_count;
+
+	/* Format currently set */
+	struct v4l2_pix_format pixfmt;
+
+	/* Video queue */
+	struct vb2_queue vb;
+	void *vb2_alloc_ctx;
+
+	struct task_struct *work_th;
+	bool should_stop;
+
+	/* Lock for the buffer list */
+	spinlock_t vq_lock;
+	struct list_head capture;
+	struct tegra_vi_buffer *active_buffer;
+	struct tegra_vi_buffer *pending_buffer;
+	unsigned long sequence;
+	unsigned long missed_buffer;
+
+	struct tegra_formats formats[16];
+	unsigned formats_count;
+};
+#endif
 
 struct tegra_vi2 {
 	void __iomem *base;
@@ -285,6 +361,7 @@ struct tegra_vi2 {
 	struct tegra_mipi_cal_regs *cal_regs;
 
 	struct tegra_vi_channel channel[3];
+	struct tegra_vi_pp pp[2];
 	struct tegra_vi_input input[3];
 
 	struct v4l2_device v4l2_dev;
@@ -309,9 +386,9 @@ int tegra_vi_calibrate_input(struct tegra_vi2 *vi2,
 			struct tegra_vi_input *input);
 
 void tegra_vi_input_start(const struct tegra_vi2 *vi2,
-                       const struct tegra_vi_input *input);
+			const struct tegra_vi_input *input);
 void tegra_vi_input_stop(const struct tegra_vi2 *vi2,
-                       const struct tegra_vi_input *input);
+			const struct tegra_vi_input *input);
 
 int v4l2_pix_format_set_sizeimage(struct v4l2_pix_format *pf);
 
