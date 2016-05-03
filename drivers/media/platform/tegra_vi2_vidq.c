@@ -343,11 +343,11 @@ const struct vb2_ops tegra_vi_qops = {
 };
 
 static void tegra_vi_channel_queue_syncpt(
-	struct tegra_vi_channel *chan, unsigned cond, u32 *syncpt_val)
+	const struct tegra_vi_channel *chan, unsigned cond, u32 *syncpt_val)
 {
-	struct video_device *vdev = &chan->vdev;
+	const struct video_device *vdev = &chan->vdev;
 	struct platform_device *pdev = to_platform_device(vdev->v4l2_dev->dev);
-	struct tegra_vi2 *vi2 =
+	const struct tegra_vi2 *vi2 =
 		container_of(vdev->v4l2_dev, struct tegra_vi2, v4l2_dev);
 
 	/* Update the sync point value */
