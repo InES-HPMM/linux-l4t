@@ -1,7 +1,7 @@
 /*
 * nvxxx_udc.c - Nvidia device mode implementation
 *
-* Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+* Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify it
 * under the terms and conditions of the GNU General Public License,
@@ -4298,7 +4298,6 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	spin_lock_irqsave(&nvudc->lock, flags);
 	driver->driver.bus = NULL;
 	nvudc->driver = driver;
-	nvudc->gadget.dev.driver = &driver->driver;
 	spin_unlock_irqrestore(&nvudc->lock, flags);
 	msg_dbg(nvudc->dev, "bind\n");
 
@@ -4345,7 +4344,6 @@ static int nvudc_gadget_start(struct usb_gadget *gadget,
 	msg_exit(nvudc->dev);
 	return 0;
 err_unbind:
-	nvudc->gadget.dev.driver = NULL;
 	nvudc->driver = NULL;
 	pm_runtime_put_sync(nvudc->dev);
 	msg_exit(nvudc->dev);
@@ -4383,10 +4381,7 @@ static int nvudc_gadget_stop(struct usb_gadget *gadget,
 	reset_data_struct(nvudc);
 
 	spin_unlock_irqrestore(&nvudc->lock, flags);
-	driver->unbind(&nvudc->gadget);
-	nvudc->gadget.dev.driver = NULL;
 	nvudc->driver = NULL;
-	nvudc->gadget.max_speed = USB_SPEED_UNKNOWN;
 
 	if (!IS_ERR_OR_NULL(nvudc->phy)) {
 		msg_dbg(nvudc->dev, "otg_set_peripheral to NULL\n");
