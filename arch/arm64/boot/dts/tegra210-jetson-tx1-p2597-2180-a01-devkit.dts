@@ -199,6 +199,9 @@
 			/* HDMI IN A (dual-link) */
 			vi_port_0: port@0 {
 				reg = <0>;
+				
+				#address-cells = <1>;
+				#size-cells = <0>;
 
 				csi_a: endpoint@0 {
 					reg = <0>;
@@ -206,7 +209,7 @@
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
 				};
-				csi_a: endpoint@1 {
+				csi_b: endpoint@1 {
 					reg = <1>;
 					remote-endpoint = <&hdmi_in_a>;
 					clock-lanes = <0>;
@@ -217,6 +220,9 @@
 			/* HDMI IN B */
 			port@2 {
 				reg = <2>;
+				
+				#address-cells = <1>;
+				#size-cells = <0>;
 
 				csi_c: endpoint {
 					reg = <0>;

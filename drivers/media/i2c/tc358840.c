@@ -667,11 +667,13 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 	} else {
 		/* Enable Registers to be initialized */
 		i2c_wr8_and_or(sd, INIT_END, ~(MASK_INIT_END), 0x00);
+		printk("%s: enable regs DONE\n", __func__);
 
 		/* Mute video so that all data lanes go to LSP11 state.
 		 * No data is output to CSI Tx block. */
 
 		i2c_wr8(sd, VI_MUTE, MASK_AUTO_MUTE | MASK_VI_MUTE);
+		printk("%s: mute DONE\n", __func__);
 	}
 
 	/* Wait for HDMI input to become stable */
@@ -698,6 +700,8 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 		enable ? ((pdata->csi_port & (MASK_VTX0EN | MASK_VTX1EN)) |
 		MASK_ABUFEN | MASK_TX_MSEL | MASK_AUTOINDEX) :
 		(MASK_TX_MSEL | MASK_AUTOINDEX));
+
+	printk("%s: confctl write DONE\n", __func__);
 
 	return 0;
 }
@@ -1253,6 +1257,7 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 	};	//FIXME: Change to H.verkuils version with V4L2_EVENT_SOURCE_CHANGE ?
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
+	printk("%s: entered\n", __func__);
 
 	if (tc358840_get_detected_timings(sd, &timings)) {
 		enable_stream(sd, false);
