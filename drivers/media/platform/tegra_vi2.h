@@ -174,12 +174,13 @@ struct tegra_mipi_cal_regs {
 
 struct tegra_vi_buffer {
 	struct vb2_buffer vb;
-	struct list_head queue;
+	struct list_head queue;	// (?) Points to chan-> (struct list_head capture)
 
 	unsigned num_planes;
-	dma_addr_t addr[3];
-	dma_addr_t bf_addr[3];
-	int stride[3];
+	dma_addr_t addr[3];		// Will be written to vi_regs->surface_offset[i].lsb for DMA
+	dma_addr_t bf_addr[3];	// Will be written to vi_regs->surface_bf_offset[i].lsb for DMA
+							// bf = bottom frame (interlaced)
+	int stride[3];			// Will be written to vi_regs->stride[i] for DMA
 };
 
 enum tegra_vi_input_id {
@@ -211,7 +212,6 @@ struct tegra_vi_input {
 	struct v4l2_subdev *sensor;
 	/* For sensors with multiple endpoints */
 	unsigned sensor_ep;
-	struct v4l2_async_subdev asd;
 
 	/* Supported MBUS flags on this input */
 	unsigned mbus_caps;
@@ -299,14 +299,13 @@ struct tegra_vi_pp {
 	/* Format currently set */
 	struct v4l2_pix_format pixfmt;
 	unsigned origin[2];
-
-	int syncpt_id;
 };
 
 struct tegra_vi_channel_input {
 	const char *name;
 	struct tegra_vi_input *endpoint[2];
 	unsigned endpoint_count;
+		struct v4l2_async_subdev asd;
 };
 
 struct tegra_vi_channel {
@@ -330,6 +329,7 @@ struct tegra_vi_channel {
 
 	/* Format currently set */
 	struct v4l2_pix_format pixfmt;
+	struct tegra_vi_multi_format multifmt;
 
 	/* Video queue */
 	struct vb2_queue vb;
@@ -348,6 +348,8 @@ struct tegra_vi_channel {
 
 	struct tegra_formats formats[16];
 	unsigned formats_count;
+
+	int syncpt_id;
 };
 #endif
 
@@ -363,6 +365,7 @@ struct tegra_vi2 {
 	struct tegra_vi_channel channel[3];
 	struct tegra_vi_pp pp[2];
 	struct tegra_vi_input input[3];
+	struct tegra_vi_channel_input channel_input[3];
 
 	struct v4l2_device v4l2_dev;
 

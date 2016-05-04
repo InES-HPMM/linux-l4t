@@ -354,6 +354,10 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg)
 
 	case _IOC_NR(VIDIOC_SUBDEV_S_EDID):
 		return v4l2_subdev_call(sd, pad, set_edid, arg);
+
+	case VIDIOC_SUBDEV_TEGRA_VI_MULTI_CONFIG: {
+		return v4l2_subdev_call(sd, video, g_multi_config, arg);
+	}
 #endif
 	default:
 		return v4l2_subdev_call(sd, core, ioctl, cmd, arg);

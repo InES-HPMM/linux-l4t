@@ -243,6 +243,7 @@
 #define MASK_HSTXCLKEN				0x00000001
 
 #define MODECONF				0x0110	/* Not in Ref. v1.5 */
+#define MODECONF2				0x0310	/* Not in Ref. v1.5 */
 #define MASK_CSI2MODE				(1 << 0)
 #define MASK_VSYNC_POL_SW			(1 << 1)
 #define MASK_HSYNC_POL_SW			(1 << 2)
@@ -359,9 +360,11 @@
 #define MASK_LCD_CSEL				0x0001
 #define MASK_IFEN				0x0002
 #define MASK_SPBP				0x0100
+#define MASK_SPEN 				0x0000
 
 #define SPLITTX0_WC				0x5008	/*Removed in rev. 1.1*/
 #define SPLITTX1_WC				0x5088	/*Removed in rev. 1.1*/
+#define MASK_WC 				0x0F00
 
 #define SPLITTX0_SPLIT				0x500C
 #define SPLITTX1_SPLIT				0x508C
