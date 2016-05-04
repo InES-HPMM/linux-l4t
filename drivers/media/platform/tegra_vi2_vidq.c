@@ -132,7 +132,7 @@ static int tegra_vi_videobuf_queue_setup(
 		printk("%s: got fmt arg\n", __func__);
 	} else {
 		pf = &chan->multifmt.composite_pf;
-		printk("%s: got no fmt arg, using chan\n", __func__);
+		printk("%s: got no fmt arg, using chan with width=%d, height=%d, pixelformat=%d, sizeimage=%d\n", __func__, chan->multifmt.composite_pf.width, chan->multifmt.composite_pf.height, chan->multifmt.composite_pf.pixelformat, chan->multifmt.composite_pf.sizeimage);
 	}
 
 	planes = v4l2_pix_format_stride(pf, stride);
@@ -152,6 +152,13 @@ static int tegra_vi_videobuf_queue_setup(
 	return 0;
 }
 
+/*
+ * @buf_init:		called once after allocating a buffer (in MMAP case)
+ *			or after acquiring a new USERPTR buffer; drivers may
+ *			perform additional buffer-related initialization;
+ *			initialization failure (return != 0) will prevent
+ *			queue setup from completing successfully; optional
+ */
 static int tegra_vi_videobuf_init(struct vb2_buffer *vb)
 {
 	struct tegra_vi_buffer *buf =
@@ -267,7 +274,7 @@ static void tegra_vi_videobuf_queue(struct vb2_buffer *vb)
 		container_of(vb, struct tegra_vi_buffer, vb);
 	unsigned long flags;
 
-	printk("%s: entered\n", __func__);
+	//printk("%s: entered\n", __func__);
 
 	spin_lock_irqsave(&chan->vq_lock, flags);
 	list_add_tail(&buf->queue, &chan->capture);
@@ -425,6 +432,41 @@ static int tegra_vi_videobuf_stop_streaming(struct vb2_queue *q)
 	return 0;
 }
 
+/*
+ * @wait_prepare:	release any locks taken while calling vb2 functions;
+ *			it is called before an ioctl needs to wait for a new
+ *			buffer to arrive; required to avoid a deadlock in
+ *			blocking access type
+ */
+static void tegra_vi_videobuf_wait_prepare(struct vb2_queue *q)
+{
+	struct tegra_vi_channel *chan =
+		container_of(q, struct tegra_vi_channel, vb);
+	unsigned long flags = chan->vq_flags;
+
+	printk("%s: entered\n", __func__);
+
+	// mutex_unlock(&chan->lock);
+	// spin_unlock_irqrestore(&chan->vq_lock, flags);
+}
+
+/*
+ * @wait_finish:	reacquire all locks released in the previous callback;
+ *			required to continue operation after sleeping while
+ *			waiting for a new buffer to arrive
+ */
+static void tegra_vi_videobuf_wait_finish(struct vb2_queue *q)
+{
+	struct tegra_vi_channel *chan =
+		container_of(q, struct tegra_vi_channel, vb);
+	unsigned long flags = chan->vq_flags;
+
+	printk("%s: entered\n", __func__);
+
+	// mutex_lock(&chan->lock);
+	// spin_lock_irqsave(&chan->vq_lock, flags);
+}
+
 const struct vb2_ops tegra_vi_qops = {
 	.queue_setup = tegra_vi_videobuf_queue_setup,
 	.buf_init = tegra_vi_videobuf_init,
@@ -432,6 +474,8 @@ const struct vb2_ops tegra_vi_qops = {
 	.buf_queue = tegra_vi_videobuf_queue,
 	.start_streaming = tegra_vi_videobuf_start_streaming,
 	.stop_streaming = tegra_vi_videobuf_stop_streaming,
+	.wait_prepare = tegra_vi_videobuf_wait_prepare,
+	.wait_finish = tegra_vi_videobuf_wait_finish,
 };
 
 // Called by capture_thread(): 
@@ -516,16 +560,16 @@ static struct tegra_vi_buffer * tegra_vi_channel_set_next_buffer(struct tegra_vi
 	/* Setup the DMA registers */
 	for (i = 0; i < buf->num_planes; i++) {
 		for (p = 0; p < chan->pp_count; p++) {
-			printk("%s: ------- DMA Config for PP %d ------- \n", __func__, p);
+			//printk("%s: ------- DMA Config for PP %d ------- \n", __func__, p);
 			vi_writel(0, &chan->pp[p]->vi_regs->surface_offset[i].msb);
-			printk("%s: SURFACE_OFFSET.MSB[%d]=%d\n", __func__, i, 0);
+			//printk("%s: SURFACE_OFFSET.MSB[%d]=%d\n", __func__, i, 0);
 			dual_link_offset = p * (buf->stride[i] / 2);
 			vi_writel(buf->addr[i] + dual_link_offset, 
 				&chan->pp[p]->vi_regs->surface_offset[i].lsb);
-			printk("%s: SURFACE_OFFSET.LSB[%d]=%d\n", __func__, i, 
-				buf->addr[i] + p * buf->stride[i]);
+			//printk("%s: SURFACE_OFFSET.LSB[%d]=%d\n", __func__, i, 
+			//	buf->addr[i] + p * buf->stride[i]);
 			vi_writel(buf->stride[i], &chan->pp[p]->vi_regs->surface_stride[i]);
-			printk("%s: SURFACE_STRIDE.[%d]=%d \n", __func__, i, buf->stride[i]);
+			//printk("%s: SURFACE_STRIDE.[%d]=%d \n", __func__, i, buf->stride[i]);
 
 
 			vi_writel(0, &chan->pp[p]->vi_regs->surface_bf_offset[i].msb);
@@ -605,7 +649,8 @@ static int tegra_vi_channel_capture_thread(void *data)
 	struct video_device *vdev = &chan->vdev;
 	ktime_t start_time;
 	unsigned syncpt_cond = 0;
-	u32 syncpt_val, incrs;
+	u32 syncpt_val[2];
+	u32 incrs;
 	int err0, err1, i, p;
 
 	printk("%s: entered\n", __func__);
@@ -644,7 +689,10 @@ Valid SOF has been received by the camera (PPA) input. This
 SOF is detected at the VI2 input.
 */
 	// FIXME: Probably we expect only 1 SOF on PPA, nothing on PPB
-	tegra_vi_channel_queue_syncpt(chan, 5, &syncpt_val, 1);
+	printk("%s: got syncpt before queueing SOF: %d\n", __func__, syncpt_val[0]);
+	tegra_vi_channel_queue_syncpt(chan, 5, &syncpt_val[0], 1);
+	printk("%s: got syncpt after queueing SOF: %d\n", __func__, syncpt_val[0]);
+
 	printk("%s: queued syncpt for SOF on PPA (chan->pp[0]->id=%d)\n", __func__, chan->pp[0]->id);
 
 	if (show_statistics)
@@ -659,7 +707,7 @@ SOF is detected at the VI2 input.
 	printk("%s: started PPs and queued a buffer update each\n", __func__);
 
 	/* Wait for SOF */
-	err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val);
+	err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[0]);
 	printk("%s: wait for SOF: err=%d\n", __func__, err0);
 	if (err0) {
 		dev_err(&vdev->dev, "Initial wait for SOF failed!\n");
@@ -679,7 +727,7 @@ SOF is detected at the VI2 input.
 		struct tegra_vi_buffer *done_buffer;
 
 		/* Wait for the write ACK */
-		err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val);
+		err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[0]);
 		printk("%s: wait for write ACK.0 err=%d\n", __func__, err0);
 		if (err0) {
 			if (!chan->should_stop) {
@@ -687,9 +735,10 @@ SOF is detected at the VI2 input.
 					"Failed to capture half frame\n");
 				tegra_vi_channel_print_errors(chan);
 			}
-			//break;
+			printk("%s: err0\n", __func__);
+			break;
 		}
-		err1 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val);
+		err1 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[1]);
 		printk("%s: wait for write ACK.1 err=%d\n", __func__, err1);
 		if (err1) {
 			if (!chan->should_stop) {
@@ -699,7 +748,8 @@ SOF is detected at the VI2 input.
 			}
 			//DBG
 			printk("%s: DBG: CONTINUE WITHOUT THIS HALF FRAME\n", __func__);
-			//break;
+			printk("%s: err1\n", __func__);
+			break;
 		}
 		if (err0 && err1) {
 			if (!chan->should_stop) {
@@ -727,7 +777,11 @@ The VI2 generates this syncpt when all WrAcks for a captured
 frame from the camera (PPA) to memory are received.
 */
 		for (p=0; p < chan->pp_count; p++) {
-			tegra_vi_channel_queue_syncpt(chan, 7 + 8*chan->pp[p]->id, &syncpt_val, 1);//incrs);
+			printk("%s: got syncpt before queueing (p=%d): %d\n", __func__, p, syncpt_val[p]);
+			tegra_vi_channel_queue_syncpt(chan, 7 + 8*chan->pp[p]->id, &syncpt_val[p], 1);//incrs);
+			printk("%s: got syncpt after queueing (p=%d): %d\n", __func__, p, syncpt_val[p]);
+		}
+		for (p=0; p < chan->pp_count; p++) {
 			if (chan->pending_buffer) {
 				/* Queue a buffer update on the next shot */
 				/* This triggers the shadow registers to be written into VI2 */
