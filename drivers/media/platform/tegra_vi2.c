@@ -420,7 +420,7 @@ static int tegra_vi_channel_update_sensor_formats(
 	enum v4l2_mbus_pixelcode code;
 //       unsigned long in_mask[2] = {};	//FIXME: Why do we need this?
 	unsigned long mask = 0;
-	int i, f, m, e, err;
+	int i, f, m, e;//, err;
 	unsigned index;
 
 	printk("%s: entered\n", __func__);
@@ -451,7 +451,7 @@ static int tegra_vi_channel_update_sensor_formats(
 			mask &= fmt_mask;
 	}
 
-	printk("%s: got mask=%u\n", __func__, mask);
+	printk("%s: got mask=%lu\n", __func__, mask);
 
 	/* Fill the table with the supported formats */
 	chan->formats_count = 0;
@@ -1624,6 +1624,10 @@ static int tegra_vi_channel_open(struct file *file)
 
 	mutex_lock(&chan->lock);
 
+	printk("%s: locked\n", __func__);
+	printk("%s: use_count=%d\n", __func__, chan->use_count);
+	printk("%s: trying to set chan to input %d\n", __func__, chan->input_id);
+
 	if (chan->use_count == 0)
 		err = tegra_vi_channel_set_input(chan, chan->input_id);
 
@@ -1718,6 +1722,8 @@ static void tegra_vi_notify(struct v4l2_subdev *sd,
 		container_of(sd->v4l2_dev, struct tegra_vi2, v4l2_dev);
 	int i, e;
 
+	printk("%s: entered\n", __func__);
+
 	/* We are only interrested in event notifications */
 	if (notification != V4L2_DEVICE_NOTIFY_EVENT)
 		return;
@@ -1791,6 +1797,8 @@ static int tegra_vi_sensors_complete(struct v4l2_async_notifier *notifier)
 			inputs |= BIT(i);
 	}
 
+	printk("%s: inputs=0x%x\n", __func__, inputs);
+
 	if (inputs == 0)
 		return -ENODEV;
 
@@ -1806,9 +1814,10 @@ static int tegra_vi_sensors_complete(struct v4l2_async_notifier *notifier)
 	for (c = 0, i = 0; c < ARRAY_SIZE(vi2->channel); c++, i++) {
 		if (inputs)
 		{
+			dev_info(dev, "For i=%d\n",i);
+			i = __ffs(inputs);
 			dev_info(dev, "Mapping input %d to channel %d\n",
 				i, c);
-			i = __ffs(inputs);
 			vi2->channel[c].input_id = i;
 			inputs &= ~BIT(i);
 		}
@@ -1981,7 +1990,6 @@ static void tegra_vi_pp_uninit(struct tegra_vi_pp *pp)
 static void tegra_vi_channel_uninit(struct tegra_vi_channel *chan)
 {
 	int p;
-	nvhost_free_syncpt(chan->syncpt_id);
 	vb2_queue_release(&chan->vb);
 	vb2_dma_contig_cleanup_ctx(chan->vb2_alloc_ctx);
 	video_unregister_device(&chan->vdev);
@@ -2064,6 +2072,7 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 	chan->vdev.queue = q;
 	chan->vdev.release = video_device_release_empty;
 	INIT_LIST_HEAD(&chan->capture);
+	mutex_init(&chan->lock);
 	spin_lock_init(&chan->vq_lock);
 	chan->should_stop = false;
 
