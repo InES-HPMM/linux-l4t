@@ -362,7 +362,7 @@ struct tegra_vi2 {
 	/* TODO: Move that to a separate device */
 	struct tegra_mipi_cal_regs *cal_regs;
 
-	struct tegra_vi_channel channel[3];
+	struct tegra_vi_channel channel[2];
 	struct tegra_vi_pp pp[2];
 	struct tegra_vi_input input[3];
 	struct tegra_vi_channel_input channel_input[3];

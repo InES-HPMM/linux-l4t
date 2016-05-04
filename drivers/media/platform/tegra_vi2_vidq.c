@@ -442,7 +442,7 @@ static void tegra_vi_videobuf_wait_prepare(struct vb2_queue *q)
 {
 	struct tegra_vi_channel *chan =
 		container_of(q, struct tegra_vi_channel, vb);
-	unsigned long flags = chan->vq_flags;
+	//unsigned long flags = chan->vq_flags;
 
 	printk("%s: entered\n", __func__);
 
@@ -459,7 +459,7 @@ static void tegra_vi_videobuf_wait_finish(struct vb2_queue *q)
 {
 	struct tegra_vi_channel *chan =
 		container_of(q, struct tegra_vi_channel, vb);
-	unsigned long flags = chan->vq_flags;
+	//unsigned long flags = chan->vq_flags;
 
 	printk("%s: entered\n", __func__);
 
