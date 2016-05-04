@@ -176,5 +176,6 @@ struct v4l2_subdev_edid {
 	_IOWR('V', 62, struct v4l2_subdev_selection)
 #define VIDIOC_SUBDEV_G_EDID	_IOWR('V', 40, struct v4l2_subdev_edid)
 #define VIDIOC_SUBDEV_S_EDID	_IOWR('V', 41, struct v4l2_subdev_edid)
+#define VIDIOC_SUBDEV_TEGRA_VI_MULTI_CONFIG	_IOWR('V', 42, struct tegra_vi_multi_format)
 
 #endif

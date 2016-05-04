@@ -129,4 +129,14 @@ struct v4l2_mbus_framefmt {
 	__u32			reserved[7];
 };
 
+/* Describe a onfiguration of multiple CSI links */
+struct tegra_vi_multi_format {
+	/* Composite format and layout of image in memory  */
+	struct v4l2_pix_format composite_pf;
+	/* Mbus format per CSI link */
+	struct v4l2_mbus_framefmt framefmt[2];
+	u32 framefmt_count;
+	u32 orientation[2];		// FIXME: Setup define with possible orientations: top, bottom, left, right
+};
+
 #endif
