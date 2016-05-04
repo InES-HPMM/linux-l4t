@@ -21,6 +21,7 @@
 
 
 #include <linux/module.h>
+#include <linux/delay.h>
 
 #include <linux/i2c.h>
 #include <linux/regmap.h>
@@ -116,6 +117,7 @@ static int tc358840_s_dv_timings(
  *
  * Preferred native timing: 1080p60
  */
+ /*
 static const u32 EDID_DATA[] = {
 	0xFFFFFF00, 0x00FFFFFF, 0x02096252, 0x01010101,
 	0x030114FF, 0x785AA080, 0xA0C90D0A, 0x27984757,
@@ -133,6 +135,46 @@ static const u32 EDID_DATA[] = {
 	0x37804030, 0x5384DC00, 0xF11C0000, 0x51A00027,
 	0x50302500, 0xDC003780, 0x00005384, 0x001AA91C,
 	0x160050A0, 0x37203030, 0x5384DC00, 0xA21A0000
+};
+*/
+// TESTING: Preferred native timing 2160p30 30Hz @262.92MHz PClk
+// Max PClk: 290MHz.
+static const u32 EDID_DATA[] = {
+/*
+	0xffffff00, 0x00ffffff, 0x88886252, 0x88888800,
+	0x0301151c, 0x78000080, 0xa0c90d0a, 0x27984757,
+	0x004c4812, 0x01010000, 0x01010101, 0x01010101,
+	0x01010101, 0x66b40101, 0x70f0a000, 0x2030801f,
+	0x88800035, 0x1c000042, 0xa00068ec, 0x803770f0,
+	0x003a2030, 0x00f87000, 0x00001c00, 0x5400fc00,
+	0x6968736f, 0x552d6162, 0x0a433248, 0xfd000000,
+	0x0f3d1700, 0x00001e8c, 0x00000000, 0x13010000,
+	0x74170302, 0x03130447, 0x01060702, 0x01070923,
+	0x000c0366, 0x8c800030, 0x68ecd00a, 0x70f0a000,
+	0x20308037, 0x7000003a, 0x1c0000f8, 0xa00068ec,
+	0x803770f0, 0x003a2030, 0x00f87000, 0x68ec1c00,
+	0x70f0a000, 0x20308037, 0x7000003a, 0x1c0000f8,
+	0xa00068ec, 0x803770f0, 0x003a2030, 0x00f87000,
+	0x00001c00, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0xdc000000
+*/
+	0xffffff00, 0x00ffffff, 0x0029ce1c, 0x00000000,
+	0x03010000, 0x78000082, 0xa391ee3e, 0x26994c54,
+	0x0054500f, 0x01010000, 0x01010101, 0x01010101,
+	0x01010101, 0x74040101, 0x70f23000, 0x58b0805a,
+	0x0910008a, 0x1e000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x5200fc00,
+	0x4f584f49, 0x2020200a, 0x20202020, 0xfd000000,
+	0x441e1e00, 0x0a001e44, 0x20202020, 0xa5012020,
+	0x31160302, 0x036f5f41, 0x0000000c, 0x00e03b00,
+	0x00000000, 0x00000120, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x5a000000
 };
 
 static struct v4l2_subdev_edid EDID_1080p = {
@@ -384,6 +426,7 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 {
 	struct v4l2_bt_timings *bt = &timings->bt;
 	unsigned width, height, frame_width, frame_height, frame_interval, fps;
+	int sync_timeout_ctr = 100;
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
@@ -393,9 +436,16 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 		v4l2_dbg(1, debug, sd, "%s: no valid signal\n", __func__);
 		return -ENOLINK;
 	}
-	if (no_sync(sd)) {
-		v4l2_dbg(1, debug, sd, "%s: no sync on signal\n", __func__);
+	while (no_sync(sd) && sync_timeout_ctr) {
+		sync_timeout_ctr--;
+		mdelay(1);//ndelay(500);
+	}
+	
+	if (sync_timeout_ctr == 0){
+		v4l2_dbg(1, debug, sd, "%s: no sync timeout exceeded, EXITING\n", __func__);
 		return -ENOLCK;
+	} else {
+		v4l2_dbg(1, debug, sd, "%s: SYNC SUCCESSFUL, sync_timeout_ctr=%d\n", __func__, sync_timeout_ctr);
 	}
 
 	timings->type = V4L2_DV_BT_656_1120;
@@ -414,6 +464,12 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 		i2c_rd8(sd, IN_HSIZE_LO);
 	frame_height = (((i2c_rd8(sd, IN_VSIZE_HI) & 0x3f) << 8) +
 		i2c_rd8(sd, IN_VSIZE_LO)) / 2;
+
+	printk("%s: DE: width=%d, height=%d  |  IN: frame_width=%d, frame_height=%d\n", __func__, width, height, frame_width, frame_height);
+	if (frame_height < height) {
+		printk("%s: ERROR: frame_height < height. Exiting..\n", __func__);
+		return -EINVAL;
+	}
 
 	/* TODO: Check if frame_interval is correct
 	 * since the register is not in the datasheet rev. 1.5 */
@@ -435,7 +491,7 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 		bt->height *= 2;
 		bt->il_vsync = bt->vsync + 1;
 		bt->pixelclock /= 2;
-	}
+	}// FIXME: Need to adjust for 4k / duallink?
 
 	return 0;
 }
@@ -633,7 +689,7 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 		}
 
 		v4l2_dbg(2, debug, sd,
-			"%s: Stream enabled! Remainingtimeout attempts: %d\n"
+			"%s: Stream enabled! Remaining timeout attempts: %d\n"
 			, __func__, sync_timeout_ctr);
 	}
 
@@ -648,17 +704,42 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 
 static void tc358840_set_splitter(struct v4l2_subdev *sd)
 {
-	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
-
 	/* TODO:
 	 * Splitter is currently bypassed, however, it will be needed for 2160p
 	 */
-	i2c_wr16_and_or(sd, SPLITTX0_CTRL, ~(MASK_IFEN | MASK_LCD_CSEL),
-			MASK_SPBP);
-	i2c_wr16_and_or(sd, SPLITTX1_CTRL, ~(MASK_IFEN | MASK_LCD_CSEL),
-			MASK_SPBP);
+	 //FIXME: Set Splitter based on no. of CIS-lanes
 
-	i2c_wr16_and_or(sd, SPLITTX0_SPLIT, ~(MASK_TX1SEL), MASK_FPXV);
+	struct tc358840_state *state = to_state(sd);
+	struct tc358840_platform_data *pdata = &state->pdata;
+
+	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
+
+	if(pdata->csi_port == CSI_TX_BOTH)
+	{
+		printk("%s: set splitter for dual link\n", __func__);
+		/*v4l2_dbg(2, debug, sd, "set splitter for dual link");*/
+		i2c_wr16_and_or(sd, SPLITTX0_CTRL, 
+				~(MASK_IFEN | MASK_LCD_CSEL | MASK_SPBP), MASK_SPEN);
+		i2c_wr16_and_or(sd, SPLITTX1_CTRL, 
+				~(MASK_IFEN | MASK_LCD_CSEL | MASK_SPBP), MASK_SPEN);
+
+		i2c_wr16_and_or(sd, SPLITTX0_SPLIT, ~(MASK_TX1SEL), MASK_EHW);
+
+/*	Removed in newer Datasheets
+		i2c_wr16(sd, SPLITTX0_WC, MASK_WC);
+		i2c_wr16(sd, SPLITTX1_WC, MASK_WC);	
+*/
+	}else
+	{
+		printk("%s: set splitter for single link\n", __func__);
+		/*v4l2_dbg(2, debug, sd, "set splitter for single link");*/
+		i2c_wr16_and_or(sd, SPLITTX0_CTRL, ~(MASK_IFEN | MASK_LCD_CSEL),
+				MASK_SPBP);
+		i2c_wr16_and_or(sd, SPLITTX1_CTRL, ~(MASK_IFEN | MASK_LCD_CSEL),
+				MASK_SPBP);
+
+		i2c_wr16_and_or(sd, SPLITTX0_SPLIT, ~(MASK_TX1SEL), MASK_FPXV);
+	}
 }
 
 static void tc358840_set_pll(struct v4l2_subdev *sd)
@@ -902,6 +983,10 @@ static void tc358840_set_csi(struct v4l2_subdev *sd)
 			i2c_wr32_and_or(sd, base_addr+MODECONF, 0x0,
 				MASK_CSI2MODE | MASK_VSYNC_POL_SW |
 				MASK_HSYNC_POL_SW);
+			// FIXME: NECESSARY?
+			i2c_wr32_and_or(sd, base_addr+MODECONF2, 0x0,
+				MASK_CSI2MODE | MASK_VSYNC_POL_SW |
+				MASK_HSYNC_POL_SW);
 
 			/* (0x0118) */
 			i2c_wr32(sd, base_addr+LANEEN,
@@ -1119,7 +1204,8 @@ static void tc358840_set_hdmi_info_frame_mode(struct v4l2_subdev *sd)
 
 static void tc358840_initial_setup(struct v4l2_subdev *sd)
 {
-	static struct v4l2_dv_timings default_timing = V4L2_DV_BT_CEA_1920X1080P60;
+	//static struct v4l2_dv_timings default_timing = V4L2_DV_BT_CEA_1920X1080P60;
+	static struct v4l2_dv_timings default_timing = V4L2_DV_BT_CEA_3840X2160P30;
 	struct tc358840_state *state = to_state(sd);
 	struct tc358840_platform_data *pdata = &state->pdata;
 
@@ -1164,7 +1250,7 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 	struct v4l2_event ev = {
 		.type = V4L2_EVENT_EOS,
 		.u.src_change.changes = 0,
-	};
+	};	//FIXME: Change to H.verkuils version with V4L2_EVENT_SOURCE_CHANGE ?
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
@@ -1177,6 +1263,13 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 		/* TODO: Replace with v4l2_... for newer Kernels */
 		if (!v4l_match_dv_timings(&state->timings, &timings, 0))
 		{
+/*			const struct v4l2_dv_timings *t1 = &state->timings;
+			const struct v4l2_dv_timings *t2 = &timings;
+			printk("%s: match_dv_timings t1->bt.width=%d, t2->bt.width=%d\n", __func__, t1->bt.width, t2->bt.width);
+			printk("%s: match_dv_timings t1->bt.height=%d, t2->bt.height=%d\n", __func__, t1->bt.height, t2->bt.height);
+			printk("%s: match_dv_timings t1->bt.vsync=%d, t2->bt.vsync=%d\n", __func__, t1->bt.vsync, t2->bt.vsync);
+			printk("%s: match_dv_timings t1->bt.pixelclock=%llu, t2->bt.pixelclock=%llu\n", __func__, t1->bt.pixelclock, t2->bt.pixelclock);*/
+
 			enable_stream(sd, false);
 		}
 		else
@@ -1329,6 +1422,10 @@ static void tc358840_hdmi_clk_int_handler(struct v4l2_subdev *sd, bool *handled)
 	u8 clk_int_mask = i2c_rd8(sd, CLK_INTM);
 	u8 clk_int = i2c_rd8(sd, CLK_INT) & ~clk_int_mask;
 
+	unsigned width, height, frame_width, frame_height;
+
+	printk("%s: entered\n", __func__);
+
 	/* Bit 7 and bit 6 are set even when they are masked */
 	i2c_wr8(sd, CLK_INT, clk_int | 0x80 | MASK_OUT_H_CHG);
 
@@ -1346,8 +1443,26 @@ static void tc358840_hdmi_clk_int_handler(struct v4l2_subdev *sd, bool *handled)
 		 * I_IN_DE_CHG interrupt seems to work fine. FMT_CHANGE
 		 * notifications are only sent when the signal is stable to
 		 * reduce the number of notifications. */
-		if (!no_signal(sd) && !no_sync(sd))
+		if (!no_signal(sd) && !no_sync(sd)) {
 			tc358840_format_change(sd);
+			
+			// DBG!!!
+			width = ((i2c_rd8(sd, DE_HSIZE_HI) & 0x1f) << 8) +
+				i2c_rd8(sd, DE_HSIZE_LO);
+			height = ((i2c_rd8(sd, DE_VSIZE_HI) & 0x1f) << 8) +
+				i2c_rd8(sd, DE_VSIZE_LO);
+			frame_width = ((i2c_rd8(sd, IN_HSIZE_HI) & 0x1f) << 8) +
+				i2c_rd8(sd, IN_HSIZE_LO);
+			frame_height = (((i2c_rd8(sd, IN_VSIZE_HI) & 0x3f) << 8) +
+				i2c_rd8(sd, IN_VSIZE_LO)) / 2;
+
+			printk("%s: DE: width=%d, height=%d  |  IN: frame_width=%d, frame_height=%d\n", __func__, width, height, frame_width, frame_height);
+			if (frame_height < height) {
+				printk("%s: DBG: ERROR: frame_height < height. \n", __func__);
+			}
+		} else {
+			mdelay(1);
+		}
 
 		clk_int &= ~MASK_IN_DE_CHG;
 		if (handled)
@@ -1409,6 +1524,7 @@ static void tc358840_hdmi_sys_int_handler(struct v4l2_subdev *sd, bool *handled)
 		 * but the picture in the monitor app is frozen.
 		 * TODO: Investigate what goes wrong in user space.
 		 */
+// FIXME: NECESSARY?
 		tc358840_format_change(sd);
 
 		sys_int &= ~MASK_DVI;
@@ -1440,12 +1556,20 @@ static void tc358840_hdmi_sys_int_handler(struct v4l2_subdev *sd, bool *handled)
 static int tc358840_isr(struct v4l2_subdev *sd, u32 status, bool *handled)
 {
 	u16 intstatus = i2c_rd16(sd, INTSTATUS);
+	unsigned retry = 10;
 
 	v4l2_dbg(1, debug, sd, "%s: IntStatus = 0x%04X\n", __func__, intstatus);
 
+	mdelay(1);
 	if (intstatus & MASK_HDMI_INT) {
-		u8 hdmi_int0 = i2c_rd8(sd, HDMI_INT0);
-		u8 hdmi_int1 = i2c_rd8(sd, HDMI_INT1);
+		u8 hdmi_int0;
+		u8 hdmi_int1;
+retry:
+		retry--;
+		hdmi_int0 = i2c_rd8(sd, HDMI_INT0);
+		mdelay(1);
+		hdmi_int1 = i2c_rd8(sd, HDMI_INT1);
+		mdelay(1);
 
 		if (hdmi_int0 & MASK_MISC)
 			tc358840_hdmi_misc_int_handler(sd, handled);
@@ -1458,8 +1582,10 @@ static int tc358840_isr(struct v4l2_subdev *sd, u32 status, bool *handled)
 		if (hdmi_int1 & MASK_AUD)
 			tc358840_hdmi_audio_int_handler(sd, handled);
 
+		mdelay(1);
 		i2c_wr16(sd, INTSTATUS, MASK_HDMI_INT);
 		intstatus &= ~MASK_HDMI_INT;
+		mdelay(1);
 
 		/* Display unhandled HDMI interrupts */
 		hdmi_int0 = i2c_rd8(sd, HDMI_INT0);
@@ -1467,12 +1593,17 @@ static int tc358840_isr(struct v4l2_subdev *sd, u32 status, bool *handled)
 			v4l2_dbg(1, debug, sd,
 				"%s: Unhandled HDMI_INT0 interrupts: 0x%02X\n",
 				__func__, hdmi_int0);
+			if (retry)
+				goto retry;
 		}
+		mdelay(1);
 		hdmi_int1 = i2c_rd8(sd, HDMI_INT1);
 		if (hdmi_int1) {
 			v4l2_dbg(1, debug, sd,
 				"%s: Unhandled HDMI_INT1 interrupts: 0x%02X\n",
 				__func__, hdmi_int1);
+			if (retry)
+				goto retry;
 		}
 	}
 
@@ -1541,7 +1672,7 @@ static int tc358840_get_fmt(struct v4l2_subdev *sd,
 		struct v4l2_subdev_format *format)
 {
 	struct tc358840_state *state = to_state(sd);
-	u8 vout_csc = i2c_rd8(sd, VOUT_CSC);
+	// u8 vout_csc = i2c_rd8(sd, VOUT_CSC);
 	struct v4l2_mbus_framefmt *fmt;
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
@@ -1554,28 +1685,40 @@ static int tc358840_get_fmt(struct v4l2_subdev *sd,
 	format->format.height = state->timings.bt.height;
 	format->format.field = V4L2_FIELD_NONE;
 
-	switch (vout_csc & MASK_COLOR) {
-	case MASK_COLOR_RGB_FULL:
-	case MASK_COLOR_RGB_LIMITED:
-		format->format.colorspace = V4L2_COLORSPACE_SRGB;
+	switch (state->mbus_fmt_code) {
+	case V4L2_MBUS_FMT_UYVY8_1X16:
+		format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;	/* 601 YCbCr Limited */
 		break;
-	case MASK_COLOR_601_YCBCR_FULL:
-	case MASK_COLOR_601_YCBCR_LIMITED:
-		format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;
-		break;
-	case MASK_COLOR_709_YCBCR_FULL:
-	case MASK_COLOR_709_YCBCR_LIMITED:
-		format->format.colorspace = V4L2_COLORSPACE_REC709;
+	case V4L2_MBUS_FMT_RGB888_1X24:
+		format->format.colorspace = V4L2_COLORSPACE_SRGB;	/* RGB Full */
 		break;
 	default:
-		format->format.colorspace = 0;
+		v4l2_dbg(2, debug, sd, "%s: Unsupported format code 0x%x\n",
+				__func__, state->mbus_fmt_code);
 		break;
 	}
+	// switch (vout_csc & MASK_COLOR) {
+	// case MASK_COLOR_RGB_FULL:
+	// case MASK_COLOR_RGB_LIMITED:
+	// 	format->format.colorspace = V4L2_COLORSPACE_SRGB;
+	// 	break;
+	// case MASK_COLOR_601_YCBCR_FULL:
+	// case MASK_COLOR_601_YCBCR_LIMITED:
+	// 	format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;
+	// 	break;
+	// case MASK_COLOR_709_YCBCR_FULL:
+	// case MASK_COLOR_709_YCBCR_LIMITED:
+	// 	format->format.colorspace = V4L2_COLORSPACE_REC709;
+	// 	break;
+	// default:
+	// 	format->format.colorspace = 0;
+	// 	break;
+	// }
 
 	fmt = &format->format;
-	v4l2_dbg(3, debug, sd,
-		"%s(): width=%d, height=%d, code=0x%04X, field=%d\n",
-		__func__, fmt->width, fmt->height, fmt->code, fmt->field);
+	/*v4l2_dbg(3, debug, sd,*/printk(
+		"%s(): width=%d, height=%d, code=0x%04X, field=%d, colorspace=%d\n",
+		__func__, fmt->width, fmt->height, fmt->code, fmt->field, fmt->colorspace);
 
 	return 0;
 }
@@ -1590,6 +1733,8 @@ static int tc358840_set_fmt(struct v4l2_subdev *sd,
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
 	format->format.code = code;
+
+	printk("%s: got code=%u,  ret=%d\n", __func__, code, ret);
 
 	if (ret)
 		return ret;
@@ -1919,6 +2064,7 @@ static int tc358840_try_mbus_fmt(struct v4l2_subdev *sd,
 	return tc358840_set_fmt(sd, NULL, &format);
 }
 
+// In newer V4L2 patches, enum_mbus_fmt was replaced by enum_mbus_code
 static int tc358840_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 				 enum v4l2_mbus_pixelcode *code)
 {
@@ -1958,6 +2104,65 @@ static int tc358840_s_power(struct v4l2_subdev *sd, int on)
 	return 0;
 }
 
+/*	Get a multi link configuration request and return a config suitable for this
+	subdev. Currently supported use cases:
+	 - 3840x2160 via dual CSI link
+	 - 4096x2160 via dual CSI link
+
+	Parameter:	multi_format with width, height and pixelformat
+	Return:		multi_format holding suitable configuration
+*/
+static int tc358840_g_multi_config(struct v4l2_subdev *sd, 
+					struct tegra_vi_multi_format *multi_format)
+{
+	struct v4l2_mbus_framefmt try_fmt;
+	int ret, i;
+
+	/* Test if input pf is suitable */
+	if (multi_format->composite_pf.width < 3840 || 
+		multi_format->composite_pf.height < 2160 /*||
+		multi_format->composite_pf.pixelformat != V4L2_PIX_FMT_UYVY*/) {
+		v4l2_err(sd, "%s: Input format not supported for multi link config\n", 
+			__func__);
+		v4l2_err(sd, "%s: width=%d, height=%d, pixelformat=0x%x\n", 
+		__func__, multi_format->composite_pf.width, multi_format->composite_pf.height, multi_format->composite_pf.pixelformat);
+		printk("%s: pixelformat=0x%x\n", __func__, multi_format->composite_pf.pixelformat);
+		printk("%s: required=0x%x\n", __func__, V4L2_PIX_FMT_UYVY);
+		return -EINVAL;
+	}
+	//FIXME: need to check composite_pf.field ?
+
+	/* Test if we support the corresponding single link config */
+	try_fmt.width = multi_format->composite_pf.width / 2;
+	try_fmt.height = multi_format->composite_pf.height;		//FIXME: correct?
+	try_fmt.code = V4L2_MBUS_FMT_UYVY8_1X16;				//FIXME: correct?
+	try_fmt.field = V4L2_FIELD_NONE; //multi_format->composite_pf.field;
+	try_fmt.colorspace = multi_format->composite_pf.colorspace;
+	ret = tc358840_try_mbus_fmt(sd, &try_fmt);
+	if(ret) {
+		v4l2_err(sd, "%s: Corresponding single link config not supported", 
+			__func__);
+		return -EINVAL;
+	}
+
+	/* Find the closest possible configuration that is supported */
+	// FIXME: Replace fixed config by dynamic config
+	for (i=0; i<2; i++) {
+		multi_format->framefmt[i].width = 3840/2; //multi_format->composite_pf.width / 2;
+		multi_format->framefmt[i].height = 2160; //multi_format->composite_pf.height;
+		multi_format->framefmt[i].code = V4L2_MBUS_FMT_UYVY8_1X16;	//FIXME: correct?
+		multi_format->framefmt[i].field = V4L2_FIELD_NONE; //multi_format->composite_pf.field;
+		multi_format->framefmt[i].colorspace = multi_format->composite_pf.colorspace;	//FIXME: Need to fix colorspace?
+
+		multi_format->orientation[i] = i; 	//FIXME: Define orientations
+	}
+	multi_format->framefmt_count = 2;
+	multi_format->composite_pf.sizeimage = 
+		multi_format->composite_pf.width * 2 * multi_format->composite_pf.height; // Set fixed?
+
+	return 0;
+}
+
 static struct v4l2_subdev_video_ops tc358840_subdev_video_ops = {
 	.g_input_status = tc358840_g_input_status,
 	.s_dv_timings = tc358840_s_dv_timings,
@@ -1972,6 +2177,8 @@ static struct v4l2_subdev_video_ops tc358840_subdev_video_ops = {
 	.g_mbus_fmt = tc358840_g_mbus_fmt,
 	.try_mbus_fmt = tc358840_try_mbus_fmt,
 	.enum_mbus_fmt = tc358840_enum_mbus_fmt,
+
+	.g_multi_config = tc358840_g_multi_config,
 };
 
 static struct v4l2_subdev_core_ops tc358840_subdev_core_ops = {
