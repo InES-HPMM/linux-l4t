@@ -33,7 +33,6 @@
 #include <linux/clk.h>
 
 #include "t124/t124.h"
-#include <vi.h>
 #include <media/camera.h>
 
 #include "camera_platform.h"
