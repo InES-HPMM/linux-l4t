@@ -31,7 +31,7 @@
 	i2c@7000c400 {
 		ads1015@4a {
 			continuous-mode {
-				ti,adc-valid-threshold-ranges= <(-32)     32
+				ti,adc-valid-threshold-ranges= <(-60)     60
 							238    324
 							980   1295
 							641   860
@@ -43,7 +43,7 @@
 
 	extcon {
 		extcon@1 {
-			extcon-adc-jack,states = <0x1   (-32)       32
+			extcon-adc-jack,states = <0x1   (-60)      60
 						0x2     238      324
 						0x4     980     1295
 						0x8     641     860
