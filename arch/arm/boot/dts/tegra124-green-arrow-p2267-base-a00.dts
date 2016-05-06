@@ -184,9 +184,9 @@
 		nvidia,port-otg;
 		nvidia,charging-supported;
 		nvidia,turn-off-vbus-in-lp0;
-		nvidia,dcp-current-limit-ma = <3000>;
-		nvidia,qc2-input-voltage = <2>;
-		nvidia,qc2-current-limit-ma = <1200>;
+		nvidia,dcp-current-limit-ua = <3000000>;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_12V>;
+		nvidia,qc2-current-limit-ua = <1200000>;
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-pmu-vbus-detection;
 		extcon-cables = <&palmas_extcon 0>;

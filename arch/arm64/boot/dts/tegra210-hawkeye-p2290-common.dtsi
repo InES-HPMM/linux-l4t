@@ -761,9 +761,9 @@
 		nvidia,id-detection-type = <1>;
 		nvidia,enable-aca-rid-detection;
 		nvidia,enable-aca-nv-charger-detection;
-		nvidia,dcp-current-limit-ma = <3000>;
-		nvidia,qc2-input-voltage = <0>;
-		nvidia,qc2-current-limit-ma = <2000>;
+		nvidia,dcp-current-limit-ua = <3000000>;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_5V>;
+		nvidia,qc2-current-limit-ua = <2000000>;
 		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5 &extcon_cable_xlate 6>;
 		extcon-cable-names = "vbus", "aca-nv", "aca-rb", "aca-rc";
 		#extcon-cells = <1>;

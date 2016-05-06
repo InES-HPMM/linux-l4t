@@ -21,6 +21,7 @@
 #include <dt-bindings/ata/ahci-tegra.h>
 #include <dt-bindings/clk/tegra210-clk.h>
 #include <dt-bindings/soc/nvidia,tegra210-powergate.h>
+#include <dt-bindings/usb/tegra-usb.h>
 
 / {
 	compatible = "nvidia,tegra210";

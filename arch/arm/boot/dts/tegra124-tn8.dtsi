@@ -124,7 +124,7 @@
 		nvidia,port-otg;
 		nvidia,charging-supported;
 		nvidia,turn-off-vbus-in-lp0;
-		nvidia,dcp-current-limit-ma = <3000>;
+		nvidia,dcp-current-limit-ua = <3000000>;
 	};
 
 	watchdog@60005100 {
