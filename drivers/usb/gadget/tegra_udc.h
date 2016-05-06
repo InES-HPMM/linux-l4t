@@ -466,7 +466,7 @@ struct tegra_udc {
 	enum tegra_connect_type connect_type;
 	enum tegra_connect_type prev_connect_type;
 	enum tegra_connect_type connect_type_lp0;
-	enum tegra_usb_qc2_voltage qc2_voltage;
+	u32 qc2_voltage;
 	void __iomem *regs;
 	size_t ep_qh_size;		/* size after alignment adjustment*/
 	dma_addr_t ep_qh_dma;		/* dma address of QH */

@@ -17,13 +17,13 @@ Optional properties:
 	0 - if detection is through USB controller
 	1 - if detection is through PMU extcon
 	2 - if enable through sysfs interface.
-- nvidia,qc2-voltage: Specify the input voltage needed to support QC2.0 charger.
-	0 - if input voltage is 5V
-	1 - if input voltage is 9V
-	2 - if input voltage is 12V
-	3 - if input voltage is 20V
-- nvidia,qc2-current-limit-ma: Specify the QC2.0 charger current limit in milliamperes.
-- nvidia,dcp-current-limit-ma: If needs to overried standard DCP charger current limit (1.5A), specify the value in milliamperes.
+- nvidia,qc2-input-voltage: Specify the input voltage needed to support QC2.0 charger.
+	TEGRA_USB_QC2_5V - if input voltage is 5V
+	TEGRA_USB_QC2_9V - if input voltage is 9V
+	TEGRA_USB_QC2_12V - if input voltage is 12V
+	TEGRA_USB_QC2_20V - if input voltage is 20V
+- nvidia,qc2-current-limit-ua: Specify the QC2.0 charger current limit in microamperes.
+- nvidia,dcp-current-limit-ua: If needs to overried standard DCP charger current limit (1.5A), specify the value in microamperes.
 - nvidia,enable-xhci-host: Specify whether this port is taken by XUSB.
 - avdd_usb-supply: Specify the phandle of corresponding regulator device tree node.
 - avdd_pll_utmip-supply: Specify the phandle of corresponding regulator device tree node.
@@ -40,9 +40,9 @@ Example:
 		nvidia,port-otg;
 		nvidia,charging-supported;
 		nvidia,enable-pmu-vbus-detection;
-		nvidia,qc2_input_voltage = <1>;
-		nvidia,qc2_current_limit_ma = <1200>;
-		nvidia,dcp_current_limit_ma = <1800>;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_9V>;
+		nvidia,qc2-current-limit-ua = <1200000>;
+		nvidia,dcp-current-limit-ua = <1800000>;
 		avdd_usb-supply = <&ldousb_reg>;
 		avdd_pll_utmip-supply = <&palmas_smps8>;
 		usb_bat_chg-supply = <&battery_charger>;

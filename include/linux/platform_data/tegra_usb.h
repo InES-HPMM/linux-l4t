@@ -45,30 +45,6 @@ enum tegra_usb_id_detection {
 };
 
 /**
- * Set the maximum voltage that can be supplied
- * over USB vbus that the board supports if we use
- * a quick charge 2 wall charger.
- * a low value means longer charge time
- * a too high value will blow up the board.
- * if not sure what board supports use 5V.
- * Allowed values:
- *	TEGRA_USB_QC2_5V
- *	TEGRA_USB_QC2_9V
- *	TEGRA_USB_QC2_12V
- *	TEGRA_USB_QC2_20V (probably not safe)
- *
- * specify the maximum current that the internal charger
- * can draw from an external wall charger
- */
-enum tegra_usb_qc2_voltage {
-	TEGRA_USB_QC2_5V = 0,
-	TEGRA_USB_QC2_9V = 1,
-	TEGRA_USB_QC2_12V = 2,
-	TEGRA_USB_QC2_20V = 3,
-};
-
-
-/**
  * configuration structure for setting up utmi phy
  */
 struct tegra_utmi_config {
@@ -157,7 +133,7 @@ struct tegra_usb_platform_data {
 	enum tegra_usb_id_detection id_det_type;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
-	enum tegra_usb_qc2_voltage qc2_voltage;
+	u32 qc2_voltage;
 
 	union {
 		struct tegra_usb_dev_mode_data dev;

@@ -32,6 +32,7 @@
 #include <mach/tegra_usb_pmc.h>
 #include <mach/tegra_usb_pad_ctrl.h>
 #include <linux/tegra_prod.h>
+#include <dt-bindings/usb/tegra-usb.h>
 
 #include "tegra_usb_phy.h"
 #include "../../../arch/arm/mach-tegra/gpio-names.h"

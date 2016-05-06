@@ -573,14 +573,6 @@ static void ardbeg_usb_init(void)
 			board_info.board_id == BOARD_E1784 ||
 			board_info.board_id == BOARD_E1780) {
 
-			/*
-			 * Set the maximum voltage that can be supplied
-			 * over USB vbus that the board supports if we use
-			 * a quick charge 2 wall charger.
-			 */
-			tegra_udc_pdata.qc2_voltage = TEGRA_USB_QC2_9V;
-			tegra_udc_pdata.u_data.dev.qc2_current_limit_ma = 1200;
-
 			/* charger needs to be set to 3A - h/w will do 2A */
 			tegra_udc_pdata.u_data.dev.dcp_current_limit_ma = 3000;
 		}

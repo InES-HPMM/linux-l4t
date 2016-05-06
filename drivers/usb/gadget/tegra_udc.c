@@ -2934,6 +2934,7 @@ static struct tegra_usb_platform_data *tegra_udc_dt_parse_pdata(
 {
 	struct tegra_usb_platform_data *pdata;
 	struct device_node *np = pdev->dev.of_node;
+	u32 current_ua;
 
 	if (!np)
 		return NULL;
@@ -2953,10 +2954,13 @@ static struct tegra_usb_platform_data *tegra_udc_dt_parse_pdata(
 	pdata->u_data.dev.is_xhci =
 		of_property_read_bool(np, "nvidia,enable-xhci-host");
 
-	of_property_read_u32(np, "nvidia,dcp-current-limit-ma",
-				&pdata->u_data.dev.dcp_current_limit_ma);
-	of_property_read_u32(np, "nvidia,qc2-current-limit-ma",
-				&pdata->u_data.dev.qc2_current_limit_ma);
+	of_property_read_u32(np, "nvidia,dcp-current-limit-ua",
+				&current_ua);
+	pdata->u_data.dev.dcp_current_limit_ma = current_ua/1000;
+
+	of_property_read_u32(np, "nvidia,qc2-current-limit-ua",
+				&current_ua);
+	pdata->u_data.dev.qc2_current_limit_ma = current_ua/1000;
 	of_property_read_u32(np, "nvidia,qc2-input-voltage",
 				&pdata->qc2_voltage);
 	of_property_read_u32(np, "nvidia,id-detection-type",
