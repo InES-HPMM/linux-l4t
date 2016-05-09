@@ -3,7 +3,7 @@
  *
  * watchdog driver for NVIDIA tegra internal watchdog
  *
- * Copyright (c) 2012-2014, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION. All rights reserved.
  *
  * based on drivers/watchdog/softdog.c and drivers/watchdog/omap_wdt.c
  *
@@ -74,6 +74,10 @@ static int expiry_count = 1;
  * expiry_count*MAX_WDT_PERIOD.
  */
 static int heartbeat = 120;
+
+static bool nowayout = WATCHDOG_NOWAYOUT;
+module_param(nowayout, bool, 0);
+MODULE_PARM_DESC(nowayout, "Disable watchdog shutdown on close");
 
 static struct syscore_ops tegra_wdt_syscore_ops;
 
@@ -344,6 +348,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	tegra_wdt->wdt.min_timeout = MIN_WDT_PERIOD * expiry_count;
 	tegra_wdt->wdt.max_timeout = MAX_WDT_PERIOD * expiry_count;
 	watchdog_init_timeout(&tegra_wdt->wdt, heartbeat, &pdev->dev);
+	watchdog_set_nowayout(&tegra_wdt->wdt, nowayout);
 
 	res_src = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	res_wdt = platform_get_resource(pdev, IORESOURCE_MEM, 1);
