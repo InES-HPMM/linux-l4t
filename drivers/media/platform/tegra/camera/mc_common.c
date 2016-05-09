@@ -122,6 +122,9 @@ static int vi_s_ctrl(struct v4l2_ctrl *ctrl)
 		 * TPG control is only avaiable to TPG driver,
 		 * it can't be changed to 0 to disable TPG mode.
 		 */
+		if (!vi->pg_mode)
+			break;
+
 		if (ctrl->val) {
 			dev_info(&vi->ndev->dev, "Set TPG mode to %d\n",
 				 ctrl->val);
