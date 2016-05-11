@@ -292,14 +292,6 @@ static void tegra_spi_clear_status(struct tegra_spi_data *tspi)
 	if (val & SPI_RDY)
 		tegra_spi_writel(tspi, val, SPI_TRANS_STATUS);
 
-	if (tspi->chip_data->intr_mask_reg) {
-		val = tegra_spi_readl(tspi, SPI_INTR_MASK);
-		if (!(val & SPI_INTR_RDY_MASK)) {
-			val |= SPI_INTR_ALL_MASK;
-			tegra_spi_writel(tspi, val, SPI_INTR_MASK);
-		}
-	}
-
 	/* Clear fifo status error if any */
 	tspi->status_reg = tegra_spi_readl(tspi, SPI_FIFO_STATUS);
 	if (tspi->status_reg & SPI_ERR)
@@ -563,7 +555,6 @@ static int tegra_spi_start_dma_based_transfer(
 		struct tegra_spi_data *tspi, struct spi_transfer *t)
 {
 	unsigned long val, cmd1;
-	unsigned long intr_mask;
 	unsigned int len;
 	unsigned long flags;
 	int ret = 0, maxburst;
@@ -596,17 +587,7 @@ static int tegra_spi_start_dma_based_transfer(
 		maxburst = 8;
 	}
 
-	if (tspi->chip_data->intr_mask_reg) {
-		if ((tspi->cur_direction & DATA_DIR_TX) ||
-				(tspi->cur_direction & DATA_DIR_RX)) {
-			intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
-			if (!tspi->polling_mode)
-				intr_mask &= ~(SPI_INTR_ALL_MASK);
-			else
-				intr_mask |= SPI_INTR_ALL_MASK;
-			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
-		}
-	} else {
+	if (!tspi->chip_data->intr_mask_reg) {
 		if (!tspi->polling_mode) {
 			if (tspi->cur_direction & DATA_DIR_TX)
 				val |= SPI_IE_TX;
@@ -683,7 +664,6 @@ static int tegra_spi_start_cpu_based_transfer(
 {
 	unsigned long val;
 	unsigned long flags;
-	unsigned long intr_mask;
 	unsigned cur_words;
 	int ret;
 	u32 speed;
@@ -702,17 +682,7 @@ static int tegra_spi_start_cpu_based_transfer(
 
 	val = 0;
 
-	if (tspi->chip_data->intr_mask_reg) {
-		if ((tspi->cur_direction & DATA_DIR_TX) ||
-				(tspi->cur_direction & DATA_DIR_RX)) {
-			intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
-			if (!tspi->polling_mode)
-				intr_mask &= ~(SPI_INTR_ALL_MASK);
-			else
-				intr_mask |= SPI_INTR_ALL_MASK;
-			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
-		}
-	} else {
+	if (!tspi->chip_data->intr_mask_reg) {
 		if (!tspi->polling_mode) {
 			if (tspi->cur_direction & DATA_DIR_TX)
 				val |= SPI_IE_TX;
@@ -1195,6 +1165,7 @@ static int tegra_spi_setup(struct spi_device *spi)
 	struct tegra_spi_device_controller_data *cdata = spi->controller_data;
 	unsigned long val;
 	unsigned long flags;
+	unsigned long intr_mask;
 	int ret;
 	unsigned int cs_pol_bit[MAX_CHIP_SELECT] = {
 			SPI_CS_POL_INACTIVE_0,
@@ -1247,6 +1218,17 @@ static int tegra_spi_setup(struct spi_device *spi)
 		}
 	}
 
+	if (tspi->chip_data->intr_mask_reg) {
+		if ((tspi->cur_direction & DATA_DIR_TX) ||
+		    (tspi->cur_direction & DATA_DIR_RX)) {
+			intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
+			if (!tspi->polling_mode)
+				intr_mask &= ~(SPI_INTR_ALL_MASK);
+			else
+				intr_mask |= SPI_INTR_ALL_MASK;
+			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
+		}
+	}
 	spin_lock_irqsave(&tspi->lock, flags);
 	val = tspi->def_command1_reg;
 	if (spi->mode & SPI_CS_HIGH)
@@ -2044,6 +2026,7 @@ static int tegra_spi_resume(struct device *dev)
 {
 	struct spi_master *master = dev_get_drvdata(dev);
 	struct tegra_spi_data *tspi = spi_master_get_devdata(master);
+	unsigned long intr_mask;
 	int ret;
 
 	if (tspi->clock_always_on) {
@@ -2061,6 +2044,17 @@ static int tegra_spi_resume(struct device *dev)
 	}
 	tegra_spi_writel(tspi, tspi->command1_reg, SPI_COMMAND1);
 	tegra_spi_writel(tspi, tspi->def_command2_reg, SPI_COMMAND2);
+	if (tspi->chip_data->intr_mask_reg) {
+		if ((tspi->cur_direction & DATA_DIR_TX) ||
+		    (tspi->cur_direction & DATA_DIR_RX)) {
+			intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
+			if (!tspi->polling_mode)
+				intr_mask &= ~(SPI_INTR_ALL_MASK);
+			else
+				intr_mask |= SPI_INTR_ALL_MASK;
+			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
+		}
+	}
 	pm_runtime_put(dev);
 
 	return spi_master_resume(master);
