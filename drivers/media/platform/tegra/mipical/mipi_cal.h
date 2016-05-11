@@ -34,10 +34,10 @@ extern int tegra_mipi_bias_pad_disable(void);
 extern int tegra_mipi_calibration(int lanes);
 extern int tegra_mipi_select_mode(int mode);
 #else
-static int tegra_mipi_bias_pad_enable(void) {return -ENOSYS; }
-static int tegra_mipi_bias_pad_disable(void) {return -ENOSYS; }
-static int tegra_mipi_calibration(int lanes) {return -ENOSYS; }
-static int tegra_mipi_select_mode(int mode) {return -ENOSYS; }
+int tegra_mipi_bias_pad_enable(void) {return -ENOSYS; }
+int tegra_mipi_bias_pad_disable(void) {return -ENOSYS; }
+int tegra_mipi_calibration(int lanes) {return -ENOSYS; }
+int tegra_mipi_select_mode(int mode) {return -ENOSYS; }
 #endif
 
 #endif
