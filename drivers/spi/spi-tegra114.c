@@ -78,6 +78,7 @@
 #define SPI_CONTROL_MODE_3			(3 << 28)
 #define SPI_CONTROL_MODE_MASK			(3 << 28)
 #define SPI_MODE_SEL(x)				(((x) & 0x3) << 28)
+#define SPI_MODE_VAL(x)				(((x) >> 28) & 0x3)
 #define SPI_M_S					(1 << 30)
 #define SPI_PIO					(1 << 31)
 
@@ -966,7 +967,10 @@ static int tegra_spi_start_transfer_one(struct spi_device *spi,
 		else if (req_mode == SPI_MODE_3)
 			command1 |= SPI_CONTROL_MODE_3;
 
-		tegra_spi_writel(tspi, command1, SPI_COMMAND1);
+		/* Apply mode setting before switching chip select */
+		if (SPI_MODE_VAL(command1) !=
+		    SPI_MODE_VAL(tspi->def_command1_reg))
+			tegra_spi_writel(tspi, command1, SPI_COMMAND1);
 
 		/* possibly use the hw based chip select */
 		tspi->is_hw_based_cs = false;
@@ -1254,6 +1258,8 @@ static int tegra_spi_setup(struct spi_device *spi)
 		val &= ~cs_pol_bit[spi->chip_select];
 	else
 		val |= cs_pol_bit[spi->chip_select];
+	if (tspi->def_chip_select == spi->chip_select)
+		val |= SPI_MODE_SEL(spi->mode & 0x3);
 
 	tspi->def_command1_reg = val;
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
