@@ -186,6 +186,7 @@
 #define SPI_SPEED_TAP_DELAY_MARGIN 35000000
 #define SPI_DEFAULT_RX_TAP_DELAY 10
 #define SPI_POLL_TIMEOUT 10000
+#define SPI_AUTOSUSPEND_DELAY 100	/* 100ms */
 
 struct tegra_spi_chip_data {
 	bool intr_mask_reg;
@@ -281,6 +282,17 @@ static inline void tegra_spi_writel(struct tegra_spi_data *tspi,
 	/* Read back register to make sure that register writes completed */
 	if ((reg == SPI_COMMAND1) && (val & SPI_PIO))
 		readl(tspi->base + SPI_COMMAND1);
+}
+
+static inline int tegra_spi_runtime_get(struct tegra_spi_data *tspi)
+{
+	return pm_runtime_get_sync(tspi->dev);
+}
+
+static inline int tegra_spi_runtime_put(struct tegra_spi_data *tspi)
+{
+	pm_runtime_mark_last_busy(tspi->dev);
+	return pm_runtime_put_autosuspend(tspi->dev);
 }
 
 static void tegra_spi_clear_status(struct tegra_spi_data *tspi)
@@ -1192,7 +1204,7 @@ static int tegra_spi_setup(struct spi_device *spi)
 	/* Set speed to the spi max fequency if spi device has not set */
 	spi->max_speed_hz = spi->max_speed_hz ? : tspi->spi_max_frequency;
 
-	ret = pm_runtime_get_sync(tspi->dev);
+	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
 		dev_err(tspi->dev, "pm runtime failed, e = %d\n", ret);
 		return ret;
@@ -1240,7 +1252,7 @@ static int tegra_spi_setup(struct spi_device *spi)
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
-	pm_runtime_put(tspi->dev);
+	tegra_spi_runtime_put(tspi);
 	return 0;
 }
 
@@ -1259,7 +1271,7 @@ static  int tegra_spi_cs_low(struct spi_device *spi,
 			SPI_CS_POL_INACTIVE_3,
 	};
 
-	ret = pm_runtime_get_sync(tspi->dev);
+	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
 		dev_err(tspi->dev, "pm runtime failed, e = %d\n", ret);
 		return ret;
@@ -1279,7 +1291,8 @@ static  int tegra_spi_cs_low(struct spi_device *spi,
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
-	pm_runtime_put(tspi->dev);
+	tegra_spi_runtime_put(tspi);
+
 	return 0;
 }
 
@@ -1450,7 +1463,7 @@ static int tegra_spi_transfer_one_message(struct spi_master *master,
 	if (spi->mode & SPI_CS_HIGH)
 		gval = 0;
 
-	ret = pm_runtime_get_sync(tspi->dev);
+	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
 		dev_err(tspi->dev, "runtime PM get failed: %d\n", ret);
 		msg->status = ret;
@@ -1516,7 +1529,7 @@ exit:
 	if (cdata && gpio_is_valid(cdata->cs_gpio))
 		gpio_set_value(cdata->cs_gpio, gval);
 
-	pm_runtime_put(tspi->dev);
+	tegra_spi_runtime_put(tspi);
 	msg->status = ret;
 	spi_finalize_current_message(master);
 	return ret;
@@ -1913,14 +1926,18 @@ static int tegra_spi_probe(struct platform_device *pdev)
 			goto exit_deinit_dma;
 		}
 	}
-	pm_runtime_enable(&pdev->dev);
-	if (!pm_runtime_enabled(&pdev->dev)) {
-		ret = tegra_spi_runtime_resume(&pdev->dev);
+	pm_runtime_enable(tspi->dev);
+	if (!pm_runtime_enabled(tspi->dev)) {
+		ret = tegra_spi_runtime_resume(tspi->dev);
 		if (ret)
 			goto exit_pm_disable;
 	}
 
-	ret = pm_runtime_get_sync(&pdev->dev);
+	/* set autosuspend delay for the adapter device */
+	pm_runtime_set_autosuspend_delay(tspi->dev, SPI_AUTOSUSPEND_DELAY);
+	pm_runtime_use_autosuspend(tspi->dev);
+
+	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "pm runtime get failed, e = %d\n", ret);
 		goto exit_pm_disable;
@@ -1934,7 +1951,7 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi->def_command1_reg |= SPI_CS_SEL(tspi->def_chip_select);
 	tegra_spi_writel(tspi, tspi->def_command1_reg, SPI_COMMAND1);
 	tspi->def_command2_reg = tegra_spi_readl(tspi, SPI_COMMAND2);
-	pm_runtime_put(&pdev->dev);
+	tegra_spi_runtime_put(tspi);
 
 	ret = devm_request_irq(&pdev->dev, tspi->irq, tegra_spi_isr, 0,
 			dev_name(&pdev->dev), tspi);
@@ -2037,7 +2054,7 @@ static int tegra_spi_resume(struct device *dev)
 		}
 	}
 
-	ret = pm_runtime_get_sync(dev);
+	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
 		dev_err(dev, "pm runtime failed, e = %d\n", ret);
 		return ret;
@@ -2055,7 +2072,7 @@ static int tegra_spi_resume(struct device *dev)
 			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
 		}
 	}
-	pm_runtime_put(dev);
+	tegra_spi_runtime_put(tspi);
 
 	return spi_master_resume(master);
 }
