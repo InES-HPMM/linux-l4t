@@ -1185,7 +1185,6 @@ static int channel_gk20a_alloc_priv_cmdbuf(struct channel_gk20a *c)
 	q->size = q->mem.size / sizeof (u32);
 
 	INIT_LIST_HEAD(&q->free);
-	mutex_init(&q->lock);
 
 	return 0;
 
@@ -1207,13 +1206,11 @@ static void channel_gk20a_free_priv_cmdbuf(struct channel_gk20a *c)
 	gk20a_gmmu_unmap_free(ch_vm, &q->mem);
 
 	/* free free list */
-	mutex_lock(&q->lock);
 	head = &q->free;
 	list_for_each_safe(pos, tmp, head) {
 		e = container_of(pos, struct priv_cmd_entry, list);
 		kfree(e);
 	}
-	mutex_unlock(&q->lock);
 
 	memset(q, 0, sizeof(struct priv_cmd_queue));
 }
@@ -1244,7 +1241,6 @@ int gk20a_channel_alloc_priv_cmdbuf(struct channel_gk20a *c, u32 orig_size,
 	if (size > free_count)
 		return -EAGAIN;
 
-	mutex_lock(&q->lock);
 	if (list_empty(&q->free))
 		e = kzalloc(sizeof(struct priv_cmd_entry), GFP_KERNEL);
 	else {
@@ -1252,7 +1248,6 @@ int gk20a_channel_alloc_priv_cmdbuf(struct channel_gk20a *c, u32 orig_size,
 				 struct priv_cmd_entry, list);
 		list_del(&e->list);
 	}
-	mutex_unlock(&q->lock);
 	if (!e) {
 		gk20a_err(dev_from_gk20a(c->g),
 			"ch %d: fail to allocate priv cmd entry",
@@ -1294,9 +1289,7 @@ static void free_priv_cmdbuf(struct channel_gk20a *c,
 {
 	struct priv_cmd_queue *q = &c->priv_cmd_q;
 
-	mutex_lock(&q->lock);
 	list_add(&e->list, &q->free);
-	mutex_unlock(&q->lock);
 }
 
 int gk20a_alloc_channel_gpfifo(struct channel_gk20a *c,
