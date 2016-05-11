@@ -719,9 +719,9 @@ static int tegra_spi_start_cpu_based_transfer(
 			if (tspi->cur_direction & DATA_DIR_RX)
 				val |= SPI_IE_RX;
 		}
+		tegra_spi_writel(tspi, val, SPI_DMA_CTL);
 	}
 
-	tegra_spi_writel(tspi, val, SPI_DMA_CTL);
 	tspi->dma_control_reg = val;
 
 	if (tspi->boost_reg_access) {
