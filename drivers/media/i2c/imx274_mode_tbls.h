@@ -132,9 +132,6 @@ static const imx274_reg mode_3840X2160[] = {
 	{0x33A6, 0x01},
 	{0x306B, 0x05},
 
-	/* d gain setting */
-	{0x3012, 0x01},
-
 	{0x300E, 0x01},
 
 	{IMX274_TABLE_WAIT_MS, IMX274_WAIT_MS},
@@ -217,8 +214,7 @@ static const imx274_reg mode_3840X2160_60fps[] = {
 	{0x33A6, 0x01},
 	{0x306B, 0x05},
 
-	/* d gain setting */
-	{0x3012, 0x01},
+	{0x300E, 0x00},
 
 	{IMX274_TABLE_WAIT_MS, IMX274_WAIT_MS},
 	{IMX274_TABLE_END, 0x0000}
@@ -299,9 +295,6 @@ static imx274_reg mode_1920X1080[] = {
 	{0x366D, 0x17},
 	{0x33A6, 0x01},
 	{0x306B, 0x05},
-
-	/* d gain setting */
-	{0x3012, 0x01},
 
 	{0x300E, 0x01},
 
@@ -399,7 +392,7 @@ enum {
 };
 
 static const imx274_reg *mode_table[] = {
-	[IMX274_MODE_3840X2160] = mode_3840X2160,
+	[IMX274_MODE_3840X2160] = mode_3840X2160_60fps,
 	[IMX274_MODE_1920X1080] = mode_1920X1080,
 	[IMX274_MODE_1280X720] = mode_1280X720,
 

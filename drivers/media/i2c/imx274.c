@@ -35,7 +35,7 @@
 
 #define IMX274_GAIN_SHIFT		8
 #define IMX274_MIN_GAIN		(1 << IMX274_GAIN_SHIFT)
-#define IMX274_MAX_GAIN		(16 << IMX274_GAIN_SHIFT)
+#define IMX274_MAX_GAIN		(23 << IMX274_GAIN_SHIFT)
 #define IMX274_MIN_FRAME_LENGTH	(0x8ED)
 #define IMX274_MAX_FRAME_LENGTH	(0xB292)
 #define IMX274_MIN_EXPOSURE_COARSE	(0x0001)
@@ -593,6 +593,11 @@ static int imx274_set_gain(struct imx274 *priv, s32 val)
 	dev_dbg(&priv->i2c_client->dev,
 		"%s: val: %d\n", __func__, val);
 
+	if (val < IMX274_MIN_GAIN)
+		val = IMX274_MIN_GAIN;
+	else if (val > IMX274_MAX_GAIN)
+		val = IMX274_MAX_GAIN;
+
 	gain = 2048 - (2048 * IMX274_MIN_GAIN / val);
 
 	imx274_get_gain_reg(reg_list, gain);
@@ -635,7 +640,7 @@ static int imx274_set_frame_length(struct imx274 *priv, s32 val)
 	imx274_read_reg(priv->s_data, IMX274_SVR_ADDR, &svr);
 
 	vmax = (u32)(72000000 /
-			(u32)(frame_rate * IMX274_HMAX * (svr + 1)));
+			(u32)(frame_rate * IMX274_HMAX * (svr + 1))) - 12;
 
 	imx274_get_vmax_regs(reg_list, vmax);
 
