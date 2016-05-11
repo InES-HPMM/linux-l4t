@@ -278,11 +278,11 @@ static inline unsigned long tegra_spi_readl(struct tegra_spi_data *tspi,
 static inline void tegra_spi_writel(struct tegra_spi_data *tspi,
 		unsigned long val, unsigned long reg)
 {
-	writel(val, tspi->base + reg);
-
 	/* Read back register to make sure that register writes completed */
 	if ((reg == SPI_COMMAND1) && (val & SPI_PIO))
 		readl(tspi->base + SPI_COMMAND1);
+
+	writel(val, tspi->base + reg);
 }
 
 static inline int tegra_spi_runtime_get(struct tegra_spi_data *tspi)
