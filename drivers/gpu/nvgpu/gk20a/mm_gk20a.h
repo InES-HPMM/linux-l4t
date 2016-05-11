@@ -1,7 +1,7 @@
 /*
  * GK20A memory management
  *
- * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -156,7 +156,6 @@ struct priv_cmd_queue {
 	u32 size;	/* num of entries in words */
 	u32 put;	/* put for priv cmd queue */
 	u32 get;	/* get for priv cmd queue */
-	struct list_head free;	/* list of buffered entries */
 };
 
 struct priv_cmd_entry {
