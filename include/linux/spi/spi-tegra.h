@@ -29,6 +29,7 @@ struct tegra_spi_platform_data {
 	bool is_clkon_always;
 	bool is_polling_mode;
 	bool boost_reg_access;
+	bool runtime_pm;
 	u8 def_chip_select;
 	int rx_trig_words;
 	int ls_bit;

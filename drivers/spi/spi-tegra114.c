@@ -205,6 +205,7 @@ struct tegra_spi_data {
 	bool					clock_always_on;
 	bool					polling_mode;
 	bool					boost_reg_access;
+	bool					runtime_pm;
 	u32					spi_max_frequency;
 	u32					cur_speed;
 	unsigned				min_div;
@@ -286,11 +287,17 @@ static inline void tegra_spi_writel(struct tegra_spi_data *tspi,
 
 static inline int tegra_spi_runtime_get(struct tegra_spi_data *tspi)
 {
+	if (!tspi->runtime_pm)
+		return 0;
+
 	return pm_runtime_get_sync(tspi->dev);
 }
 
 static inline int tegra_spi_runtime_put(struct tegra_spi_data *tspi)
 {
+	if (!tspi->runtime_pm)
+		return 0;
+
 	pm_runtime_mark_last_busy(tspi->dev);
 	return pm_runtime_put_autosuspend(tspi->dev);
 }
@@ -1723,6 +1730,11 @@ static struct tegra_spi_platform_data *tegra_spi_parse_dt(
 	if (of_find_property(np, "nvidia,boost-reg-access", NULL))
 		pdata->boost_reg_access = true;
 
+	if (of_find_property(np, "nvidia,disable-runtime-pm", NULL))
+		pdata->runtime_pm = false;
+	else
+		pdata->runtime_pm = true;
+
 	ret = of_property_read_u32(np, "nvidia,maximum-dma-buffer-size", &pval);
 	if (!ret)
 		pdata->max_dma_buffer_size = pval;
@@ -1841,6 +1853,9 @@ static int tegra_spi_probe(struct platform_device *pdev)
 	tspi->clock_always_on = pdata->is_clkon_always;
 	tspi->polling_mode = pdata->is_polling_mode;
 	tspi->boost_reg_access = pdata->boost_reg_access;
+	tspi->runtime_pm = pdata->runtime_pm;
+	if (!tspi->runtime_pm)
+		tspi->clock_always_on = true;
 	tspi->def_chip_select = pdata->def_chip_select;
 	tspi->dev = &pdev->dev;
 
@@ -1926,16 +1941,19 @@ static int tegra_spi_probe(struct platform_device *pdev)
 			goto exit_deinit_dma;
 		}
 	}
-	pm_runtime_enable(tspi->dev);
-	if (!pm_runtime_enabled(tspi->dev)) {
-		ret = tegra_spi_runtime_resume(tspi->dev);
-		if (ret)
-			goto exit_pm_disable;
-	}
+	if (tspi->runtime_pm) {
+		pm_runtime_enable(tspi->dev);
+		if (!pm_runtime_enabled(tspi->dev)) {
+			ret = tegra_spi_runtime_resume(tspi->dev);
+			if (ret)
+				goto exit_pm_disable;
+		}
 
-	/* set autosuspend delay for the adapter device */
-	pm_runtime_set_autosuspend_delay(tspi->dev, SPI_AUTOSUSPEND_DELAY);
-	pm_runtime_use_autosuspend(tspi->dev);
+		/* set autosuspend delay for the adapter device */
+		pm_runtime_set_autosuspend_delay(tspi->dev,
+						 SPI_AUTOSUSPEND_DELAY);
+		pm_runtime_use_autosuspend(tspi->dev);
+	}
 
 	ret = tegra_spi_runtime_get(tspi);
 	if (ret < 0) {
