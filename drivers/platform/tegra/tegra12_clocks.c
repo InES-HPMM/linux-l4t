@@ -1,7 +1,7 @@
 /*
  * drivers/platform/tegra/tegra12_clocks.c
  *
- * Copyright (C) 2011-2015 NVIDIA Corporation. All rights reserved.
+ * Copyright (C) 2011-2016 NVIDIA Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8507,6 +8507,8 @@ static struct clk tegra_visp_clks[] = {
 
 	SHARED_CLK("ispa.isp.c4bus",	"ispa.isp",	NULL,	&tegra_visp_clks[1], "ispa", 0, 0),
 	SHARED_CLK("ispb.isp.c4bus",	"ispb.isp",	NULL,	&tegra_visp_clks[1], "ispb", 0, 0),
+	SHARED_CLK("vi_v4l2.c4bus",	"vi",		NULL,	&tegra_visp_clks[0], "vi", 0, 0),
+	SHARED_CLK("vi_bypass.c4bus",	"tegra_vi",	NULL,	&tegra_visp_clks[0], "vi", 0, 0),
 };
 
 /* XUSB clocks */
@@ -8680,7 +8682,6 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("pll_p_out5", "tegra_gk20a.0", "pwr"),
 	CLK_DUPLICATE("ispa.isp.c4bus", "tegra_isp.0", "isp"),
 	CLK_DUPLICATE("ispb.isp.c4bus", "tegra_isp.1", "isp"),
-	CLK_DUPLICATE("vi.c4bus", "tegra_vi", "vi"),
 	CLK_DUPLICATE("csi", "tegra_vi", "csi"),
 	CLK_DUPLICATE("csus", "tegra_vi", "csus"),
 	CLK_DUPLICATE("vim2_clk", "tegra_vi", "vim2_clk"),
