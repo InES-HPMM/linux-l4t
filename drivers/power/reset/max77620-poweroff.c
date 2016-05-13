@@ -1,7 +1,7 @@
 /*
  * Power off driver for Maxim MAX77620 device.
  *
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author: Chaitanya Bandi <bandik@nvidia.com>
  *
@@ -289,6 +289,10 @@ static int max77620_restart_notify(struct notifier_block *nb,
 
 	max77620_poweroff = container_of(nb, struct max77620_poweroff,
 					reset_nb);
+
+	if (!max77620_poweroff->ngpio_states)
+		return NOTIFY_OK;
+
 	max77620_prepare_system_power_off(max77620_poweroff);
 	return NOTIFY_OK;
 };
