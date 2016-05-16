@@ -378,11 +378,15 @@ static struct reg_8 *mode_table[] = {
 	[IMX219_MODE_1280x720]  = mode_1280x720,
 };
 
+static const int imx219_21fps[] = {
+	20,
+};
+
 static const struct camera_common_frmfmt imx219_frmfmt[] = {
-	{{3280, 2464},	0, IMX219_MODE_3280x2464},
-	{{3280, 2460},	0, IMX219_MODE_3280x2460},
-	{{3280, 1846},	0, IMX219_MODE_3280x1846},
-	{{1280, 720},	0, IMX219_MODE_1280x720},
+	{{3280, 2464},	imx219_21fps, 1, 0, IMX219_MODE_3280x2464},
+	{{3280, 2460},	imx219_21fps, 1, 0, IMX219_MODE_3280x2460},
+	{{3280, 1846},	imx219_21fps, 1, 0, IMX219_MODE_3280x1846},
+	{{1280, 720},	NULL, 0, 0, IMX219_MODE_1280x720},
 };
 
 #endif
