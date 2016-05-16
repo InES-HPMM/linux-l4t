@@ -4079,8 +4079,16 @@ static ov23850_reg *mode_table[] = {
 	[OV23850_MODE_TEST_PATTERN] = tp_colorbars,
 };
 
+static const int ov23850_20fps[] = {
+	20,
+};
+
+static const int ov23850_30fps[] = {
+	30,
+};
+
 static const struct camera_common_frmfmt ov23850_frmfmt[] = {
-	{{5632, 4224},	NULL, 0, 0, OV23850_MODE_5632X4224},
-	{{5632, 3168},	NULL, 0, 0, OV23850_MODE_5632X3168},
+	{{5632, 4224}, ov23850_20fps, 1, 0, OV23850_MODE_5632X4224},
+	{{5632, 3168}, ov23850_30fps, 1, 0, OV23850_MODE_5632X3168},
 };
 #endif  /* __OV23850_I2C_TABLES__ */
