@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/ext/dev.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * Author: Robert Morell <rmorell@nvidia.com>
  * Some code based on fbdev extensions written by:
@@ -283,9 +283,11 @@ int tegra_dc_ext_disable(struct tegra_dc_ext *ext)
 		}
 
 		tegra_dc_blank(ext->dc, windows);
-		for_each_set_bit(i, &windows, DC_N_WINDOWS) {
-			tegra_dc_ext_unpin_window(&ext->win[i]);
-		}
+#if !defined(CONFIG_FRAMEBUFFER_CONSOLE)
+			for_each_set_bit(i, &windows, DC_N_WINDOWS) {
+				tegra_dc_ext_unpin_window(&ext->win[i]);
+			}
+#endif
 	}
 
 	return !!windows;
