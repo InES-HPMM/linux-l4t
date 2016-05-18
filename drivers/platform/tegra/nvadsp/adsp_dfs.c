@@ -36,7 +36,7 @@ void actmon_rate_change(unsigned long freq)
 
 #define MBOX_TIMEOUT 1000 /* in ms */
 #define HOST_ADSP_DFS_MBOX_ID 3
-#define BOOST_COUNT 10
+
 enum adsp_dfs_reply {
 	ACK,
 	NACK,
@@ -67,10 +67,7 @@ static unsigned long adsp_cpu_freq_table[] = {
 
 struct adsp_dfs_policy {
 	bool enable;
-/* count to override adsp dynamic freq scaling using actmon */
-	u32 instant_boost_count;
-/*
- * update_freq_flag = TRUE, ADSP ACKed the new freq
+/* update_freq_flag = TRUE, ADSP ACKed the new freq
  *		= FALSE, ADSP NACKed the new freq
  */
 	bool update_freq_flag;
@@ -89,6 +86,7 @@ struct adsp_dfs_policy {
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *root;
 #endif
+	unsigned long ovr_freq;
 };
 
 struct adsp_freq_stats {
@@ -114,12 +112,12 @@ static bool is_os_running(struct device *dev)
 	struct nvadsp_drv_data *drv_data = platform_get_drvdata(pdev);
 
 	if (!drv_data->adsp_os_running) {
-		dev_dbg(dev, "%s: adsp os is not loaded\n", __func__);
+		dev_dbg(&pdev->dev, "%s: adsp os is not loaded\n", __func__);
 		return false;
 	}
 	return true;
 }
-
+/* Expects and returns freq in Hz as table is formmed in terms of Hz */
 static unsigned long adsp_get_target_freq(unsigned long tfreq, int *index)
 {
 	int i;
@@ -170,7 +168,13 @@ static int adsp_dfs_rc_callback(
 	adsp_get_target_freq(rate, &new_index);
 	if (old_index != new_index)
 		freq_stats.last_index = new_index;
-	actmon_rate_change(freq);
+
+	if (policy->ovr_freq && freq == policy->ovr_freq) {
+		/* Re-init ACTMON when user requested override freq is met */
+		actmon_rate_change(freq, true);
+		policy->ovr_freq = 0;
+	} else
+		actmon_rate_change(freq, false);
 
 	return NOTIFY_OK;
 };
@@ -556,6 +560,7 @@ err_out:
 	return ret;
 }
 #endif
+
 /*
  * Set target freq.
  * @params:
@@ -570,11 +575,6 @@ void adsp_cpu_set_rate(unsigned long freq)
 		goto exit_out;
 	}
 
-	if (policy->instant_boost_count && freq < policy->cur) {
-		freq = policy->cur;
-		policy->instant_boost_count--;
-	}
-
 	if (freq < policy->min)
 		freq = policy->min;
 	else if (freq > policy->max)
@@ -588,41 +588,53 @@ exit_out:
 }
 
 /*
- * Enable/disable DFS and set target freq.
+ * Override adsp freq and reinit actmon counters
  *
  * @params:
  * freq: adsp freq in KHz
- * dfs:
- *		0 - disable dynamic scaling and set constant freq
- *		1 - enable dynamic scaling and override adsp freq
- *		with passed value BOOST_COUNT times
+ * return - final freq got set.
+ *		- 0, incase of error.
+ *
  */
-void adsp_update_dfs(unsigned long freq, bool dfs)
+unsigned long adsp_override_freq(unsigned long freq)
 {
+	int index;
+	unsigned long ret_freq = 0;
+
 	mutex_lock(&policy_mutex);
-
-	if (dfs) {
-		policy->enable = true;
-		policy->instant_boost_count = BOOST_COUNT;
-	} else
-		policy->enable = false;
-
-	if (freq == policy->cur) {
-		dev_info(device, "old and target_freq is same, exit out\n");
-		goto exit_out;
-	}
 
 	if (freq < policy->min)
 		freq = policy->min;
 	else if (freq > policy->max)
 		freq = policy->max;
-	freq = update_freq(freq);
-	if (freq)
-		policy->cur = freq;
+
+	freq = adsp_get_target_freq(freq * 1000, &index);
+	if (!freq) {
+		dev_warn(device, "unable get the target freq\n");
+		goto exit_out;
+	}
+	freq = freq / 1000; /* In KHz */
+
+	if (freq == policy->cur) {
+		ret_freq = freq;
+		goto exit_out;
+	}
+
+	policy->ovr_freq = freq;
+	ret_freq = update_freq(freq);
+	if (ret_freq)
+		policy->cur = ret_freq;
+
+	if (ret_freq != freq) {
+		dev_warn(device, "freq override to %lu rejected\n", freq);
+		policy->ovr_freq = 0;
+		goto exit_out;
+	}
+
 exit_out:
 	mutex_unlock(&policy_mutex);
+	return ret_freq;
 }
-
 
 /*
  * Set min ADSP freq.
@@ -633,6 +645,14 @@ exit_out:
 void adsp_update_dfs_min_rate(unsigned long freq)
 {
 	policy_min_set(NULL, freq);
+}
+
+/* Enable / disable dynamic freq scaling */
+void adsp_update_dfs(bool val)
+{
+	mutex_lock(&policy_mutex);
+	policy->enable = val;
+	mutex_unlock(&policy_mutex);
 }
 
 /* Should be called after ADSP os is loaded */

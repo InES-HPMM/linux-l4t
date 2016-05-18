@@ -348,21 +348,31 @@ static inline long wait_for_nvadsp_app_complete_timeout(nvadsp_app_info_t *info,
 
 #ifdef CONFIG_TEGRA_ADSP_DFS
 /*
- * Set adsp freq.
- * It sets adsp freq and communicate ADSP OS to adjust the timers.
- * Disable dfs if adsp is requried to run at constant freq.
- * freq : freq in KHz
- * dfs : 0 for disable, 1 for enable
+ * Override adsp freq and reinit actmon counters
+ *
+ * @params:
+ * freq: adsp freq in KHz
+ * return - final freq got set.
+ *		- 0, incase of error.
+ *
  */
-void adsp_update_dfs(unsigned long freq, bool dfs);
+unsigned long adsp_override_freq(unsigned long freq);
 void adsp_update_dfs_min_rate(unsigned long freq);
+
+/* Enable / disable dynamic freq scaling */
+void adsp_update_dfs(bool enable);
 #else
-static inline void adsp_update_dfs(unsigned long freq, bool dfs)
+static inline unsigned long adsp_override_freq(unsigned long freq)
+{
+	return 0;
+}
+
+static inline void adsp_update_dfs_min_rate(unsigned long freq)
 {
 	return;
 }
 
-static inline void adsp_update_dfs_min_rate(unsigned long freq)
+static inline void adsp_update_dfs(bool enable)
 {
 	return;
 }

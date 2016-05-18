@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -225,7 +225,7 @@ static inline void actmon_dev_wmark_set(struct actmon_dev *dev)
 {
 	u32 val;
 	unsigned long freq = (dev->type == ACTMON_FREQ_SAMPLER) ?
-				 dev->target_freq : apemon->freq;
+				 dev->cur_freq : apemon->freq;
 
 	val = freq * apemon->sampling_period;
 
@@ -778,19 +778,31 @@ err_out:
 #endif
 
 /* freq in KHz */
-void actmon_rate_change(unsigned long freq)
+void actmon_rate_change(unsigned long freq, bool override)
 {
 	struct actmon_dev *dev = &actmon_dev_adsp;
 	unsigned long flags;
 
-	spin_lock_irqsave(&dev->lock, flags);
-	dev->cur_freq = freq;
-	if (dev->state == ACTMON_ON && dev->type == ACTMON_FREQ_SAMPLER) {
+	if (override) {
+		actmon_dev_disable(dev);
+		spin_lock_irqsave(&dev->lock, flags);
+		dev->cur_freq = freq;
+		dev->avg_count = freq * apemon->sampling_period;
+		actmon_writel(dev->avg_count, offs(ACTMON_DEV_INIT_AVG));
+		actmon_dev_avg_wmark_set(dev);
 		actmon_dev_wmark_set(dev);
 		actmon_wmb();
+		spin_unlock_irqrestore(&dev->lock, flags);
+		actmon_dev_enable(dev);
+	} else {
+		spin_lock_irqsave(&dev->lock, flags);
+		dev->cur_freq = freq;
+		if (dev->state == ACTMON_ON) {
+			actmon_dev_wmark_set(dev);
+			actmon_wmb();
+		}
+		spin_unlock_irqrestore(&dev->lock, flags);
 	}
-	spin_unlock_irqrestore(&dev->lock, flags);
-
 	/* change ape rate as half of adsp rate */
 	clk_set_rate(apemon->clk, freq * 500);
 };
