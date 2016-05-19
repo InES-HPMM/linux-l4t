@@ -658,6 +658,38 @@ static int imx2xx_g_crop(struct v4l2_subdev *sd, struct v4l2_crop *crop)
 	return err;
 }
 
+static int imx2xx_get_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+		struct v4l2_subdev_format *format)
+{
+	return camera_common_g_fmt(sd, &format->format);
+}
+
+static int imx2xx_set_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+	struct v4l2_subdev_format *format)
+{
+	int ret;
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		ret = camera_common_try_fmt(sd, &format->format);
+	else
+		ret = camera_common_s_fmt(sd, &format->format);
+
+	return ret;
+}
+
+static int imx2xx_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct imx2xx *priv = (struct imx2xx *)s_data->priv;
+	struct camera_common_power_rail *pw = &priv->power;
+
+	*status = pw->state == SWITCH_ON;
+	return 0;
+}
+
 static struct v4l2_subdev_video_ops imx2xx_subdev_video_ops = {
 	.s_stream	= imx2xx_s_stream,
 	.s_crop		= imx2xx_s_crop,
@@ -669,6 +701,7 @@ static struct v4l2_subdev_video_ops imx2xx_subdev_video_ops = {
 	.g_mbus_config	= camera_common_g_mbus_config,
 	.enum_framesizes	= camera_common_enum_framesizes,
 	.enum_frameintervals	= camera_common_enum_frameintervals,
+	.g_input_status		= imx2xx_g_input_status,
 };
 
 static struct v4l2_subdev_core_ops imx2xx_subdev_core_ops = {
@@ -677,6 +710,8 @@ static struct v4l2_subdev_core_ops imx2xx_subdev_core_ops = {
 
 static struct v4l2_subdev_pad_ops imx2xx_subdev_pad_ops = {
 	.enum_mbus_code = camera_common_enum_mbus_code,
+	.set_fmt	= imx2xx_set_fmt,
+	.get_fmt	= imx2xx_get_fmt,
 };
 
 static struct v4l2_subdev_ops imx2xx_subdev_ops = {
