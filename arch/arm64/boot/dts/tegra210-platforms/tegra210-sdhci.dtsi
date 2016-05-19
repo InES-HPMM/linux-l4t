@@ -17,7 +17,7 @@
  */
 
 / {
-	sdhci@700b0600 {
+	sdhci3: sdhci@700b0600 {
 		tap-delay = <0>;
 		trim-delay = <8>;
 		nvidia,is-ddr-tap-delay;
@@ -38,7 +38,7 @@
 		pll_source = "pll_p";
 	};
 
-	sdhci@700b0400 {
+	sdhci2: sdhci@700b0400 {
 		tap-delay = <1>;
 		trim-delay = <3>;
 		max-clk-limit = <204000000>;
@@ -53,7 +53,7 @@
 		nvidia,en-periodic-calib;
 	};
 
-	sdhci@700b0200 {
+	sdhci1: sdhci@700b0200 {
 		tap-delay = <0>;
 		trim-delay = <8>;
 		mmc-ocr-mask = <0>;
@@ -69,7 +69,7 @@
 		nvidia,en-io-trim-volt;
 	};
 
-	sdhci@700b0000 {
+	sdhci0: sdhci@700b0000 {
 		tap-delay = <4>;
 		trim-delay = <2>;
 		max-clk-limit = <204000000>;
