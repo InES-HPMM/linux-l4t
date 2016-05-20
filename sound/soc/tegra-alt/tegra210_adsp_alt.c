@@ -346,8 +346,24 @@ static void tegra210_adsp_deinit(struct tegra210_adsp *adsp)
 {
 	mutex_lock(&adsp->mutex);
 	if (adsp->init_done) {
-		nvadsp_os_stop();
+		int i;
 		adsp->init_done = 0;
+		adsp->adsp_started = 0;
+		bitmap_zero(adsp->adma_usage, TEGRA210_ADSP_ADMA_CHANNEL_COUNT);
+
+		for (i = 0; i < TEGRA210_ADSP_VIRT_REG_MAX; i++) {
+			struct tegra210_adsp_app *app = &adsp->apps[i];
+			app->connect = 0;
+			app->priority = 0;
+			app->min_adsp_clock = 0;
+			app->info = NULL;
+			app->plugin = NULL;
+			if (IS_APM_IN(app->reg))
+				nvadsp_mbox_close(&app->apm_mbox);
+		}
+
+		memset(adsp->reg_val, 0, sizeof(adsp->reg_val));
+		nvadsp_os_stop();
 	}
 	mutex_unlock(&adsp->mutex);
 }
@@ -365,6 +381,11 @@ static int tegra210_adsp_send_msg(struct tegra210_adsp_app *app,
 				  apm_msg_t *apm_msg, uint32_t flags)
 {
 	int ret = 0;
+
+	if (!app->adsp->adsp_started) {
+		pr_err("ADSP not running, not sending message");
+		return 0;
+	}
 
 	if (flags & TEGRA210_ADSP_MSG_FLAG_NEED_ACK) {
 		if (flags & TEGRA210_ADSP_MSG_FLAG_HOLD) {
@@ -391,8 +412,8 @@ static int tegra210_adsp_send_msg(struct tegra210_adsp_app *app,
 		ret = msgq_queue_message(&app->apm->msgq_recv.msgq,
 				&apm_msg->msgq_msg);
 		if (ret < 0) {
-			pr_err("%s: Failed to queue message ret %d\n",
-				__func__, ret);
+			pr_err("%s: Failed to queue message app %d ret %d\n",
+				__func__, app->reg, ret);
 			return ret;
 		}
 	}
@@ -698,7 +719,7 @@ static int tegra210_adsp_connect_apm(struct tegra210_adsp *adsp,
 		src->reg, app->reg);
 
 	ret = tegra210_adsp_send_connect_msg(src, app,
-		TEGRA210_ADSP_MSG_FLAG_SEND);
+		TEGRA210_ADSP_MSG_FLAG_SEND | TEGRA210_ADSP_MSG_FLAG_NEED_ACK);
 	if (ret < 0) {
 		dev_err(adsp->dev, "Connect msg failed. err %d.", ret);
 		return ret;
@@ -759,7 +780,7 @@ static int tegra210_adsp_connect_plugin(struct tegra210_adsp *adsp,
 		src->reg, app->reg);
 
 	ret = tegra210_adsp_send_connect_msg(src, app,
-		TEGRA210_ADSP_MSG_FLAG_SEND);
+		TEGRA210_ADSP_MSG_FLAG_SEND | TEGRA210_ADSP_MSG_FLAG_NEED_ACK);
 	if (ret < 0) {
 		dev_err(adsp->dev, "Connect msg failed. err %d.", ret);
 		return ret;
@@ -791,7 +812,8 @@ static void tegra210_adsp_manage_plugin(struct tegra210_adsp *adsp,
 				dev_vdbg(adsp->dev, "Remove playback FE %d -- BE %d pair",
 					fe_reg, be_reg);
 				tegra210_adsp_send_remove_msg(fe_apm,
-						TEGRA210_ADSP_MSG_FLAG_SEND);
+					TEGRA210_ADSP_MSG_FLAG_SEND |
+					TEGRA210_ADSP_MSG_FLAG_NEED_ACK);
 				adsp->pcm_path[fe_reg][SNDRV_PCM_STREAM_PLAYBACK].fe_reg = 0;
 				adsp->pcm_path[fe_reg][SNDRV_PCM_STREAM_PLAYBACK].be_reg = 0;
 			} else {
@@ -816,7 +838,8 @@ static void tegra210_adsp_manage_plugin(struct tegra210_adsp *adsp,
 				dev_vdbg(adsp->dev, "Remove record FE %d -- BE %d pair",
 					fe_reg, be_reg);
 				tegra210_adsp_send_remove_msg(fe_apm,
-						TEGRA210_ADSP_MSG_FLAG_SEND);
+					TEGRA210_ADSP_MSG_FLAG_SEND |
+					TEGRA210_ADSP_MSG_FLAG_NEED_ACK);
 				adsp->pcm_path[fe_reg][SNDRV_PCM_STREAM_CAPTURE].fe_reg = 0;
 				adsp->pcm_path[fe_reg][SNDRV_PCM_STREAM_CAPTURE].be_reg = 0;
 			} else {
@@ -1208,7 +1231,7 @@ static int tegra210_adsp_compr_copy(struct snd_compr_stream *cstream,
 
 	dev_vdbg(prtd->dev, "%s : size %d", __func__, (uint32_t)count);
 
-	if (!count)
+	if (!prtd->fe_apm->adsp->adsp_started || !count)
 		return 0;
 
 	app_pointer = div64_u64(runtime->total_bytes_available,
@@ -1243,7 +1266,12 @@ static int tegra210_adsp_compr_pointer(struct snd_compr_stream *cstream,
 		snd_soc_platform_get_drvdata(rtd->platform);
 	struct tegra210_adsp_app *app = prtd->fe_apm;
 	nvfx_shared_state_t *shared = &app->apm->nvfx_shared_state;
-	uint32_t frames_played = ((shared->output[0].bytes >> 2) *
+	uint32_t frames_played;
+
+	if (!adsp->adsp_started)
+		return -ENODEV;
+
+	frames_played = ((shared->output[0].bytes >> 2) *
 		snd_pcm_rate_bit_to_rate(prtd->codec.sample_rate)) /
 		adsp->i2s_rate;
 
@@ -1527,6 +1555,9 @@ static snd_pcm_uframes_t tegra210_adsp_pcm_pointer(
 	struct tegra210_adsp_app *app = prtd->fe_apm;
 	size_t bytes, pos;
 
+	if (!app->adsp->adsp_started)
+		return -ENODEV;
+
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		bytes = app->apm->nvfx_shared_state.output[0].bytes;
 	else
@@ -1700,7 +1731,7 @@ static int tegra210_adsp_runtime_suspend(struct device *dev)
 
 	dev_dbg(adsp->dev, "%s\n", __func__);
 
-	if (!adsp->init_done)
+	if (!adsp->adsp_started)
 		return 0;
 
 	/* Check for msgq empty before suspend */
