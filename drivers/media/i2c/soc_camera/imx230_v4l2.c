@@ -596,6 +596,8 @@ static struct v4l2_subdev_video_ops imx230_subdev_video_ops = {
 	.try_mbus_fmt	= camera_common_try_fmt,
 	.enum_mbus_fmt	= camera_common_enum_fmt,
 	.g_mbus_config	= camera_common_g_mbus_config,
+	.enum_framesizes	= camera_common_enum_framesizes,
+	.enum_frameintervals	= camera_common_enum_frameintervals,
 };
 
 static struct v4l2_subdev_core_ops imx230_subdev_core_ops = {
@@ -1378,6 +1380,7 @@ static int imx230_probe(struct i2c_client *client,
 	common_data->ctrl_handler	= &priv->ctrl_handler;
 	common_data->i2c_client		= client;
 	common_data->frmfmt		= &imx230_frmfmt[0];
+	common_data->color_fmts		= imx230_color_fmts;
 	common_data->colorfmt		= camera_common_find_datafmt(
 					  IMX230_DEFAULT_DATAFMT);
 	common_data->ctrls		= priv->ctrls;
@@ -1385,6 +1388,7 @@ static int imx230_probe(struct i2c_client *client,
 	common_data->priv		= (void *)priv;
 	common_data->ident		= V4L2_IDENT_IMX230;
 	common_data->numfmts		= ARRAY_SIZE(imx230_frmfmt);
+	common_data->num_color_fmts	= ARRAY_SIZE(imx230_color_fmts);
 	common_data->def_mode		= IMX230_DEFAULT_MODE;
 	common_data->def_width		= IMX230_DEFAULT_WIDTH;
 	common_data->def_height		= IMX230_DEFAULT_HEIGHT;

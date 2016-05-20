@@ -39,8 +39,12 @@ const struct imx_sensor_data {
 	imx2xx_reg **imx_mode_table;
 	/* Mode data structure for common layer */
 	const struct camera_common_frmfmt *imx_frmfmt;
+	/* Color fmt data structure for common layer */
+	const struct camera_common_colorfmt *imx_color_fmts;
 	/* Number of sensor modes */
 	int imx_frmcnt;
+	/* Number of color fmts */
+	int imx_num_color_fmts;
 	/* OTP size */
 	int imx_otp_num_pages;
 	/* Fuse ID location */
@@ -53,7 +57,9 @@ const struct imx_sensor_data imx214_sensor_data = {
 	.imx_name = "imx214",
 	.imx_mode_table = imx214_mode_table,
 	.imx_frmfmt = imx214_frmfmt,
+	.imx_color_fmts = imx230_color_fmts,
 	.imx_frmcnt = ARRAY_SIZE(imx214_frmfmt),
+	.imx_num_color_fmts = ARRAY_SIZE(imx230_color_fmts),
 	.imx_otp_num_pages = 16,
 	.imx_fuse_id_pg_num = 19,
 	.imx_fuse_id_reg_start = 0x0A36,
@@ -64,7 +70,9 @@ const struct imx_sensor_data imx230_sensor_data = {
 	.imx_name = "imx230",
 	.imx_mode_table = imx230_mode_table,
 	.imx_frmfmt = imx230_frmfmt,
+	.imx_color_fmts = imx230_color_fmts,
 	.imx_frmcnt = ARRAY_SIZE(imx230_frmfmt),
+	.imx_num_color_fmts = ARRAY_SIZE(imx230_color_fmts),
 	.imx_otp_num_pages = 18,
 	.imx_fuse_id_pg_num = 31,
 	.imx_fuse_id_reg_start = 0x0A36,
@@ -659,6 +667,8 @@ static struct v4l2_subdev_video_ops imx2xx_subdev_video_ops = {
 	.try_mbus_fmt	= camera_common_try_fmt,
 	.enum_mbus_fmt	= camera_common_enum_fmt,
 	.g_mbus_config	= camera_common_g_mbus_config,
+	.enum_framesizes	= camera_common_enum_framesizes,
+	.enum_frameintervals	= camera_common_enum_frameintervals,
 };
 
 static struct v4l2_subdev_core_ops imx2xx_subdev_core_ops = {
@@ -1588,6 +1598,7 @@ static int imx2xx_probe(struct i2c_client *client,
 	common_data->ctrl_handler	= &priv->ctrl_handler;
 	common_data->i2c_client		= client;
 	common_data->frmfmt		= priv->sensor_data->imx_frmfmt;
+	common_data->color_fmts		= priv->sensor_data->imx_color_fmts;
 	common_data->colorfmt		= camera_common_find_datafmt(
 					  V4L2_MBUS_FMT_SRGGB10_1X10);
 	common_data->ctrls		= priv->ctrls;
@@ -1595,6 +1606,7 @@ static int imx2xx_probe(struct i2c_client *client,
 	common_data->priv		= (void *)priv;
 	common_data->numctrls		= ARRAY_SIZE(ctrl_config_list);
 	common_data->numfmts		= priv->sensor_data->imx_frmcnt;
+	common_data->num_color_fmts	= priv->sensor_data->imx_num_color_fmts;
 
 	priv->i2c_client		= client;
 	priv->subdev			= &common_data->subdev;

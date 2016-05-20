@@ -616,6 +616,18 @@ static imx2xx_reg imx230_mode_table_common[] = {
 	{IMX2XX_TABLE_END, 0x00}
 };
 
+static const int imx230_mode_2672x1600_fr[] = {
+	58,
+};
+
+static const int imx230_mode_5344x3200_fr[] = {
+	30,
+};
+
+static const int imx230_mode_5344x4016_fr[] = {
+	21,
+};
+
 enum {
 	IMX230_MODE_2672x1600 = IMX2XX_SENSOR_MODE_BEGIN,
 	IMX230_MODE_5344x3200,
@@ -634,9 +646,17 @@ static imx2xx_reg *imx230_mode_table[] = {
 };
 
 static const struct camera_common_frmfmt imx230_frmfmt[] = {
-	{{2672, 1600},	0, IMX230_MODE_2672x1600},
-	{{5344, 3200},	0, IMX230_MODE_5344x3200},
-	{{5344, 4016},	0, IMX230_MODE_5344x4016},
+	{{2672, 1600},	imx230_mode_2672x1600_fr, 1, 0, IMX230_MODE_2672x1600},
+	{{5344, 3200},	imx230_mode_5344x3200_fr, 1, 0, IMX230_MODE_5344x3200},
+	{{5344, 4016},	imx230_mode_5344x4016_fr, 1, 0, IMX230_MODE_5344x4016},
+};
+
+static const struct camera_common_colorfmt imx230_color_fmts[] = {
+	{
+		V4L2_MBUS_FMT_SRGGB10_1X10,
+		V4L2_COLORSPACE_SRGB,
+		V4L2_PIX_FMT_SRGGB10,
+	},
 };
 
 #endif  /* __IMX230_I2C_TABLES__ */
