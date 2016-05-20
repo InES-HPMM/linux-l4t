@@ -1511,7 +1511,7 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 		udelay(10);
 		if (--calib_timeout == 0) {
 			pr_err("%s: timeout for CAL_DONE set\n", __func__);
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & S0_CTL2_PLL0_CAL_DONE));
 
@@ -1524,7 +1524,7 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 		udelay(10);
 		if (--calib_timeout == 0) {
 			pr_err("%s: timeout for CAL_DONE clear\n", __func__);
-			return -EBUSY;
+			break;
 		}
 	} while (val & S0_CTL2_PLL0_CAL_DONE);
 
@@ -1537,7 +1537,7 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 		udelay(10);
 		if (--calib_timeout == 0) {
 			pr_err("%s: timeout for LOCKDET set\n", __func__);
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & S0_CTL1_PLL0_LOCKDET_STATUS));
 
@@ -1553,7 +1553,7 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 		udelay(10);
 		if (--calib_timeout == 0) {
 			pr_err("%s: timeout for RCAL_DONE set\n", __func__);
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & S0_CTL8_PLL0_RCAL_DONE));
 
@@ -1566,7 +1566,7 @@ int t210_sata_uphy_pll_init(bool sata_used_by_xusb)
 		udelay(10);
 		if (--calib_timeout == 0) {
 			pr_err("%s: timeout for RCAL_DONE clear\n", __func__);
-			return -EBUSY;
+			break;
 		}
 	} while (val & S0_CTL8_PLL0_RCAL_DONE);
 
@@ -1686,7 +1686,7 @@ static int tegra_xusb_padctl_phy_enable(void)
 		udelay(10);
 		if (--timeout == 0) {
 			pr_err("PCIe error: timeout for PLL0_CAL_DONE set\n");
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & XUSB_PADCTL_UPHY_PLL_P0_CTL2_PLL0_CAL_DONE));
 
@@ -1700,7 +1700,7 @@ static int tegra_xusb_padctl_phy_enable(void)
 		udelay(10);
 		if (--timeout == 0) {
 			pr_err("PCIe error: timeout for PLL0_CAL_DONE cleared\n");
-			return -EBUSY;
+			break;
 		}
 	} while (val & XUSB_PADCTL_UPHY_PLL_P0_CTL2_PLL0_CAL_DONE);
 
@@ -1716,7 +1716,7 @@ static int tegra_xusb_padctl_phy_enable(void)
 		udelay(10);
 		if (--timeout == 0) {
 			pr_err("Tegra PCIe error: timeout waiting for PLL\n");
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & XUSB_PADCTL_UPHY_PLL_P0_CTL1_PLL0_LOCKDET_STATUS));
 
@@ -1732,7 +1732,7 @@ static int tegra_xusb_padctl_phy_enable(void)
 		udelay(1);
 		if (--timeout == 0) {
 			pr_err("PCIe error: timeout for PLL0_RCAL_DONE set\n");
-			return -EBUSY;
+			break;
 		}
 	} while (!(val & XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_DONE));
 
@@ -1746,7 +1746,7 @@ static int tegra_xusb_padctl_phy_enable(void)
 		udelay(1);
 		if (--timeout == 0) {
 			pr_err("PCIe error: timeout for PLL0_RCAL_DONE cleared\n");
-			return -EBUSY;
+			break;
 		}
 	} while (val & XUSB_PADCTL_UPHY_PLL_P0_CTL8_PLL0_RCAL_DONE);
 
