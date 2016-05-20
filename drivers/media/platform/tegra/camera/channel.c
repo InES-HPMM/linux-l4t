@@ -697,7 +697,7 @@ static int tegra_channel_mipi_cal(struct tegra_channel *chan, char is_bypass)
 
 }
 #else
-static int tegra_channel_mipi_cal(struct tegra_channel *chan)
+static int tegra_channel_mipi_cal(struct tegra_channel *chan, char is_bypass)
 {
 	return 0;
 }

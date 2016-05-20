@@ -51,7 +51,9 @@
 #include "mipi_cal.h"
 #include <mach/csi.h>
 
+#if defined(COMMON_MIPICAL_SUPPORTED)
 #include "../../../../drivers/media/platform/tegra/mipical/mipi_cal.h"
+#endif
 
 /* HACK! This needs to come from DT */
 #include "../../../../arch/arm/mach-tegra/iomap.h"
