@@ -412,9 +412,11 @@
 		};
 	};
 
-	i2c@546c0000 {
-		tca6408_21: tca6408@21 {
-			vcc-supply = <&en_vdd_cam>;
+	host1x {
+		i2c@546c0000 {
+			tca6408_21: tca6408@21 {
+				vcc-supply = <&en_vdd_cam>;
+			};
 		};
 	};
 

@@ -28,6 +28,9 @@
 /* camera control gpio definitions */
 
 / {
+	en_vdd_vcm_2v8: dummy {
+	};
+
 	host1x {
 		i2c@546c0000 {
 			ov23850_a@10 {

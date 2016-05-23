@@ -80,7 +80,7 @@
 		};
 		i2c@546c0000 {
 			e3326_cam0: ov5693_c@36 {
-				status = "okay";
+				status = "disabled";
 			};
 			e3323_cam0: ov23850_a@10 {
 				status = "disabled";
