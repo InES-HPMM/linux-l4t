@@ -1472,7 +1472,7 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id)
 	spin_lock_init(&chan->vq_lock);
 	init_completion(&chan->streaming_completion);
 
-	chan->syncpt_id = nvhost_get_syncpt_client_managed(chan->vdev.name);
+	chan->syncpt_id = nvhost_get_syncpt_client_managed(pdev, chan->vdev.name);
 
 	video_set_drvdata(&chan->vdev, chan);
 
@@ -1485,7 +1485,6 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id)
 	return 0;
 
 free_syncpt:
-	nvhost_free_syncpt(chan->syncpt_id);
 	vb2_queue_release(q);
 cleanup_ctx:
 	vb2_dma_contig_cleanup_ctx(chan->vb2_alloc_ctx);
@@ -1498,7 +1497,6 @@ disable_clk:
 
 static void tegra_vi_channel_uninit(struct tegra_vi_channel *chan)
 {
-	nvhost_free_syncpt(chan->syncpt_id);
 	vb2_queue_release(&chan->vb);
 	vb2_dma_contig_cleanup_ctx(chan->vb2_alloc_ctx);
 	video_unregister_device(&chan->vdev);
@@ -1531,7 +1529,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, vi2);
 
 	/* Read the config from OF */
-	while ((np = v4l2_of_get_next_endpoint(pdev->dev.of_node, np))) {
+	while ((np = of_graph_get_next_endpoint(pdev->dev.of_node, np))) {
 		struct v4l2_async_subdev *asd;
 		struct device_node *port;
 		struct device_node *sd;
@@ -1556,7 +1554,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
-		sd = v4l2_of_get_remote_port_parent(np);
+		sd = of_graph_get_remote_port_parent(np);
 		of_node_put(np);
 
 		if (!sd) {
