@@ -1629,7 +1629,6 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	struct inode *inode = mapping->host;
 	pgoff_t offset = vmf->pgoff;
 	struct page *page;
-	bool memcg_oom;
 	pgoff_t size;
 	int ret = 0;
 
