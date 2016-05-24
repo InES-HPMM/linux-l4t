@@ -529,7 +529,6 @@ static int mmc_get_ext_csd_byte_val(struct mmc_card *card, u64 *val,
 	if (!err)
 		*val = ext_csd[ext_csd_byte];
 
-out_free:
 	kfree(ext_csd);
 	return err;
 }
