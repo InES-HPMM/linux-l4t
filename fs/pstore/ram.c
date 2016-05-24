@@ -620,11 +620,15 @@ fail_clear:
 	cxt->max_dump_cnt = 0;
 fail_cnt:
 	kfree(cxt->mprz);
+#ifdef CONFIG_PSTORE_PMSG
 fail_init_mprz:
+#endif
 	kfree(cxt->rprz);
 fail_init_rprz:
 	kfree(cxt->fprz);
+#ifdef CONFIG_PSTORE_FTRACE
 fail_init_fprz:
+#endif
 	kfree(cxt->cprz);
 fail_init_cprz:
 	ramoops_free_przs(cxt);
