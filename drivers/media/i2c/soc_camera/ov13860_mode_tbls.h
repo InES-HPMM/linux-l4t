@@ -1,7 +1,7 @@
 /*
- * ov13860.c - ov13860 sensor driver
+ * ov13860_mode_tbls.h - ov13860 sensor driver
  *
- * Copyright (c) 2015, NVIDIA CORPORATION, All Rights Reserved.
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION, All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -321,7 +321,20 @@ static ov13860_reg *mode_table[] = {
 	[OV13860_MODE_TEST_PATTERN] = tp_colorbars,
 };
 
-static const struct camera_common_frmfmt ov13860_frmfmt[] = {
-	{{4224, 3120}, 0, OV13860_MODE_4224X3120},
+static const int ov13860_mode_4224x3120_fr[] = {
+	30,
 };
+
+static const struct camera_common_frmfmt ov13860_frmfmt[] = {
+	{{4224, 3120}, ov13860_mode_4224x3120_fr, 1, 0, OV13860_MODE_4224X3120},
+};
+
+static const struct camera_common_colorfmt ov13860_color_fmts[] = {
+	{
+		V4L2_MBUS_FMT_SRGGB10_1X10,
+		V4L2_COLORSPACE_SRGB,
+		V4L2_PIX_FMT_SRGGB10,
+	},
+};
+
 #endif  /* __OV13860_I2C_TABLES__ */

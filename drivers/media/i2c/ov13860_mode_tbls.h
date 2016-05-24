@@ -390,9 +390,29 @@ static ov13860_reg *mode_table[] = {
 	[OV13860_MODE_TEST_PATTERN] = tp_colorbars,
 };
 
+static const int ov13860_mode_4224x3120_fr[] = {
+	30,
+};
+
+static const int ov13860_mode_3136x3120_fr[] = {
+	30,
+};
+
+static const int ov13860_mode_1568x1560_fr[] = {
+	60,
+};
+
 static const struct camera_common_frmfmt ov13860_frmfmt[] = {
-	{{4224, 3120}, 0, OV13860_MODE_4224X3120},
-	{{3136, 3120}, 0, OV13860_MODE_3136X3120},
-	{{1568, 1560}, 0, OV13860_MODE_1568X1560},
+	{{4224, 3120}, ov13860_mode_4224x3120_fr, 1, 0, OV13860_MODE_4224X3120},
+	{{3136, 3120}, ov13860_mode_3136x3120_fr, 1, 0, OV13860_MODE_3136X3120},
+	{{1568, 1560}, ov13860_mode_1568x1560_fr, 1, 0, OV13860_MODE_1568X1560},
+};
+
+static const struct camera_common_colorfmt ov13860_color_fmts[] = {
+	{
+		V4L2_MBUS_FMT_SRGGB10_1X10,
+		V4L2_COLORSPACE_SRGB,
+		V4L2_PIX_FMT_SRGGB10,
+	},
 };
 #endif  /* __OV13860_I2C_TABLES__ */

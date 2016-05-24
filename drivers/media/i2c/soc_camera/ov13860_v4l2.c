@@ -523,6 +523,8 @@ static struct v4l2_subdev_video_ops ov13860_subdev_video_ops = {
 	.try_mbus_fmt	= camera_common_try_fmt,
 	.enum_mbus_fmt	= camera_common_enum_fmt,
 	.g_mbus_config	= camera_common_g_mbus_config,
+	.enum_framesizes	= camera_common_enum_framesizes,
+	.enum_frameintervals	= camera_common_enum_frameintervals,
 };
 
 static struct v4l2_subdev_core_ops ov13860_subdev_core_ops = {
@@ -1173,11 +1175,13 @@ static int ov13860_probe(struct i2c_client *client,
 	common_data->ctrl_handler	= &priv->ctrl_handler;
 	common_data->i2c_client		= client;
 	common_data->frmfmt		= &ov13860_frmfmt[0];
+	common_data->color_fmts		= ov13860_color_fmts;
 	common_data->colorfmt		= camera_common_find_datafmt(
 					  OV13860_DEFAULT_DATAFMT);
 	common_data->power		= &priv->power;
 	common_data->priv		= (void *)priv;
 	common_data->numfmts		= ARRAY_SIZE(ov13860_frmfmt);
+	common_data->num_color_fmts	= ARRAY_SIZE(ov13860_color_fmts);
 	common_data->def_mode		= OV13860_DEFAULT_MODE;
 	common_data->def_width		= OV13860_DEFAULT_WIDTH;
 	common_data->def_height		= OV13860_DEFAULT_HEIGHT;

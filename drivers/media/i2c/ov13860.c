@@ -1222,6 +1222,7 @@ static int ov13860_probe(struct i2c_client *client,
 	common_data->ctrl_handler	= &priv->ctrl_handler;
 	common_data->i2c_client		= client;
 	common_data->frmfmt		= &ov13860_frmfmt[0];
+	common_data->color_fmts		= ov13860_color_fmts;
 	common_data->colorfmt		= camera_common_find_datafmt(
 					  OV13860_DEFAULT_DATAFMT);
 	common_data->power		= &priv->power;
@@ -1229,6 +1230,7 @@ static int ov13860_probe(struct i2c_client *client,
 	common_data->priv		= (void *)priv;
 	common_data->numctrls		= ARRAY_SIZE(ctrl_config_list);
 	common_data->numfmts		= ARRAY_SIZE(ov13860_frmfmt);
+	common_data->num_color_fmts	= ARRAY_SIZE(ov13860_color_fmts);
 	common_data->def_mode		= OV13860_DEFAULT_MODE;
 	common_data->def_width		= OV13860_DEFAULT_WIDTH;
 	common_data->def_height		= OV13860_DEFAULT_HEIGHT;
