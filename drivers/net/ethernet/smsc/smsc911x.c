@@ -377,11 +377,11 @@ out:
  */
 static int smsc911x_enable_resources(struct platform_device *pdev)
 {
-	struct net_device *ndev = platform_get_drvdata(pdev);
-	struct smsc911x_data *pdata = netdev_priv(ndev);
 	int ret = 0;
 
 #if 0
+	struct net_device *ndev = platform_get_drvdata(pdev);
+	struct smsc911x_data *pdata = netdev_priv(ndev);
 	ret = regulator_bulk_enable(ARRAY_SIZE(pdata->supplies),
 			pdata->supplies);
 	if (ret)
@@ -403,11 +403,11 @@ static int smsc911x_enable_resources(struct platform_device *pdev)
  */
 static int smsc911x_disable_resources(struct platform_device *pdev)
 {
+	int ret = 0;
+#if 0
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct smsc911x_data *pdata = netdev_priv(ndev);
-	int ret = 0;
 
-#if 0
 	ret = regulator_bulk_disable(ARRAY_SIZE(pdata->supplies),
 			pdata->supplies);
 
