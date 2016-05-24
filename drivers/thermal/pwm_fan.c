@@ -1192,7 +1192,6 @@ static int pwm_fan_suspend(struct platform_device *pdev, pm_message_t state)
 static int pwm_fan_resume(struct platform_device *pdev)
 {
 	struct fan_dev_data *fan_data = platform_get_drvdata(pdev);
-	int err;
 
 	/*Sanity check, want to make sure fan is off when the driver resumes*/
 	mutex_lock(&fan_data->fan_state_lock);
