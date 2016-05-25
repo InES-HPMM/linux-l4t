@@ -237,7 +237,7 @@ int iwl_mvm_rx_rx_mpdu(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb,
 	struct iwl_rx_phy_info *phy_info;
 	struct iwl_rx_mpdu_res_start *rx_res;
 	u32 len;
-	u32 ampdu_status;
+	u32 ampdu_status = 0;
 	u32 rate_n_flags;
 	u32 rx_pkt_status;
 
