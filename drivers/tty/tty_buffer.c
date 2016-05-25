@@ -351,7 +351,7 @@ static int tty_insert_flip_string_fixed_flag_lock(struct tty_port *port,
 		struct tty_buffer *tb = port->buf.tail;
 		/* If there is no space then tb may be NULL */
 		if (unlikely(space == 0)) {
-			pr_err("%s: No space: Requested %d, memory used: %d\n",
+			pr_err("%s: No space: Requested %zd, memory used: %d\n",
 					__func__, size, buf->memory_used);
 			break;
 		}
