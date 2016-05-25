@@ -825,7 +825,7 @@ static ssize_t mt3332_gps_read(struct file *file, char __user *buf, size_t count
 	/*data is available*/
 	copy_len = (dev->dat_len < (int)count) ? (dev->dat_len) : (int)(count);
 	if (copy_to_user(buf, dev->dat_buf+dev->dat_pos, (unsigned long)copy_len)) {
-		GPS_DBG("copy_to_user error: 0x%X 0x%X, %d\n", (unsigned int)buf, (unsigned int)dev->dat_buf, dev->dat_len);
+		GPS_DBG("copy_to_user error: %p %p, %d\n", buf, dev->dat_buf, dev->dat_len);
 		ret = -EFAULT;
 	} else {
 		GPS_VER("mt3332_gps_read(%d,%d,%d) = %d\n", count, dev->dat_pos, dev->dat_len, copy_len);
