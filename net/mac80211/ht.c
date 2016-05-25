@@ -227,6 +227,8 @@ bool ieee80211_ht_cap_ie_to_sta_ht_cap(struct ieee80211_sub_if_data *sdata,
 	case WLAN_HT_CAP_SM_PS_DISABLED:
 		smps_mode = IEEE80211_SMPS_OFF;
 		break;
+	default:
+		smps_mode = sta->sta.smps_mode;
 	}
 
 	if (smps_mode != sta->sta.smps_mode)
