@@ -7150,13 +7150,18 @@ dhd_register_if(dhd_pub_t *dhdp, int ifidx, bool need_rtnl_lock)
 
 #ifdef CONFIG_BCMDHD_CUSTOM_SYSFS_TEGRA
 {
-	extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
-	if (ifidx == 0)
-		dhd_custom_sysfs_tegra_histogram_stat_netdev = net;
+	{
+		extern struct net_device *dhd_custom_sysfs_tegra_histogram_stat_netdev;
+		if (ifidx == 0)
+			dhd_custom_sysfs_tegra_histogram_stat_netdev = net;
+	}
 }
 #endif
-	if (ifidx == 0)
-		dhd_pno_netdev = net;
+	{
+		extern struct net_device *dhd_pno_netdev;
+		if (ifidx == 0)
+			dhd_pno_netdev = net;
+	}
 
 	if (err != 0) {
 		DHD_ERROR(("couldn't register the net device [%s], err %d\n", net->name, err));
