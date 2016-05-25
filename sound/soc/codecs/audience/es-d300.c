@@ -290,8 +290,9 @@ int _es_stop_route(struct escore_priv *escore, u8 stream_type)
 					!escore->dhwpt_mode &&
 					escore->dhwpt_cmd) {
 
+			u32 cmd;
 			usleep_range(2000, 2005);
-			u32 cmd = escore->dhwpt_cmd & 0xFFFF0000;
+			cmd = escore->dhwpt_cmd & 0xFFFF0000;
 			ret = escore_cmd(escore, cmd, &resp);
 			if (ret) {
 				pr_err("%s: Disabling DHWPT failed = %d\n",
