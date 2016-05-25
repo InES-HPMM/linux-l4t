@@ -771,9 +771,7 @@ void ieee80211_scan_work(struct work_struct *work)
 			ieee80211_scan_state_send_probe(local, &next_delay);
 			break;
 		case SCAN_SUSPEND:
-#ifdef CONFIG_MAC80211_SCAN_ABORT
 		case SCAN_SUSPEND_ABORT:
-#endif
 			ieee80211_scan_state_suspend(local, &next_delay);
 			break;
 		case SCAN_RESUME:
