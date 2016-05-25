@@ -525,7 +525,7 @@ static ssize_t codec_reg_dump_store(struct device *dev,
 	int bytes_read = 0;
 	int in_addr;
 
-	pr_debug("%s(): requested - %s, count=%d\n", __func__, buf, count);
+	pr_debug("%s(): requested - %s, count=%zd\n", __func__, buf, count);
 
 	/* Return Error for Invalid argument */
 	if (strncmp(buf, "0x", 2) || !count) {
