@@ -867,7 +867,7 @@ int escore_vs_write_bkg_and_keywords(struct escore_priv *escore)
 
 	/* Write Hotword datablock received from user space */
 	if (escore->voice_recognition && escore->hotword_buf) {
-		dev_dbg(escore->dev, "%s(): Write hotword, size = %d\n",
+		dev_dbg(escore->dev, "%s(): Write hotword, size = %zd\n",
 				__func__, escore->hotword_buf_size);
 		rc = escore_datablock_write(escore, escore->hotword_buf,
 						escore->hotword_buf_size);
