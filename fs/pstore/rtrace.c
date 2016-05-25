@@ -45,7 +45,6 @@ noinline void notrace pstore_rtrace_call(enum rtrace_event_type log_type,
 					void *data, long val)
 {
 	unsigned long flags;
-	unsigned long phys;
 	struct pstore_rtrace_record rec = {};
 
 	if (!pstore_rtrace_enabled())
@@ -55,7 +54,7 @@ noinline void notrace pstore_rtrace_call(enum rtrace_event_type log_type,
 
 	rec.cpu = raw_smp_processor_id();
 	rec.event = log_type;
-	rec.caller = __builtin_return_address(0);
+	rec.caller = (unsigned long)__builtin_return_address(0);
 	rec.value = val;
 	rec.raddr = virt_to_phys_in_hw(data);
 	psinfo->write_buf(PSTORE_TYPE_RTRACE, 0, NULL, 0, (void *)&rec,
