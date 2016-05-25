@@ -549,7 +549,7 @@ static int mmc_dbg_ext_csd_bkops_status_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_bkops_status_fops,
-			mmc_dbg_ext_csd_bkops_status_get, NULL, "%u\n");
+			mmc_dbg_ext_csd_bkops_status_get, NULL, "%llu\n");
 
 static int mmc_dbg_ext_csd_bkops_support_get(void *data, u64 *val)
 {
@@ -558,7 +558,7 @@ static int mmc_dbg_ext_csd_bkops_support_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_bkops_support_fops,
-			mmc_dbg_ext_csd_bkops_support_get, NULL, "%u\n");
+			mmc_dbg_ext_csd_bkops_support_get, NULL, "%llu\n");
 
 static int mmc_dbg_ext_csd_hpi_support_get(void *data, u64 *val)
 {
@@ -567,7 +567,7 @@ static int mmc_dbg_ext_csd_hpi_support_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_hpi_support_fops,
-		mmc_dbg_ext_csd_hpi_support_get, NULL, "%u\n");
+		mmc_dbg_ext_csd_hpi_support_get, NULL, "%llu\n");
 
 static int mmc_dbg_ext_csd_pon_notify_get(void *data, u64 *val)
 {
@@ -577,7 +577,7 @@ static int mmc_dbg_ext_csd_pon_notify_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(mmc_dbg_ext_csd_pon_notify_fops,
-		mmc_dbg_ext_csd_pon_notify_get, NULL, "%u\n");
+		mmc_dbg_ext_csd_pon_notify_get, NULL, "%llu\n");
 
 static int mmc_dbg_ext_csd_life_time_type_a(void *data, u64 *val)
 {
