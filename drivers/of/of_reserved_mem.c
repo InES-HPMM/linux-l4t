@@ -206,7 +206,7 @@ void __init fdt_init_reserved_mem(void)
 	for (i = 0; i < reserved_mem_count; i++) {
 		struct reserved_mem *rmem = &reserved_mem[i];
 		unsigned long node = rmem->fdt_node;
-		int len;
+		long len;
 		const __be32 *prop;
 		int err = 0;
 
