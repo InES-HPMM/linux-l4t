@@ -1206,13 +1206,13 @@ static int __init gether_init(void)
 	}
 	return 0;
 }
-__initcall(gether_init);
+// module_init(gether_init); /* called directly from ether.c */
 
 static void __exit gether_exit(void)
 {
 	destroy_workqueue(uether_wq);
 
 }
-__exitcall(gether_exit);
-MODULE_DESCRIPTION("ethernet over USB driver");
-MODULE_LICENSE("GPL v2");
+// module_exit(gether_exit); /* called directly from ether.c */
+// MODULE_DESCRIPTION("ethernet over USB driver");
+// MODULE_LICENSE("GPL v2");

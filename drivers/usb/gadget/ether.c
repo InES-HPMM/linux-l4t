@@ -363,12 +363,16 @@ MODULE_LICENSE("GPL");
 
 static int __init init(void)
 {
-	return usb_composite_probe(&eth_driver);
+	int stat = usb_composite_probe(&eth_driver);
+	if (stat)
+		return stat;
+	return gether_init();
 }
 module_init(init);
 
 static void __exit cleanup(void)
 {
+	gether_exit();
 	usb_composite_unregister(&eth_driver);
 }
 module_exit(cleanup);
