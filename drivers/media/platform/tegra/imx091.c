@@ -2823,7 +2823,7 @@ static long imx091_ioctl(struct file *file,
 		return 0;
 
 	case _IOC_NR(NVC_IOCTL_CAPS_RD):
-		dev_dbg(&info->i2c_client->dev, "%s CAPS_RD n=%d\n",
+		dev_dbg(&info->i2c_client->dev, "%s CAPS_RD n=%zd\n",
 			__func__, sizeof(imx091_dflt_cap));
 		data_ptr = info->cap;
 		if (copy_to_user((void __user *)arg,
