@@ -83,8 +83,8 @@ static const u8 wkp_calib_values_rx_iq_skew[] = { 0x00, 0x00, 0x01, 0x00 };
 static const u8 wkp_calib_values_tx_iq_skew[] = { 0x01, 0x00, 0x00, 0x00 };
 
 struct iwl_calib_default_data {
-	u16 size;
-	void *data;
+	const u16 size;
+	const void *data;
 };
 
 #define CALIB_SIZE_N_DATA(_buf) {.size = sizeof(_buf), .data = &_buf}
