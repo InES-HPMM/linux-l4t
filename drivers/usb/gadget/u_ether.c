@@ -960,7 +960,7 @@ struct eth_dev *gether_setup_name(struct usb_gadget *g, u8 ethaddr[ETH_ALEN],
 	uether_wq  = create_singlethread_workqueue("uether");
 	if (!uether_wq) {
                 pr_err("%s: Unable to create workqueue: uether\n", __func__);
-                return -ENOMEM;
+                return ERR_PTR(-ENOMEM);
         }
 
 	dev = netdev_priv(net);
