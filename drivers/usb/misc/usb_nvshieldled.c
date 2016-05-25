@@ -368,7 +368,7 @@ static int nvshieldled_probe(struct usb_interface *interface,
 	struct nvshield_led *dev = NULL;
 	int retval = -ENOMEM;
 	struct device_node *np;
-	char *edp_name;
+	const char *edp_name;
 
 	dev = kzalloc(sizeof(struct nvshield_led), GFP_KERNEL);
 	if (dev == NULL) {
