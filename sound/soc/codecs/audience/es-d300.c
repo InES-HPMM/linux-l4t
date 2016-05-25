@@ -1315,7 +1315,7 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 		pr_debug("%s: END RX PMU Active channels %d Active streams %d\n",
 			__func__,
 			escore->i2s_dai_data[dai_id].rx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
@@ -1330,7 +1330,7 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 		pr_debug("%s: BEGIN RX PMD Active channels %d Active streams %d\n",
 			__func__,
 			escore->i2s_dai_data[dai_id].rx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		if (!escore->i2s_dai_data[dai_id].rx_ch_act) {
 
 			/* Decrease active streams count if non-zero */
@@ -1352,7 +1352,7 @@ static int es300_codec_enable_i2srx(struct snd_soc_dapm_widget *w,
 		}
 		pr_debug("%s: END RX PMD Active channels %d Streams %d\n",
 			__func__, escore->i2s_dai_data[dai_id].rx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		break;
 	}
 	mutex_unlock(&codec->mutex);
@@ -1383,7 +1383,7 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 
 		pr_debug("%s: BEGIN TX PMU Active channels %d Streams %d\n",
 			 __func__, escore->i2s_dai_data[dai_id].tx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		if (escore->i2s_dai_data[dai_id].tx_ch_act ==
 				escore->i2s_dai_data[dai_id].tx_ch_tot) {
 
@@ -1395,7 +1395,7 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 		}
 		pr_debug("%s: END TX PMU Active channels %d Streams %d\n",
 			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		for (j = 0; j < escore->dai_nr; j++) {
@@ -1407,9 +1407,9 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 			}
 		}
 
-		pr_debug("%s: BEGIN TX PMD Active channels %d Streams %d\n",
+		pr_debug("%s: BEGIN TX PMD Active channels %d Streams %d dhwpt_mode %d\n",
 			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
-			escore->active_streams, escore->dhwpt_mode);
+			atomic_read(&escore->active_streams), escore->dhwpt_mode);
 
 		if (!escore->i2s_dai_data[dai_id].tx_ch_act) {
 			/* Decrease active streams count if non-zero */
@@ -1430,7 +1430,7 @@ static int es300_codec_enable_i2stx(struct snd_soc_dapm_widget *w,
 		}
 		pr_debug("%s: END TX PMD Active channels %d Streams %d\n",
 			__func__, escore->i2s_dai_data[dai_id].tx_ch_act,
-			escore->active_streams);
+			atomic_read(&escore->active_streams));
 		break;
 	}
 	mutex_unlock(&codec->mutex);
@@ -1781,7 +1781,7 @@ static int put_input_route_value(struct snd_kcontrol *kcontrol,
 	u8 algo_type;
 
 	if (mux >= ARRAY_SIZE(proc_block_input_texts) || mux < 0) {
-		pr_err("%s(): Invalid input mux:%d Max valid value:%d\n",
+		pr_err("%s(): Invalid input mux:%d Max valid value:%zd\n",
 			__func__, mux, ARRAY_SIZE(proc_block_input_texts));
 		return -EINVAL;
 	}
@@ -1847,7 +1847,7 @@ static int put_output_route_value(struct snd_kcontrol *kcontrol,
 	u8 algo_type;
 
 	if (mux >= ARRAY_SIZE(proc_block_output_texts) || mux < 0) {
-		pr_err("%s(): Invalid output mux:%d Max valid value:%d\n",
+		pr_err("%s(): Invalid output mux:%d Max valid value:%zd\n",
 			__func__, mux, ARRAY_SIZE(proc_block_output_texts));
 		return -EINVAL;
 	}
