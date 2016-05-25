@@ -593,10 +593,6 @@ static int imx185_set_coarse_time(struct imx185 *priv, s32 val)
 			"%s: error coarse time SHS2 override\n", __func__);
 	}
 	return err;
-fail:
-	dev_dbg(&priv->i2c_client->dev,
-		 "%s: COARSE_TIME_SHORT control error\n", __func__);
-	return err;
 }
 
 static int imx185_set_coarse_time_shs1(struct imx185 *priv, s32 val)
@@ -922,7 +918,6 @@ static int imx185_probe(struct i2c_client *client,
 {
 	struct camera_common_data *common_data;
 	struct imx185 *priv;
-	char dt_name[16];
 	char debugfs_name[10];
 	int err;
 
