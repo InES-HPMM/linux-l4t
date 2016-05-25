@@ -224,7 +224,7 @@ struct v4l2_of_endpoint *v4l2_of_alloc_parse_endpoint(
 
 	endpoint = kzalloc(sizeof(*endpoint), GFP_KERNEL);
 	if (!endpoint)
-		return -ENOMEM;
+		return (struct v4l2_of_endpoint *)(long)-ENOMEM;
 
 	rval = v4l2_of_parse_endpoint(node, endpoint);
 	if (rval < 0)
@@ -251,7 +251,7 @@ struct v4l2_of_endpoint *v4l2_of_alloc_parse_endpoint(
 
 out_err:
 	v4l2_of_free_endpoint(endpoint);
-	return rval;
+	return (struct v4l2_of_endpoint *)(long)rval;
 }
 EXPORT_SYMBOL(v4l2_of_alloc_parse_endpoint);
 
