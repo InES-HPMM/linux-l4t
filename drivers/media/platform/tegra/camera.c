@@ -1197,7 +1197,7 @@ static int camera_remove(struct platform_device *dev)
 
 	camera_ref_lock();
 
-	atomic_xchg(&cam_desc.in_use, 0);
+	(void)atomic_xchg(&cam_desc.in_use, 0);
 	misc_deregister(&cam_desc.miscdev);
 
 	list_for_each_entry(cam, cam_desc.app_list, list) {
@@ -1276,7 +1276,7 @@ static void camera_shutdown(struct platform_device *dev)
 	dev_dbg(&dev->dev, "%s ...\n", __func__);
 
 	camera_ref_lock();
-	atomic_xchg(&cam_desc.in_use, 0);
+	(void)atomic_xchg(&cam_desc.in_use, 0);
 	dev_info(&dev->dev, "%s locked.\n", __func__);
 }
 
