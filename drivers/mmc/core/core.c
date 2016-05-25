@@ -400,7 +400,7 @@ static void mmc_post_req(struct mmc_host *host, struct mmc_request *mrq,
 #define MMC_RUN_FROM_TASKLET	(1)
 static void mmc_run_queue(struct mmc_host *host, int from)
 {
-	u32 flags;
+	unsigned long flags;
 	struct mmc_request *mrq = NULL;
 
 	/* send next command */
