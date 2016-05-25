@@ -1003,7 +1003,7 @@ static struct shunt_volt_offset *ina3221_get_shuntv_offset
 	struct device_node *shuntv_cond_np;
 	struct shunt_volt_offset *shuntv_offset = NULL;
 	struct shuntv_conditional_offset *shuntv_cond_offset;
-	s32 shuntv_start, shuntv_end, offset;
+	s32 shuntv_start, shuntv_end, offset = 0;
 	int ret;
 
 	prop = of_get_property(channel_np, "shunt-volt-offset-uv", NULL);
