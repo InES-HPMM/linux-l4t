@@ -827,7 +827,6 @@ int escore_wakeup(struct escore_priv *escore)
 	u32 rsp;
 	int rc = 0;
 	int retry = 20;
-	u32 p_cmd = ES_GET_POWER_STATE << 16;
 
 	escore->cmd_compl_mode = ES_CMD_COMP_POLL;
 	/* Enable the clocks */
