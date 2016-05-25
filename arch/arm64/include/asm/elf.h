@@ -140,7 +140,7 @@ extern unsigned long randomize_et_dyn(unsigned long base);
 #define ARCH_DLINFO							\
 do {									\
 	NEW_AUX_ENT(AT_SYSINFO_EHDR,					\
-		    (elf_addr_t)current->mm->context.vdso);		\
+		    (elf_addr_t)(long)current->mm->context.vdso);	\
 } while (0)
 
 #define ARCH_HAS_SETUP_ADDITIONAL_PAGES
