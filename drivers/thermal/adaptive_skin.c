@@ -692,7 +692,7 @@ static enum ast_action astg_get_target_action(struct thermal_zone_device *tz,
 		fup_raise_cnt, gov->fup_period, fup_drop_cnt, gov->fup_period);
 	pr_debug("ASTG:>> is_steady : %d, previous_action : %d\n",
 		is_steady,  prev_action);
-	pr_debug("ASTG:>> Throttling index : %d\n", cur_state);
+	pr_debug("ASTG:>> Throttling index : %ld\n", cur_state);
 
 	if (is_action_transient_raise(prev_action) && tcpu > tcpu_last) {
 		gov->tcpu_last = tcpu;
