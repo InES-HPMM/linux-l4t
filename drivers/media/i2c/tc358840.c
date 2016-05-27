@@ -2209,6 +2209,8 @@ static int tc358840_probe(struct i2c_client *client, const struct i2c_device_id 
 	state->i2c_client = client;
 	sd = &state->sd;
 
+	sd->of_node = node;
+
 	i2c_set_clientdata(client, state);
 
 	v4l2_i2c_subdev_init(sd, client, &tc358840_ops);
