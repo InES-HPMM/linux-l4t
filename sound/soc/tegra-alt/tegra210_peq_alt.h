@@ -1,7 +1,7 @@
 /*
  * tegra210_peq_alt.h - Definitions for Tegra210 PEQ driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -53,4 +53,8 @@
 #define TEGRA210_PEQ_SHIFT_PARAM_SIZE_PER_CH \
 	(2 + TEGRA210_PEQ_MAX_BIQUAD_STAGES)
 
+struct tegra210_peq {
+	u32 biquad_gains[TEGRA210_PEQ_GAIN_PARAM_SIZE_PER_CH];
+	u32 biquad_shifts[TEGRA210_PEQ_SHIFT_PARAM_SIZE_PER_CH];
+};
 #endif

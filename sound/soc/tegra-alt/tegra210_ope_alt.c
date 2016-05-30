@@ -1,7 +1,7 @@
 /*
  * tegra210_ope_alt.c - Tegra210 OPE driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -30,6 +30,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/delay.h>
 #include <linux/of_device.h>
 
 #include "tegra210_xbar_alt.h"
@@ -117,7 +118,7 @@ static int tegra210_ope_set_audio_cif(struct tegra210_ope *ope,
 	cif_conf.audio_channels = channels;
 	cif_conf.client_channels = channels;
 	cif_conf.audio_bits = audio_bits;
-	cif_conf.client_bits = audio_bits;
+	cif_conf.client_bits = TEGRA210_AUDIOCIF_BITS_32;
 	cif_conf.expand = 0;
 	cif_conf.stereo_conv = 0;
 	cif_conf.replicate = 0;
@@ -129,6 +130,25 @@ static int tegra210_ope_set_audio_cif(struct tegra210_ope *ope,
 	return 0;
 }
 
+static int tegra210_ope_soft_reset(struct tegra210_ope *ope)
+{
+	u32 val;
+	int cnt = 10;
+	int ret = 0;
+
+	regmap_update_bits(ope->regmap,
+			TEGRA210_OPE_SOFT_RESET,
+			TEGRA210_OPE_SOFT_RESET_EN,
+			1);
+	do {
+		udelay(100);
+		regmap_read(ope->regmap, TEGRA210_OPE_SOFT_RESET, &val);
+	} while ((val & TEGRA210_OPE_SOFT_RESET_EN) && cnt--);
+	if (!cnt)
+		ret = -ETIMEDOUT;
+	return ret;
+}
+
 static int tegra210_ope_hw_params(struct snd_pcm_substream *substream,
 				 struct snd_pcm_hw_params *params,
 				 struct snd_soc_dai *dai)
@@ -136,6 +156,8 @@ static int tegra210_ope_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = dai->dev;
 	struct tegra210_ope *ope = snd_soc_dai_get_drvdata(dai);
 	int ret;
+
+	tegra210_ope_soft_reset(ope);
 
 	/* set RX cif and TX cif */
 	ret = tegra210_ope_set_audio_cif(ope, params,
@@ -151,6 +173,9 @@ static int tegra210_ope_hw_params(struct snd_pcm_substream *substream,
 		dev_err(dev, "Can't set OPE TX CIF: %d\n", ret);
 		return ret;
 	}
+
+	ope->soc_data->peq_soc_data.hw_params(dai->codec);
+	ope->soc_data->mbdrc_soc_data.hw_params(dai->codec);
 
 	return ret;
 }
@@ -326,10 +351,12 @@ static const struct tegra210_ope_soc_data soc_data_tegra210 = {
 	.peq_soc_data = {
 		.init = tegra210_peq_init,
 		.codec_init = tegra210_peq_codec_init,
+		.hw_params = tegra210_peq_hw_params,
 	},
 	.mbdrc_soc_data = {
 		.init = tegra210_mbdrc_init,
 		.codec_init = tegra210_mbdrc_codec_init,
+		.hw_params = tegra210_mbdrc_hw_params,
 	},
 };
 

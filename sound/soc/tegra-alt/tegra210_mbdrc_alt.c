@@ -1,7 +1,7 @@
 /*
  * tegra210_mbdrc_alt.c - Tegra210 MBDRC driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -61,7 +61,7 @@ static const struct reg_default tegra210_mbdrc_reg_defaults[] = {
 };
 
 /* Default MBDRC parameters */
-static const struct tegra210_mbdrc_config mbdrc_init_config = {
+static const struct tegra210_mbdrc mbdrc_init_config = {
 	.mode = 0, /* bypass */
 	.rms_off = 48,
 	.peak_rms_mode = 1, /* PEAK */
@@ -320,9 +320,15 @@ static int tegra210_mbdrc_biquad_coeffs_get(struct snd_kcontrol *kcontrol,
 {
 	struct tegra_soc_bytes *params = (void *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct tegra210_ope *ope = snd_soc_codec_get_drvdata(codec);
+	struct tegra210_mbdrc *mbdrc = ope->mbdrc_data;
+	u32 reg_ctrl = params->soc.base;
+	u32 band = (reg_ctrl - TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_CTRL) /
+			TEGRA210_MBDRC_FILTER_PARAM_STRIDE;
 	u32 *data = (u32 *)ucontrol->value.bytes.data;
 
-	memset(data, 0, params->soc.num_regs * codec->val_bytes);
+	memcpy(data, mbdrc->band_params[band].biquad_params,
+		params->soc.num_regs * codec->val_bytes);
 	return 0;
 }
 
@@ -332,13 +338,14 @@ static int tegra210_mbdrc_biquad_coeffs_put(struct snd_kcontrol *kcontrol,
 	struct tegra_soc_bytes *params = (void *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct tegra210_ope *ope = snd_soc_codec_get_drvdata(codec);
+	struct tegra210_mbdrc *mbdrc = ope->mbdrc_data;
 	u32 reg_ctrl = params->soc.base;
-	u32 reg_data = reg_ctrl + codec->val_bytes;
+	u32 band = (reg_ctrl - TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_CTRL) /
+			TEGRA210_MBDRC_FILTER_PARAM_STRIDE;
 	u32 *data = (u32 *)ucontrol->value.bytes.data;
 
-	tegra210_xbar_write_ahubram(ope->mbdrc_regmap, reg_ctrl, reg_data,
-				    params->shift, data, params->soc.num_regs);
-
+	memcpy(mbdrc->band_params[band].biquad_params, data,
+		params->soc.num_regs * codec->val_bytes);
 	return 0;
 }
 
@@ -615,48 +622,76 @@ static const struct regmap_config tegra210_mbdrc_regmap_config = {
 	.cache_type = REGCACHE_FLAT,
 };
 
+int tegra210_mbdrc_hw_params(struct snd_soc_codec *codec)
+{
+	struct tegra210_ope *ope = snd_soc_codec_get_drvdata(codec);
+	const struct tegra210_mbdrc *mbdrc = ope->mbdrc_data;
+	u32 val = 0;
+	int i;
+
+	regmap_read(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG, &val);
+	if (val & TEGRA210_MBDRC_CONFIG_MBDRC_MODE_BYPASS)
+		return 0;
+
+	for (i = 0; i < MBDRC_NUM_BAND; i++) {
+		const struct tegra210_mbdrc_band_params *params =
+						&mbdrc->band_params[i];
+		u32 reg_off = i * TEGRA210_MBDRC_FILTER_PARAM_STRIDE;
+
+
+		tegra210_xbar_write_ahubram(ope->mbdrc_regmap,
+			reg_off + TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_CTRL,
+			reg_off + TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_DATA, 0,
+			(u32 *)params->biquad_params,
+			TEGRA210_MBDRC_MAX_BIQUAD_STAGES * 5);
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(tegra210_mbdrc_hw_params);
+
 int tegra210_mbdrc_codec_init(struct snd_soc_codec *codec)
 {
 	struct tegra210_ope *ope = snd_soc_codec_get_drvdata(codec);
-	const struct tegra210_mbdrc_config *conf = &mbdrc_init_config;
+	struct tegra210_mbdrc *mbdrc = ope->mbdrc_data;
 	u32 val;
 	int i;
 
+	memcpy(mbdrc, &mbdrc_init_config, sizeof(struct tegra210_mbdrc));
 	pm_runtime_get_sync(codec->dev);
 	/* Initialize MBDRC registers and ahub-ram with default params */
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_MBDRC_MODE_MASK,
-		conf->mode << TEGRA210_MBDRC_CONFIG_MBDRC_MODE_SHIFT);
+		mbdrc->mode << TEGRA210_MBDRC_CONFIG_MBDRC_MODE_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_RMS_OFFSET_MASK,
-		conf->rms_off << TEGRA210_MBDRC_CONFIG_RMS_OFFSET_SHIFT);
+		mbdrc->rms_off << TEGRA210_MBDRC_CONFIG_RMS_OFFSET_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_PEAK_RMS_MASK,
-		conf->peak_rms_mode << TEGRA210_MBDRC_CONFIG_PEAK_RMS_SHIFT);
+		mbdrc->peak_rms_mode << TEGRA210_MBDRC_CONFIG_PEAK_RMS_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_FILTER_STRUCTURE_MASK,
-		conf->fliter_structure <<
+		mbdrc->fliter_structure <<
 		TEGRA210_MBDRC_CONFIG_FILTER_STRUCTURE_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_SHIFT_CTRL_MASK,
-		conf->shift_ctrl << TEGRA210_MBDRC_CONFIG_SHIFT_CTRL_SHIFT);
+		mbdrc->shift_ctrl << TEGRA210_MBDRC_CONFIG_SHIFT_CTRL_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CONFIG,
 		TEGRA210_MBDRC_CONFIG_FRAME_SIZE_MASK,
-		__ffs(conf->frame_size) <<
+		__ffs(mbdrc->frame_size) <<
 		TEGRA210_MBDRC_CONFIG_FRAME_SIZE_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_CHANNEL_MASK,
 		TEGRA210_MBDRC_CHANNEL_MASK_MASK,
-		conf->channel_mask << TEGRA210_MBDRC_CHANNEL_MASK_SHIFT);
+		mbdrc->channel_mask << TEGRA210_MBDRC_CHANNEL_MASK_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_FAST_FACTOR,
 		TEGRA210_MBDRC_FAST_FACTOR_ATTACK_MASK,
-		conf->fa_factor << TEGRA210_MBDRC_FAST_FACTOR_ATTACK_SHIFT);
+		mbdrc->fa_factor << TEGRA210_MBDRC_FAST_FACTOR_ATTACK_SHIFT);
 	regmap_update_bits(ope->mbdrc_regmap, TEGRA210_MBDRC_FAST_FACTOR,
 		TEGRA210_MBDRC_FAST_FACTOR_ATTACK_MASK,
-		conf->fr_factor << TEGRA210_MBDRC_FAST_FACTOR_ATTACK_SHIFT);
+		mbdrc->fr_factor << TEGRA210_MBDRC_FAST_FACTOR_ATTACK_SHIFT);
 
 	for (i = 0; i < MBDRC_NUM_BAND; i++) {
 		const struct tegra210_mbdrc_band_params *params =
-						&conf->band_params[i];
+						&mbdrc->band_params[i];
 		u32 reg_off = i * TEGRA210_MBDRC_FILTER_PARAM_STRIDE;
 
 		regmap_update_bits(ope->mbdrc_regmap,
@@ -757,12 +792,6 @@ int tegra210_mbdrc_codec_init(struct snd_soc_codec *codec)
 			TEGRA210_MBDRC_FAST_RELEASE_MASK,
 			params->fast_release_tc <<
 			TEGRA210_MBDRC_FAST_RELEASE_SHIFT);
-
-		tegra210_xbar_write_ahubram(ope->mbdrc_regmap,
-			reg_off + TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_CTRL,
-			reg_off + TEGRA210_MBDRC_AHUBRAMCTL_CONFIG_RAM_DATA, 0,
-			(u32 *)&params->biquad_params[0],
-			TEGRA210_MBDRC_MAX_BIQUAD_STAGES * 5);
 	}
 	pm_runtime_put_sync(codec->dev);
 
@@ -775,9 +804,18 @@ EXPORT_SYMBOL_GPL(tegra210_mbdrc_codec_init);
 int tegra210_mbdrc_init(struct platform_device *pdev, int id)
 {
 	struct tegra210_ope *ope = dev_get_drvdata(&pdev->dev);
+	struct tegra210_mbdrc *mbdrc;
 	struct resource *mem, *memregion;
 	void __iomem *regs;
 	int ret = 0;
+
+	mbdrc = devm_kzalloc(&pdev->dev,
+			sizeof(struct tegra210_mbdrc), GFP_KERNEL);
+	if (!mbdrc) {
+		dev_err(&pdev->dev, "Can't allocate mbdrc\n");
+		ret = -ENOMEM;
+		goto err;
+	}
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, id);
 	if (!mem) {
@@ -808,6 +846,7 @@ int tegra210_mbdrc_init(struct platform_device *pdev, int id)
 		ret = PTR_ERR(ope->mbdrc_regmap);
 		goto err;
 	}
+	ope->mbdrc_data = mbdrc;
 
 	return 0;
 err:

@@ -1,7 +1,7 @@
 /*
  * tegra210_mbdrc_alt.h - Definitions for Tegra210 MBDRC driver
  *
- * Copyright (c) 2014 NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -231,7 +231,7 @@ struct tegra210_mbdrc_band_params {
 	u32 biquad_params[TEGRA210_MBDRC_MAX_BIQUAD_STAGES * 5];
 };
 
-struct tegra210_mbdrc_config {
+struct tegra210_mbdrc {
 	unsigned int mode;
 	unsigned int rms_off;
 	unsigned int peak_rms_mode;
