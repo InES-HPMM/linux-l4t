@@ -31,7 +31,7 @@
 #include "imx185_mode_tbls.h"
 
 
-#define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP
+#define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP_HDR_30FPS
 #define IMX185_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB12_1X12
 
 #define IMX185_MAX_COARSE_DIFF 2
@@ -415,6 +415,17 @@ exit:
 	return err;
 }
 
+static int imx185_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct imx185 *priv = (struct imx185 *)s_data->priv;
+	struct camera_common_power_rail *pw = &priv->power;
+
+	*status = pw->state == SWITCH_ON;
+	return 0;
+}
+
 static struct v4l2_subdev_video_ops imx185_subdev_video_ops = {
 	.s_stream	= imx185_s_stream,
 	.s_mbus_fmt	= camera_common_s_fmt,
@@ -422,14 +433,40 @@ static struct v4l2_subdev_video_ops imx185_subdev_video_ops = {
 	.try_mbus_fmt	= camera_common_try_fmt,
 	.enum_mbus_fmt	= camera_common_enum_fmt,
 	.g_mbus_config	= camera_common_g_mbus_config,
+	.g_input_status = imx185_g_input_status,
+	.enum_framesizes	= camera_common_enum_framesizes,
+	.enum_frameintervals	= camera_common_enum_frameintervals,
 };
 
 static struct v4l2_subdev_core_ops imx185_subdev_core_ops = {
 	.s_power	= camera_common_s_power,
 };
 
+static int imx185_get_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+		struct v4l2_subdev_format *format)
+{
+	return camera_common_g_fmt(sd, &format->format);
+}
+
+static int imx185_set_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+	struct v4l2_subdev_format *format)
+{
+	int ret;
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		ret = camera_common_try_fmt(sd, &format->format);
+	else
+		ret = camera_common_s_fmt(sd, &format->format);
+
+	return ret;
+}
+
 static struct v4l2_subdev_pad_ops imx185_subdev_pad_ops = {
 	.enum_mbus_code = camera_common_enum_mbus_code,
+	.set_fmt = imx185_set_fmt,
+	.get_fmt = imx185_get_fmt,
 };
 
 static struct v4l2_subdev_ops imx185_subdev_ops = {
@@ -944,6 +981,7 @@ static int imx185_probe(struct i2c_client *client,
 	priv->s_data = common_data;
 	priv->subdev = &common_data->subdev;
 	priv->subdev->dev = &client->dev;
+	priv->s_data->dev = &client->dev;
 
 	err = imx185_power_get(priv);
 	if (err)
