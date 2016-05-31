@@ -420,8 +420,12 @@ static char tegra_uart_decode_rx_error(struct tegra_uart_port *tup,
 				tegra_uart_fifo_reset(tup, UART_FCR_CLEAR_RCVR);
 			else if (lsr & UART_LSR_FIFOE)
 				dev_err(tup->uport.dev, "Got Receive Fifo errors\n");
+
+			flag = TTY_BREAK;
 		}
+		uart_insert_char(&tup->uport, lsr, UART_LSR_OE, 0, flag);
 	}
+
 	return flag;
 }
 
@@ -604,6 +608,9 @@ static void tegra_uart_handle_rx_pio(struct tegra_uart_port *tup,
 			break;
 
 		flag = tegra_uart_decode_rx_error(tup, lsr);
+		if (flag != TTY_NORMAL)
+			continue;
+
 		ch = (unsigned char) tegra_uart_read(tup, UART_RX);
 		tup->uport.icount.rx++;
 
