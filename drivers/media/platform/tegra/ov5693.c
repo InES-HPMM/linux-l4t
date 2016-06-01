@@ -3572,8 +3572,6 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	struct device_node *np = client->dev.of_node;
 	struct ov5693_platform_data *pdata;
 	struct nvc_gpio_pdata *gpio_pdata = NULL;
-	const char *sname;
-	int ret;
 	int num;
 
 	dev_dbg(&client->dev, "%s: %s\n", __func__, np->full_name);
@@ -3598,29 +3596,10 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	pdata->static_info = (void *)(pdata->cap + 1);
 	gpio_pdata = (void *)(pdata->static_info + 1);
 
-	num = 0;
-	do {
-		ret = of_property_read_string_index(
-			np, "regulators", num, &sname);
-		if (ret < 0)
-			break;
-		switch (num) {
-		case 0:
-			pdata->regulators.avdd = sname;
-			pdata->regulators.dvdd = NULL;
-			pdata->regulators.dovdd = NULL;
-			break;
-		case 1:
-			pdata->regulators.dovdd = sname;
-			break;
-		case 2:
-			pdata->regulators.dvdd = sname;
-			break;
-		default:
-			break;
-		}
-		num++;
-	} while (num < 3);
+	/* regulator info */
+	of_property_read_string(np, "avdd", &pdata->regulators.avdd);
+	of_property_read_string(np, "dvdd", &pdata->regulators.dvdd);
+	of_property_read_string(np, "dovdd", &pdata->regulators.dovdd);
 
 	/* extra regulators info */
 	pdata->use_vcm_vdd = of_property_read_bool(np, "use-vcm-vdd");
@@ -3650,7 +3629,7 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	pdata->use_cam_gpio = of_property_read_bool(np, "cam,use-cam-gpio");
 
 	/* MCLK clock info */
-	of_property_read_string(np, "clocks", &pdata->mclk_name);
+	of_property_read_string(np, "mclk", &pdata->mclk_name);
 
 	/* get cap info */
 	nvc_imager_parse_caps(np, pdata->cap, pdata->static_info);

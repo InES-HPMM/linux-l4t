@@ -1,7 +1,7 @@
 /*
  * imx132.c - imx132 sensor driver
  *
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,6 +35,7 @@
 #include <media/nvc.h>
 #include <media/imx132.h>
 #include <media/camera_common.h>
+#include <mach/io_dpd.h>
 #include "nvc_utilities.h"
 
 
@@ -60,6 +61,12 @@ struct imx132_info {
 
 static struct regulator *imx132_ext_reg1;
 static struct regulator *imx132_ext_reg2;
+
+static struct tegra_io_dpd csia_io = {
+	.name			= "CSIA",
+	.io_dpd_reg_index	= 0,
+	.io_dpd_bit		= 0,
+};
 
 static const struct reg_8 mode_1920x1080_one_lane[] = {
 	/* Stand by */
@@ -671,6 +678,8 @@ static int imx132_power_on(struct imx132_info *info)
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
 		return -EFAULT;
 
+	tegra_io_dpd_disable(&csia_io);
+
 	/* Indicate higher sysedp power state prior to turning on the sensor */
 	sysedp_set_state(info->sysedpc, 1);
 
@@ -728,6 +737,8 @@ imx132_poweron_fail:
 	/* Power up failure. Reduce sysedp powerstate */
 	sysedp_set_state(info->sysedpc, 0);
 
+	tegra_io_dpd_enable(&csia_io);
+
 	pr_err("%s failed.\n", __func__);
 	return -ENODEV;
 }
@@ -746,6 +757,8 @@ static int imx132_power_off(struct imx132_info *info)
 
 	if (unlikely(WARN_ON(!pw || !pw->avdd || !pw->iovdd || !pw->dvdd)))
 		return -EFAULT;
+
+	tegra_io_dpd_enable(&csia_io);
 
 	gpio_set_value(cam2_gpio, 0);
 	gpio_set_value(reset_gpio, 0);
@@ -909,9 +922,6 @@ static struct imx132_platform_data *imx132_parse_dt(struct i2c_client *client)
 {
 	struct device_node *np = client->dev.of_node;
 	struct imx132_platform_data *board_info_pdata;
-	const char *sname;
-	int ret;
-	int num;
 
 	board_info_pdata = devm_kzalloc(&client->dev, sizeof(*board_info_pdata)
 			+ sizeof(*board_info_pdata->cap) + sizeof(*board_info_pdata->static_info),
@@ -927,31 +937,15 @@ static struct imx132_platform_data *imx132_parse_dt(struct i2c_client *client)
 	board_info_pdata->cam2_gpio = of_get_named_gpio(np, "cam2-gpios", 0);
 	board_info_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
 	board_info_pdata->ext_reg = of_property_read_bool(np, "nvidia,ext_reg");
-	of_property_read_string(np, "clocks", &board_info_pdata->mclk_name);
 
-	num = 0;
-	do {
-		ret = of_property_read_string_index(
-			np, "regulators", num, &sname);
-		if (ret < 0)
-			break;
-		switch (num) {
-		case 0:
-			board_info_pdata->regulators.avdd = sname;
-			board_info_pdata->regulators.dvdd = NULL;
-			board_info_pdata->regulators.iovdd = NULL;
-			break;
-		case 1:
-			board_info_pdata->regulators.dvdd = sname;
-			break;
-		case 2:
-			board_info_pdata->regulators.iovdd = sname;
-			break;
-		default:
-			break;
-		}
-		num++;
-	} while (num < 3);
+	of_property_read_string(np, "mclk",
+		&board_info_pdata->mclk_name);
+	of_property_read_string(np, "avdd",
+		&board_info_pdata->regulators.avdd);
+	of_property_read_string(np, "dvdd",
+		&board_info_pdata->regulators.dvdd);
+	of_property_read_string(np, "iovdd",
+		&board_info_pdata->regulators.iovdd);
 
 	nvc_imager_parse_caps(np, board_info_pdata->cap, board_info_pdata->static_info);
 
