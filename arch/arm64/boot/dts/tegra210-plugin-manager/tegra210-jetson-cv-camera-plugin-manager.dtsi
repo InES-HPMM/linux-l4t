@@ -14,11 +14,66 @@
 / {
 	/* camera plugin-manager */
 	plugin-manager {
-		/* E3326 camera board is enabled by default */
+		/* E3326 camera board */
+		fragment-e3326@0 {
+			ids = "3326-*";
+			override@0 {
+				target = <&e3326_cam0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@1 {
+				target = <&cam_module0>;
+				_overlay_ {
+					status = "okay";
+					badge = "e3326_front_P5V27C";
+					position = "rear";
+					orientation = "1";
+				};
+			};
+			override@2 {
+				target = <&cam_module0_drivernode0>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_soc_sensor";
+					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
+				};
+			};
+			override@3 {
+				target = <&cam_module0_drivernode1>;
+				_overlay_ {
+					status = "okay";
+					pcl_id = "v4l2_focuser_stub";
+				};
+			};
+			/* Enable VI ports */
+			override@4 {
+				target = <&vi_base>;
+				_overlay_ {
+					num-channels=<1>;
+				};
+			};
+			override@5 {
+				target = <&vi_port0>;
+				_overlay_ {
+					status = "okay";
+				};
+			};
+			override@6 {
+				target = <&e3326_vi_in0>;
+				_overlay_ {
+					status = "okay";
+					csi-port = <0>;
+					bus-width = <2>;
+					remote-endpoint = <&e3326_ov5693_out0>;
+				};
+			};
+		};
 
 		/* E3323 camera board */
 		fragment-e3323@0 {
-			ids = "3323-1000-A00", "3323-1000-A01", "3323-1000-100";
+			ids = "3323-1000-*";
 			/* enable E3323 camera 0 */
 			override@0 {
 				target = <&e3323_cam0>;
@@ -158,13 +213,6 @@
 				_overlay_ {
 					status = "okay";
 					remote-endpoint = <&lc898212_out1>;
-				};
-			};
-			/* disable E3326 camera board*/
-			override@19 {
-				target = <&e3326_cam0>;
-				_overlay_ {
-					status = "disabled";
 				};
 			};
 		};
@@ -427,13 +475,6 @@
 					status = "okay";
 				};
 			};
-			/* Disable E3326 camera board */
-			override@33 {
-				target = <&e3326_cam0>;
-				_overlay_ {
-					status = "disabled";
-				};
-			};
 		};
 
 		/* E3333 camera board */
@@ -692,13 +733,6 @@
 				target = <&cam_tca9548_77>;
 				_overlay_ {
 					status = "okay";
-				};
-			};
-			/* Disable E3326 camera board */
-			override@33 {
-				target = <&e3326_cam0>;
-				_overlay_ {
-					status = "disabled";
 				};
 			};
 		};
