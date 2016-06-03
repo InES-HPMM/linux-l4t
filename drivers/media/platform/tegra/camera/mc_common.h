@@ -159,6 +159,7 @@ struct tegra_channel {
 	unsigned int saved_ctx_bypass;
 	unsigned int saved_ctx_pgmode;
 	unsigned int gang_mode;
+	unsigned int gang_mode_default;
 	unsigned int gang_width;
 	unsigned int gang_height;
 	unsigned int gang_bytesperline;

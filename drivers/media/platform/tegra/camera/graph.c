@@ -387,6 +387,19 @@ int tegra_vi_get_port_info(struct tegra_channel *chan,
 				next_port = (next_port % (PORT_F + 1));
 				chan->port[i] = next_port;
 			}
+
+			if (chan->numlanes > 4) {
+				/* Get Gang mode */
+				ret = of_property_read_u32(ep, "gang-mode", &value);
+				if (ret != 0 || value < 1 || value > 4) {
+					dev_err(&chan->video.dev,
+						"%s: invalid gang mode value"
+						", default to CAMERA_GANG_L_R\n",
+						__func__);
+					value = CAMERA_GANG_L_R;
+				}
+				chan->gang_mode_default = value;
+			}
 		}
 	}
 

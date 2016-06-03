@@ -54,18 +54,21 @@ static int tegra_channel_mipi_cal(struct tegra_channel *chan, char is_bypass);
 
 static void gang_buffer_offsets(struct tegra_channel *chan)
 {
-	int i;
+	bool reverse = false;
+	int i, ports;
 	u32 offset = 0;
 
 	for (i = 0; i < chan->total_ports; i++) {
 		switch (chan->gang_mode) {
+		case CAMERA_GANG_R_L:
+			reverse = true;
 		case CAMERA_NO_GANG_MODE:
 		case CAMERA_GANG_L_R:
-		case CAMERA_GANG_R_L:
 			offset = chan->gang_bytesperline;
 			break;
-		case CAMERA_GANG_T_B:
 		case CAMERA_GANG_B_T:
+			reverse = true;
+		case CAMERA_GANG_T_B:
 			offset = chan->gang_sizeimage;
 			break;
 		default:
@@ -73,7 +76,8 @@ static void gang_buffer_offsets(struct tegra_channel *chan)
 		}
 		offset = ((offset + TEGRA_SURFACE_ALIGNMENT - 1) &
 					~(TEGRA_SURFACE_ALIGNMENT - 1));
-		chan->buffer_offset[i] = i * offset;
+		ports = reverse ? (chan->total_ports - 1 - i) : i;
+		chan->buffer_offset[i] = ports * offset;
 	}
 }
 
@@ -123,7 +127,7 @@ static void update_gang_mode(struct tegra_channel *chan)
 	 * on gang mode and surface stride alignment
 	 */
 	if ((width > 1920) && (height > 1080)) {
-		chan->gang_mode = CAMERA_GANG_L_R;
+		chan->gang_mode = chan->gang_mode_default;
 		chan->valid_ports = chan->total_ports;
 	} else {
 		chan->gang_mode = CAMERA_NO_GANG_MODE;
