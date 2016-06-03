@@ -557,62 +557,6 @@
 		};
 	};
 
-	camera-pcl {
-		profiles {
-			ov5693@x_0010 {
-				use_of_node = "yes";
-				dev_name = "ov5693";
-				num = <0>;
-				avdd-supply = <&max77620_ldo3>;
-				dvdd-supply = <&max77620_ldo3>;
-				dovdd-supply = <&en_vdd_cam>;
-				cam2-gpios = <&gpio TEGRA_GPIO(S, 7) 1>;
-			};
-			ad5823@x_000c {
-				use_of_node = "yes";
-				vdd-supply = <&max77620_ldo3>;
-				vif-supply = <&en_vdd_cam>;
-				af-pwdn-gpios = <&gpio TEGRA_GPIO(S, 5) 1>;
-			};
-			imx132@x_0036 {
-				use_of_node = "yes";
-				dev_name = "imx132";
-				num = <1>;
-				vana-supply = <&max77620_ldo3>;
-				vdig-supply = <&en_vdd_cam_1v2>;
-				vif-supply = <&en_vdd_cam>;
-				reset-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
-				cam2-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
-			};
-		};
-
-		dpd {
-			compatible = "nvidia,csi-dpd";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			default-enable;
-			num = <6>;
-			csia {
-				reg = <0x0 0x0 0x0 0x0>;
-			};
-			csib {
-				reg = <0x0 0x1 0x0 0x0>;
-			};
-			csic {
-				reg = <0x1 0x0a 0x0 0x0>;
-			};
-			csid {
-				reg = <0x1 0x0b 0x0 0x0>;
-			};
-			csie {
-				reg = <0x1 0x0c 0x0 0x0>;
-			};
-			csif {
-				reg = <0x1 0x0d 0x0 0x0>;
-			};
-		};
-	};
-
 	psy_extcon: psy_extcon {
 		compatible = "power-supply-extcon";
 		extcon-cables = <&udc 1 &udc 2 &udc 3

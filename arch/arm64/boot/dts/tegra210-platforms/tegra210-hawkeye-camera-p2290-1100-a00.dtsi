@@ -15,10 +15,6 @@
 
 #include <dt-bindings/media/camera.h>
 
-#define CAM_I2C_BUS	6
-#define CAM0_RST_L	TEGRA_GPIO(S, 4)
-#define CAM0_PWDN	TEGRA_GPIO(S, 7)
-
 / {
 	host1x {
 		vi {
@@ -29,6 +25,8 @@
 				port@0 {
 					reg = <0>;
 					vi_in0: endpoint {
+						csi-port = <2>;
+						bus-width = <2>;
 						remote-endpoint = <&ov5693_out0>;
 					};
 				};
@@ -70,7 +68,7 @@
 				clock-frequency = <24000000>;
 
 				mclk = "cam_mclk1";
-				pwdn-gpios = <&gpio CAM0_PWDN GPIO_ACTIVE_LOW>;
+				pwdn-gpios = <&gpio TEGRA_GPIO(S, 7) GPIO_ACTIVE_LOW>;
 				vana-supply = <&max77620_ldo3>;
 				vif-supply = <&en_vdd_cam>;
 				has-eeprom = <1>;
@@ -288,7 +286,63 @@
 					};
 				};
 			};
+			imx132_e@36 {
+				compatible = "nvidia,imx132";
 
+				/* I2C device address */
+				reg = <0x36>;
+
+				avdd = "vana";
+				dvdd = "vdig";
+				iovdd = "vif";
+
+				clocks = <&tegra_car TEGRA210_CLK_ID_CLK_OUT_3>;
+				clock-names = "mclk";
+				clock-frequency = <24000000>;
+
+				mclk = "cam_mclk1";
+				vana-supply = <&max77620_ldo3>;
+				vdig-supply = <&en_vdd_cam_1v2>;
+				vif-supply = <&en_vdd_cam>;
+				reset-gpios = <&gpio TEGRA_GPIO(T, 0) 0>;
+				cam2-gpios = <&gpio TEGRA_GPIO(S, 4) 0>;
+
+				/* sensor capabilities */
+				cap-version = <0x34340002>;
+				cap-identifier = "IMX132";
+				cap-sensor_nvc_interface = <3>;
+				cap-pixel_types = <0x100>;
+				cap-orientation = <3>;
+				cap-direction = <1>;
+				cap-initial_clock_rate_khz = <6000>;
+				cap-h_sync_edge = <0>;
+				cap-v_sync_edge = <0>;
+				cap-mclk_on_vgp0 = <0>;
+				cap-csi_port = <1>;
+				cap-data_lanes = <2>;
+				cap-virtual_channel_id = <0>;
+				cap-discontinuous_clk_mode = <1>;
+				cap-cil_threshold_settle = <0>;
+				cap-min_blank_time_width = <16>;
+				cap-min_blank_time_height = <16>;
+				cap-preferred_mode_index = <0>;
+				cap-external_clock_khz_0 = <24000>;
+				cap-clock_multiplier_0 = <8000000>;
+				cap-external_clock_khz_1 = <0>;
+				cap-clock_multiplier_1 = <0>;
+				cap-hdr-enabled;
+			};
+			ad5823@c {
+				compatible = "nvidia,ad5823";
+
+				/* I2C device address */
+				reg = <0xc>;
+
+				vdd-supply = <&max77620_ldo3>;
+				vif-supply = <&en_vdd_cam>;
+				af-pwdn-gpios = <&gpio TEGRA_GPIO(S, 5) 1>;
+				support_mfi = "true";
+			};
 		};
 	};
 
@@ -331,200 +385,6 @@
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "s_IMX132";
 				};
-			};
-		};
-	};
-
-	camera-pcl {
-		compatible = "nvidia,tegra210-camera", "simple-bus";
-		configuration = <0xAA55AA55>;
-
-		modules {
-			module1: module1@modules {
-				compatible = "sensor,rear";
-				badge_info = "hawkeye_a00_rear_BA519C";
-
-				focuser {
-					profile = <&ad5823_1>;
-					platformdata = "hawkeye_ad5823_pdata";
-				};
-			};
-			module2: module2@modules {
-				compatible = "sensor,front";
-				badge_info = "hawkeye_a00_front_D2N05A";
-
-				sensor {
-					profile = <&imx132_1>;
-					platformdata = "hawkeye_imx132_pdata";
-				};
-			};
-		};
-
-		profiles {
-			ov5693_1: ov5693@x_0010 {
-				index = <1>;
-				chipname = "pcl_OV5693";
-				type = "sensor";
-				guid = "s_OV5693";
-				position = <0>;
-				bustype = "i2c";
-				busnum = <CAM_I2C_BUS>;
-				addr = <0x10>;
-				datalen = <2>;
-				pinmuxgrp = <0xFFFF>;
-				gpios = <3>;
-				regulators = "avdd", "dovdd", "dvdd";
-				clocks = "cam_mclk1";
-				drivername = "ov5693";
-				detect = <0x0002 0x300A 0xFFFF 0x5690>;
-				devid = <0x5693>;
-				poweron = <
-					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
-					CAMERA_WAITMS(1)
-					CAMERA_REGULATOR_ON(0)
-					CAMERA_REGULATOR_ON(2)
-					CAMERA_REGULATOR_ON(1)
-					CAMERA_WAITMS(1)
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 7))
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				poweroff = <
-					CAMERA_IND_CLK_CLR
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 7))
-					CAMERA_WAITUS(10)
-					CAMERA_REGULATOR_OFF(1)
-					CAMERA_REGULATOR_OFF(2)
-					CAMERA_REGULATOR_OFF(0)
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				/* sensor capabilities */
-				cap-version = <0x34340002>;
-				cap-identifier = "OV5693.0";
-				cap-sensor_nvc_interface = <5>;
-				cap-pixel_types = <0x2101>;
-				cap-orientation = <1>;
-				cap-direction = <0>;
-				cap-initial_clock_rate_khz = <6000>;
-				cap-h_sync_edge = <0>;
-				cap-v_sync_edge = <0>;
-				cap-mclk_on_vgp0 = <0>;
-				cap-csi_port = <0>;
-				cap-data_lanes = <2>;
-				cap-virtual_channel_id = <0>;
-				cap-discontinuous_clk_mode = <1>;
-				cap-cil_threshold_settle = <0>;
-				cap-min_blank_time_width = <16>;
-				cap-min_blank_time_height = <16>;
-				cap-preferred_mode_index = <0>;
-				cap-external_clock_khz_0 = <24000>;
-				cap-clock_multiplier_0 = <8000000>;
-				cap-external_clock_khz_1 = <0>;
-				cap-clock_multiplier_1 = <0>;
-				cap-hdr-enabled;
-				has-eeprom;
-			};
-			imx132_1: imx132@x_0036 {
-				index = <2>;
-				chipname = "pcl_IMX132";
-				type = "sensor";
-				guid = "s_IMX132";
-				position = <1>;
-				bustype = "i2c";
-				busnum = <CAM_I2C_BUS>;
-				addr = <0x36>;
-				datalen = <2>;
-				pinmuxgrp = <0xFFFF>;
-				gpios = <3>;
-				regulators = "vana", "vdig", "vif";
-				clocks = "cam_mclk1";
-				drivername = "imx132";
-				detect = <0x0002 0x0000 0xFFFF 0x0132>;
-				devid = <0x0132>;
-				poweron = <
-					CAMERA_IND_CLK_SET(10000)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
-					CAMERA_WAITMS(10)
-					CAMERA_REGULATOR_ON(0)
-					CAMERA_REGULATOR_ON(1)
-					CAMERA_REGULATOR_ON(2)
-					CAMERA_WAITMS(1)
-					CAMERA_GPIO_SET(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 4))
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				poweroff = <
-					CAMERA_IND_CLK_CLR
-					CAMERA_GPIO_CLR(TEGRA_GPIO(T, 0))
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 4))
-					CAMERA_WAITUS(10)
-					CAMERA_REGULATOR_OFF(2)
-					CAMERA_REGULATOR_OFF(1)
-					CAMERA_REGULATOR_OFF(0)
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				/* sensor capabilities */
-				cap-version = <0x34340002>;
-				cap-identifier = "IMX132";
-				cap-sensor_nvc_interface = <3>;
-				cap-pixel_types = <0x100>;
-				cap-orientation = <3>;
-				cap-direction = <1>;
-				cap-initial_clock_rate_khz = <6000>;
-				cap-h_sync_edge = <0>;
-				cap-v_sync_edge = <0>;
-				cap-mclk_on_vgp0 = <0>;
-				cap-csi_port = <1>;
-				cap-data_lanes = <2>;
-				cap-virtual_channel_id = <0>;
-				cap-discontinuous_clk_mode = <1>;
-				cap-cil_threshold_settle = <0>;
-				cap-min_blank_time_width = <16>;
-				cap-min_blank_time_height = <16>;
-				cap-preferred_mode_index = <0>;
-				cap-external_clock_khz_0 = <24000>;
-				cap-clock_multiplier_0 = <8000000>;
-				cap-external_clock_khz_1 = <0>;
-				cap-clock_multiplier_1 = <0>;
-				cap-hdr-enabled;
-			};
-			ad5823_1: ad5823@x_000c {
-				index = <3>;
-				chipname = "pcl_AD5823";
-				type = "focuser";
-				guid = "f_AD5823";
-				position = <0>;
-				bustype = "i2c";
-				busnum = <CAM_I2C_BUS>;
-				addr = <0xc>;
-				datalen = <1>;
-				pinmuxgrp = <0xFFFF>;
-				gpios = <3>;
-				regulators = "vdd", "vif";
-				drivername = "ad5823";
-				detect = <0x0002 0x0006 0xFFFF 0x0010>;
-				devid = <0x5823>;
-				poweron = <
-					CAMERA_REGULATOR_ON(1)
-					CAMERA_REGULATOR_ON(0)
-					CAMERA_WAITUS(10)
-					CAMERA_GPIO_SET(TEGRA_GPIO(S, 5))
-					CAMERA_WAITUS(10)
-					CAMERA_END
-					>;
-				poweroff = <
-					CAMERA_REGULATOR_OFF(0)
-					CAMERA_REGULATOR_OFF(1)
-					CAMERA_GPIO_CLR(TEGRA_GPIO(S, 5))
-					CAMERA_WAITMS(10)
-					CAMERA_END
-					>;
-				support_mfi;
 			};
 		};
 	};
