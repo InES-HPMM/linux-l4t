@@ -1718,7 +1718,7 @@ static void tegra_dsi_soft_reset(struct tegra_dc_dsi_data *dsi)
 		udelay(line_period);
 		val = tegra_dsi_readl(dsi, DSI_STATUS);
 		if (timeout_cnt++ > DSI_IDLE_TIMEOUT) {
-			dev_warn(&dsi->dc->ndev->dev, "dsi not idle when soft reset\n");
+			dev_info(&dsi->dc->ndev->dev, "dsi not idle when soft reset\n");
 			break;
 		}
 	}
