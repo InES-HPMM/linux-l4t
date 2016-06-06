@@ -62,4 +62,8 @@
 		nvidia,tegra-darcy-sku;
 		nvidia,tegra-joint_xpu_rail;
 	};
+
+	serial@70006300 {
+		nvidia,enable-rx-buffer-throttling;
+	};
 };
