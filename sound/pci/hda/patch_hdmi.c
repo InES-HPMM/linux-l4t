@@ -1199,6 +1199,16 @@ static int hdmi_pcm_open(struct hda_pcm_stream *hinfo,
 				return -ENODEV;
 			}
 		}
+#ifndef CONFIG_ANDROID
+		if (!eld->info.lpcm_sad_ready) {
+			/* hdmi detected, wait for eld available */
+			int wait_count = 3;
+
+			do {
+				usleep_range(5000, 10000);
+			} while (!eld->info.lpcm_sad_ready && wait_count-- > 0);
+		}
+#endif
 		if (!eld->info.lpcm_sad_ready)
 			return -ENODEV;
 		hinfo->pcm_open_retry_count = 0;
