@@ -423,8 +423,6 @@ static int tegra_vi_channel_update_sensor_formats(
 	int i, f, m, e;//, err;
 	unsigned index;
 
-	printk("%s: entered\n", __func__);
-
 	/* Make sure the mask is large enough */
 	BUILD_BUG_ON(ARRAY_SIZE(tegra_formats) > BITS_PER_LONG);
 
@@ -450,8 +448,6 @@ static int tegra_vi_channel_update_sensor_formats(
 		else
 			mask &= fmt_mask;
 	}
-
-	printk("%s: got mask=%lu\n", __func__, mask);
 
 	/* Fill the table with the supported formats */
 	chan->formats_count = 0;
@@ -479,7 +475,6 @@ static int tegra_vi_channel_update_sensor_formats(
 
 		chan->formats_count++;
 	}
-	printk("%s: got chan->formats_count=%d\n", __func__, chan->formats_count);
 
 	/* Invalidate the rest of the table */
 	for (; i < ARRAY_SIZE(chan->formats); i++) {
@@ -650,7 +645,6 @@ static int tegra_vi_channel_set_input(
 	if (i == INPUT_NONE) {
 		input = NULL;
 	} else if (i < chan->available_input_count) {
-		printk("%s: trying to set new input\n", __func__);
 		input = &chan->available_input[i];
 		if (input->endpoint_count > chan->pp_count) {
 			dev_err(&vdev->dev, "Input has too many endpoints\n");
@@ -720,7 +714,6 @@ static int tegra_vi_channel_set_input(
 
 		err = tegra_vi_input_get_framefmt(
 			input->endpoint[i], fmt, dflt_mbus_fmt);
-		printk("%s: got ep %d format: width=%d, height=%d\n", __func__, i, fmt->width, fmt->height);
 
 		if (err) {
 			dev_err(&vdev->dev,
@@ -742,7 +735,6 @@ static int tegra_vi_channel_set_input(
 	}
 	mf.composite_pf.pixelformat =
 		tegra_vi_channel_find_format_for_mbus(chan, mf.framefmt[0].code);
-	printk("%s: found pf.pixelformat=0x%x for best mbus format (code=0x%x)\n", __func__, mf.composite_pf.pixelformat, mf.framefmt[0].code);
 	/* Abort if none has been found */
 	if (!mf.composite_pf.pixelformat) {
 		dev_warn(&vdev->dev, "Failed to find format for input %d\n", i);
@@ -819,11 +811,8 @@ static const struct tegra_formats *tegra_vi_channel_get_format(
 {
 	unsigned i;
 
-	printk("%s: searching pixfmt %u in chan->formats. chan->formats_count=%d\n", __func__, pixfmt, chan->formats_count);
-
 	/* Lookup this pixel format in our list */
 	for (i = 0; i < chan->formats_count; i++) {
-		printk("%s: try chan->formats[i].v4l2=%u\n", __func__, chan->formats[i].v4l2);
 		if (chan->formats[i].v4l2 == pixfmt)
 			return &chan->formats[i];
 	}
@@ -1147,7 +1136,6 @@ static int tegra_vi_channel_get_mbus_framefmt(const struct tegra_vi_channel *cha
 	ep = input->endpoint[0];
 
 	if (ep->use_count > 1) {
-		printk("%s: reusing framefmt (use_count >1)\n", __func__);
 		framefmt[0] = ep->framefmt;
 		if (input->endpoint_count > 1)
 			framefmt[1] = input->endpoint[1]->framefmt;
@@ -1169,8 +1157,6 @@ static int tegra_vi_channel_get_mbus_framefmt(const struct tegra_vi_channel *cha
 			return err;
 		}
 	}
-
-	printk("%s: got framefmt->width=%d, framefmt->height=%d\n", __func__, framefmt->width, framefmt->height );
 
 	/* Check that the mbus format is acceptable and fill pf */
 	// FIXME: Here we are neglecting framefmt[1]. Correct?
@@ -1195,37 +1181,19 @@ static int tegra_vi_channel_try_fmt_vid_cap(
 	struct v4l2_mbus_framefmt framefmt[2];
 	int err, i;
 
-	printk("%s: entered\n", __func__);
-	printk("%s: working on chan->id=%d. Last input was: %d\n", __func__, chan->id, chan->input_id);
-
-	printk("%s: in: fmt->pix.width=%d, height=%d, pixelformat=0x%x, sizeimage=%d \n", 
-		__func__, f->fmt.pix.width, f->fmt.pix.height, f->fmt.pix.pixelformat, f->fmt.pix.sizeimage);
-	printk("%s: f->type=0x%x, V4L2_BUF_TYPE_VIDEO_CAPTURE=0x%x\n", __func__, f->type, V4L2_BUF_TYPE_VIDEO_CAPTURE);
 	/* We only support capture */
 	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
-	//printk("%s: endpoint_count=%d\n", __func__, chan->input->endpoint_count);
-	printk("%s: test\n", __func__);
-
-	// for (i = 0; i < chan->input->endpoint_count; i++) {
-	//FIXME: DBG
 	i=0;
-		err = tegra_vi_input_get_mbus_flags(chan->input->endpoint[i], NULL);		
-		if (err)
-			return err;
-	// }
-	printk("%s: 2\n", __func__);
+	err = tegra_vi_input_get_mbus_flags(chan->input->endpoint[i], NULL);		
+	if (err)
+		return err;
 
 /* Input: pf->pixelformat. Get according mbus_framefmt, then set the sensor
    to this mbus format. Finally store the set format in *pf and chan->pixfmt. */
 	err = tegra_vi_channel_get_mbus_framefmt(
 		chan, &f->fmt.pix, framefmt, NULL);
-	printk("%s: 3\n", __func__);
-
-	printk("%s: out: fmt->pix.width=%d, height=%d, pixelformat=0x%x, sizeimage=%d \n", 
-		__func__, f->fmt.pix.width, f->fmt.pix.height, f->fmt.pix.pixelformat, f->fmt.pix.sizeimage);
-	printk("%s: DONE. storing mbus_framefmt in f->fmt.pix,  err=%d\n", __func__, err);
 
 	return err;
 }
@@ -1243,7 +1211,6 @@ static int tegra_vi_pp_set_format(
 		return -ENODEV;
 	}
 
-	printk("%s: input->id=%d\n", __func__, input->id);
 	/* Find the channel source */
 	switch(input->id) {
 	case INPUT_CSI_A:
@@ -1260,7 +1227,6 @@ static int tegra_vi_pp_set_format(
 
 	/* Get the nvidia type for this bus format */
 	nv_mbus = mbus_format_to_tegra_data_type(framefmt->code);
-	printk("%s: got nv_mbus=%d for framefmt->code=0x%x\n", __func__, nv_mbus, framefmt->code);
 	if (nv_mbus < 0) {
 		pr_err("No NV data type found for MBUS format %x\n",
 			framefmt->code);
@@ -1365,20 +1331,10 @@ static int tegra_vi_channel_set_format(
 	struct tegra_vi_input *ep;
 	int nv_fmt, err, i, p;
 
-	printk("%s: entered\n", __func__);
-
 	/* If intention is to set channel to UHD/4K resolution, presume use case
 	   is TC358840 dual CSI link and ask the sensor for correct configuration */
 	if (mf->composite_pf.width >= 3840 && mf->composite_pf.height >= 2160) {
 		struct tegra_vi_input *ep = input->endpoint[0];
-
-		printk("%s: trying 4K\n", __func__);
-
-		dev_err(&vdev->dev,
-			"Trying to get multi link config from subdev. "
-			"request: (width=%d,height=%d,pixelformat=0x%x)\n",
-			mf->composite_pf.width, mf->composite_pf.height, 
-			mf->composite_pf.pixelformat);
 
 		/* If this is the first open, handle format negotiation */
 		if (ep->use_count == 1) {
@@ -1447,8 +1403,6 @@ static int tegra_vi_channel_set_format(
 	   mbus format with sensor.
 	   Assume there are only use cases with single CSI link. */
 	}else{
-		printk("%s: trying dynamic resolution (not 4K)\n", __func__);
-
 		pf = &mf->composite_pf;
 
 		/* Get the bus frame format */
@@ -1496,7 +1450,6 @@ static int tegra_vi_channel_set_format(
 
 	// Set format on pixel parser(s) (use the same framefmt for both PPs)
 	for(p = 0; p < chan->pp_count; p++) {
-		printk("%s: set format on PP %d of a total of pp_count=%d\n", __func__, p, chan->pp_count);
 		err = tegra_vi_pp_set_format(chan->pp[p], &mf->framefmt[0], nv_fmt);		
 		if (err) {
 			dev_err(&vdev->dev, "Failed to set format on pixel"
@@ -1546,8 +1499,6 @@ static int tegra_vi_channel_g_fmt_vid_cap(
 	struct video_device *vdev = video_devdata(file);
 	struct tegra_vi_channel *chan =
 		container_of(vdev, struct tegra_vi_channel, vdev);
-
-	printk("%s: entered. pf.sizeimage=%d\n", __func__, chan->multifmt.composite_pf.sizeimage);
 
 	mutex_lock(&chan->lock);
 
@@ -1623,10 +1574,6 @@ static int tegra_vi_channel_open(struct file *file)
 	printk("%s: entered\n", __func__);
 
 	mutex_lock(&chan->lock);
-
-	printk("%s: locked\n", __func__);
-	printk("%s: use_count=%d\n", __func__, chan->use_count);
-	printk("%s: trying to set chan to input %d\n", __func__, chan->input_id);
 
 	if (chan->use_count == 0)
 		err = tegra_vi_channel_set_input(chan, chan->input_id);
@@ -1704,7 +1651,6 @@ static const struct v4l2_file_operations tegra_vi_channel_fops = {
 static void tegra_vi_channel_event(struct tegra_vi_channel *chan,
 				struct v4l2_event *ev)
 {
-	printk("%s: got event: %d\n", __func__, ev->type);
 	switch(ev->type) {
 	/* Handle source change like an EOS for now */
 	case V4L2_EVENT_SOURCE_CHANGE:
@@ -1721,8 +1667,6 @@ static void tegra_vi_notify(struct v4l2_subdev *sd,
 	struct tegra_vi2 *vi2 =
 		container_of(sd->v4l2_dev, struct tegra_vi2, v4l2_dev);
 	int i, e;
-
-	printk("%s: entered\n", __func__);
 
 	/* We are only interrested in event notifications */
 	if (notification != V4L2_DEVICE_NOTIFY_EVENT)
@@ -1789,15 +1733,11 @@ static int tegra_vi_sensors_complete(struct v4l2_async_notifier *notifier)
 	unsigned int inputs = 0;
 	int c, i;
 
-	printk("%s: entered\n", __func__);
-
 	/* Create a bitmap of the sensors */
 	for (i = 0; i < ARRAY_SIZE(vi2->input); i++) {
 		if (vi2->input[i].sensor)
 			inputs |= BIT(i);
 	}
-
-	printk("%s: inputs=0x%x\n", __func__, inputs);
 
 	if (inputs == 0)
 		return -ENODEV;
@@ -2013,12 +1953,10 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 	struct vb2_queue *q;
 	int err, i, p;
 
-	printk("%s: got bitmask pp_mask: 0x%x\n", __func__, pp_mask);
 	for (i = 0; i < ARRAY_SIZE(vi2->pp); i++) {
 		if (pp_mask & BIT(i)) {
 			chan->pp[i] = &vi2->pp[i];
 			chan->pp_count++;
-			printk("%s: activate pp-nr. %d on channel %d. New chan->pp_count=%d\n", __func__, i, id, chan->pp_count);
 		}
 	}
 
@@ -2126,8 +2064,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	bool asd_known = false;
 	char port_name[64];
 
-	dev_err(&pdev->dev, "DBG: probing tegra_vi2\n");
-
 	vi2 = devm_kzalloc(&pdev->dev, sizeof(*vi2), GFP_KERNEL);
 	if (!vi2)
 		return -ENOMEM;
@@ -2138,7 +2074,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(vi2->channel_input); i++) {
 		vi2->channel_input[i].endpoint_count = 0;
 	}
-	printk("%s: vi2->channel_input[0].endpoint_count=%d\n", __func__, vi2->channel_input[0].endpoint_count);
 
 	/* Read the config from OF */
 	while ((np = of_graph_get_next_endpoint(pdev->dev.of_node, np))) {
@@ -2150,9 +2085,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		struct tegra_vi_channel_input *channel_input;
 
 		/* Get Endpoint ID */
-		printk("%s: -------- new endpoint in dt --------\n", __func__);
 		err = of_property_read_u32(np, "reg", &ep_id);
-		printk("%s: got ep_id=%d ('reg' property)\n", __func__, ep_id);
 		if (err || ep_id > ARRAY_SIZE(vi2->input)) {
 			dev_err(&pdev->dev,
 				"Endpoint is missing/invalid 'reg' property\n");
@@ -2163,7 +2096,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		/* Get parent Port of this endpoint*/
 		port = of_get_parent(np);
 		err = of_property_read_u32(port, "reg", &port_id);
-		printk("%s: got port_id=%d\n", __func__, port_id);
 		of_node_put(port);
 
 		if (err || port_id > ARRAY_SIZE(vi2->channel)) {
@@ -2177,7 +2109,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 
 /* Get remote endpoint of this endpoint */
 		ep = of_parse_phandle(np, "remote-endpoint", 0);
-		printk("%s: got remote-endpoint\n", __func__);
 		if (!ep || !of_device_is_available(ep)) {
 			dev_warn(&pdev->dev, "Skip port %d, no endpoint\n", 
 				port_id);
@@ -2187,9 +2118,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 
 		/* Get subdevice (parent of remote port) */
 		sd = of_graph_get_remote_port_parent(np);
-		printk("%s: got sd\n", __func__);
 		of_node_put(np);
-		printk("%s: remote port parent name is: %s\n", __func__, of_node_full_name(sd));
 
 		if (!sd || !of_device_is_available(sd)) {
 			dev_warn(&pdev->dev, "Skip port %d, no device\n", port_id);
@@ -2198,7 +2127,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 
 		/* Per channel: Assign one PP for each endpoint */
 		chan_pp[port_id] |= BIT(ep_id);
-		printk("%s: enable PP %d in bitmask chan_pp of port_id %d\n", __func__, ep_id, port_id);
 
 		// -> Link async subdevice to this input. (The *sensor will be set later in .bound)
 		if (!asd->match.of.node) {
@@ -2221,7 +2149,6 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 				//  vi2->sd_notifier.subdevs will be pted to vi2->asd later
 				vi2->asd[vi2->sd_notifier.num_subdevs] = asd;	
 				vi2->sd_notifier.num_subdevs++;
-				printk("%s: found unknown asd and registered\n", __func__);
 /*				asd_known = false;
 			}*/
 		}
@@ -2246,15 +2173,12 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		}
 		channel_input->endpoint[ep_id] = &vi2->input[ep_counter];
 		channel_input->endpoint_count++;
-		printk("%s: channel_input->endpoint_count = %d\n", __func__, channel_input->endpoint_count);
-		printk("%s: try to copy of_node_full_name = %s\n", __func__, of_node_full_name(port));
 		strcpy(port_name, of_node_full_name(port));
 		channel_input->name = &port_name;
 
 		channel_input->endpoint[ep_id]->sensor_ep = ep_id;
 
 		ep_counter++;
-		printk("%s: ep_counter = %d\n", __func__, ep_counter);
 
 		if (!vi2->channel[port_id].input)
 			vi2->channel[port_id].input = channel_input;

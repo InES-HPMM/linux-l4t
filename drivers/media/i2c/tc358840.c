@@ -444,17 +444,12 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 	if (sync_timeout_ctr == 0){
 		v4l2_dbg(1, debug, sd, "%s: no sync timeout exceeded, EXITING\n", __func__);
 		return -ENOLCK;
-	} else {
-		v4l2_dbg(1, debug, sd, "%s: SYNC SUCCESSFUL, sync_timeout_ctr=%d\n", __func__, sync_timeout_ctr);
 	}
 
 	timings->type = V4L2_DV_BT_656_1120;
 
 	bt->interlaced = i2c_rd8(sd, VI_STATUS1) &
 		MASK_S_V_INTERLACE ? V4L2_DV_INTERLACED : V4L2_DV_PROGRESSIVE;
-
-	v4l2_dbg(2, debug, sd, "VI_STATUS3 (input format): 0x%02X\n",
-		i2c_rd8(sd, VI_STATUS3));
 
 	width = ((i2c_rd8(sd, DE_HSIZE_HI) & 0x1f) << 8) +
 		i2c_rd8(sd, DE_HSIZE_LO);
@@ -465,7 +460,6 @@ static int tc358840_get_detected_timings(struct v4l2_subdev *sd,
 	frame_height = (((i2c_rd8(sd, IN_VSIZE_HI) & 0x3f) << 8) +
 		i2c_rd8(sd, IN_VSIZE_LO)) / 2;
 
-	printk("%s: DE: width=%d, height=%d  |  IN: frame_width=%d, frame_height=%d\n", __func__, width, height, frame_width, frame_height);
 	if (frame_height < height) {
 		printk("%s: ERROR: frame_height < height. Exiting..\n", __func__);
 		return -EINVAL;
@@ -651,8 +645,6 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 
 	u32 sync_timeout_ctr;
 
-	v4l2_dbg(2, debug, sd, "%s: %sable\n", __func__, enable ? "en" : "dis");
-
 	if (enable) {
 		/* It is critical for CSI receiver to see lane transition
 		 * LP11->HS. Set to non-continuous mode to enable clock lane
@@ -667,13 +659,11 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 	} else {
 		/* Enable Registers to be initialized */
 		i2c_wr8_and_or(sd, INIT_END, ~(MASK_INIT_END), 0x00);
-		printk("%s: enable regs DONE\n", __func__);
 
 		/* Mute video so that all data lanes go to LSP11 state.
 		 * No data is output to CSI Tx block. */
 
 		i2c_wr8(sd, VI_MUTE, MASK_AUTO_MUTE | MASK_VI_MUTE);
-		printk("%s: mute DONE\n", __func__);
 	}
 
 	/* Wait for HDMI input to become stable */
@@ -701,8 +691,6 @@ static int enable_stream(struct v4l2_subdev *sd, bool enable)
 		MASK_ABUFEN | MASK_TX_MSEL | MASK_AUTOINDEX) :
 		(MASK_TX_MSEL | MASK_AUTOINDEX));
 
-	printk("%s: confctl write DONE\n", __func__);
-
 	return 0;
 }
 
@@ -720,7 +708,6 @@ static void tc358840_set_splitter(struct v4l2_subdev *sd)
 
 	if(pdata->csi_port == CSI_TX_BOTH)
 	{
-		printk("%s: set splitter for dual link\n", __func__);
 		/*v4l2_dbg(2, debug, sd, "set splitter for dual link");*/
 		i2c_wr16_and_or(sd, SPLITTX0_CTRL, 
 				~(MASK_IFEN | MASK_LCD_CSEL | MASK_SPBP), MASK_SPEN);
@@ -735,7 +722,6 @@ static void tc358840_set_splitter(struct v4l2_subdev *sd)
 */
 	}else
 	{
-		printk("%s: set splitter for single link\n", __func__);
 		/*v4l2_dbg(2, debug, sd, "set splitter for single link");*/
 		i2c_wr16_and_or(sd, SPLITTX0_CTRL, ~(MASK_IFEN | MASK_LCD_CSEL),
 				MASK_SPBP);
@@ -1257,7 +1243,6 @@ static void tc358840_format_change(struct v4l2_subdev *sd)
 	};	//FIXME: Change to H.verkuils version with V4L2_EVENT_SOURCE_CHANGE ?
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
-	printk("%s: entered\n", __func__);
 
 	if (tc358840_get_detected_timings(sd, &timings)) {
 		enable_stream(sd, false);
@@ -1429,8 +1414,6 @@ static void tc358840_hdmi_clk_int_handler(struct v4l2_subdev *sd, bool *handled)
 
 	unsigned width, height, frame_width, frame_height;
 
-	printk("%s: entered\n", __func__);
-
 	/* Bit 7 and bit 6 are set even when they are masked */
 	i2c_wr8(sd, CLK_INT, clk_int | 0x80 | MASK_OUT_H_CHG);
 
@@ -1461,10 +1444,6 @@ static void tc358840_hdmi_clk_int_handler(struct v4l2_subdev *sd, bool *handled)
 			frame_height = (((i2c_rd8(sd, IN_VSIZE_HI) & 0x3f) << 8) +
 				i2c_rd8(sd, IN_VSIZE_LO)) / 2;
 
-			printk("%s: DE: width=%d, height=%d  |  IN: frame_width=%d, frame_height=%d\n", __func__, width, height, frame_width, frame_height);
-			if (frame_height < height) {
-				printk("%s: DBG: ERROR: frame_height < height. \n", __func__);
-			}
 		} else {
 			mdelay(1);
 		}
@@ -1721,7 +1700,7 @@ static int tc358840_get_fmt(struct v4l2_subdev *sd,
 	// }
 
 	fmt = &format->format;
-	/*v4l2_dbg(3, debug, sd,*/printk(
+	v4l2_dbg(3, debug, sd,
 		"%s(): width=%d, height=%d, code=0x%04X, field=%d, colorspace=%d\n",
 		__func__, fmt->width, fmt->height, fmt->code, fmt->field, fmt->colorspace);
 
@@ -1738,8 +1717,6 @@ static int tc358840_set_fmt(struct v4l2_subdev *sd,
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
 	format->format.code = code;
-
-	printk("%s: got code=%u,  ret=%d\n", __func__, code, ret);
 
 	if (ret)
 		return ret;
@@ -2131,8 +2108,6 @@ static int tc358840_g_multi_config(struct v4l2_subdev *sd,
 			__func__);
 		v4l2_err(sd, "%s: width=%d, height=%d, pixelformat=0x%x\n", 
 		__func__, multi_format->composite_pf.width, multi_format->composite_pf.height, multi_format->composite_pf.pixelformat);
-		printk("%s: pixelformat=0x%x\n", __func__, multi_format->composite_pf.pixelformat);
-		printk("%s: required=0x%x\n", __func__, V4L2_PIX_FMT_UYVY);
 		return -EINVAL;
 	}
 	//FIXME: need to check composite_pf.field ?

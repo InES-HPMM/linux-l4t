@@ -29,9 +29,6 @@ module_param(show_statistics, int, 0644);
 
 static int v4l2_pix_format_stride(const struct v4l2_pix_format *pf, int *stride)
 {
-	printk("%s: entered\n", __func__);
-	printk("%s: trying pf->width=%d, ROUND_STRIDE(pf->width)=%d, pixelformat=0x%x\n", __func__, 
-		pf->width, ROUND_STRIDE(pf->width), pf->pixelformat);
 	// FIXME: Need to modify for dual-link?
 	switch (pf->pixelformat) {
 	case V4L2_PIX_FMT_GREY:
@@ -90,8 +87,6 @@ int v4l2_pix_format_set_sizeimage(struct v4l2_pix_format *pf)
 	pf->sizeimage = (stride[0] + stride[1] + stride[2]) * pf->height;
 	pf->bytesperline = stride[0];
 
-	printk("%s: stride[0]=%d,[1]=%d,[2]=%d, pf->height=%d, pf->sizeimage=%d\n", __func__, stride[0], stride[1], stride[2], pf->height, pf->sizeimage);
-
 	return 0;
 }
 
@@ -123,20 +118,15 @@ static int tegra_vi_videobuf_queue_setup(
 	struct video_device *vdev = &chan->vdev;
 	int planes, stride[3] = {};
 
-	printk("%s: entered\n", __func__);
-
 	if (fmt) {
 		if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 			return -EINVAL;
 		pf = &fmt->fmt.pix;
-		printk("%s: got fmt arg\n", __func__);
 	} else {
 		pf = &chan->multifmt.composite_pf;
-		printk("%s: got no fmt arg, using chan with width=%d, height=%d, pixelformat=%d, sizeimage=%d\n", __func__, chan->multifmt.composite_pf.width, chan->multifmt.composite_pf.height, chan->multifmt.composite_pf.pixelformat, chan->multifmt.composite_pf.sizeimage);
 	}
 
 	planes = v4l2_pix_format_stride(pf, stride);
-	printk("%s: planes=%d\n", __func__, planes);
 	if (planes < 0) {
 		dev_err(&vdev->dev, "Format unsupported by the queue\n");
 		return planes;
@@ -185,8 +175,6 @@ static int tegra_vi_videobuf_prepare(struct vb2_buffer *vb)
 	struct tegra_vi_buffer *buf =
 		container_of(vb, struct tegra_vi_buffer, vb);
 	unsigned height = chan->pixfmt.height;
-
-	printk("%s: entered\n", __func__);
 
 	if (vb->v4l2_buf.type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
@@ -314,8 +302,6 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 		container_of(vdev->v4l2_dev, struct tegra_vi2, v4l2_dev);
 	int err, i;
 
-	printk("%s: entered\n", __func__);
-
 	mutex_lock(&chan->lock);
 	if (!chan->input) {
 		mutex_unlock(&chan->lock);
@@ -328,12 +314,10 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 
 		if (chan->input->endpoint[i]->streaming_count == 0) {
 			tegra_vi_input_start(vi2, chan->input->endpoint[i]);
-			printk("%s: started input for ep %d\n", __func__, i);
 
 			// Only call the subdev "start stream" once
 			if (i == 0) {
 				err = v4l2_subdev_call(chan->input->endpoint[i]->sensor, video, s_stream, 1);
-				printk("%s: started stream on sensor for ep %d (err=%d)\n", __func__, i, err);
 				if (err && err != -ENOIOCTLCMD) {
 					dev_err(&vdev->dev, "Failed to start sensor attached to input %d\n", i);
 					goto input_error;
@@ -342,7 +326,6 @@ static int tegra_vi_videobuf_start_streaming(struct vb2_queue *q,
 
 			/* Calibrate the input */
 			err = tegra_vi_calibrate_input(vi2, chan->input->endpoint[i]);
-			printk("%s: calibrated input for ep %d (err=%d)\n", __func__, i, err);
 			if (err) {
 				dev_err(&vdev->dev, "Failed to calibrate input %d\n", i);
 				v4l2_subdev_call(chan->input->endpoint[i]->sensor, video, s_stream, 0);
@@ -394,8 +377,6 @@ static int tegra_vi_videobuf_stop_streaming(struct vb2_queue *q)
 		container_of(vdev->v4l2_dev, struct tegra_vi2, v4l2_dev);
 	int err, i, p;
 
-	printk("%s: entered.    STOPPING CAPTURE THREAD!!\n", __func__);
-
 	/* First wait for the capture thread to finish */
 	kthread_stop(chan->work_th);
 	chan->work_th = NULL;
@@ -444,7 +425,6 @@ static void tegra_vi_videobuf_wait_prepare(struct vb2_queue *q)
 		container_of(q, struct tegra_vi_channel, vb);
 	//unsigned long flags = chan->vq_flags;
 
-	printk("%s: entered\n", __func__);
 
 	// mutex_unlock(&chan->lock);
 	// spin_unlock_irqrestore(&chan->vq_lock, flags);
@@ -461,7 +441,6 @@ static void tegra_vi_videobuf_wait_finish(struct vb2_queue *q)
 		container_of(q, struct tegra_vi_channel, vb);
 	//unsigned long flags = chan->vq_flags;
 
-	printk("%s: entered\n", __func__);
 
 	// mutex_lock(&chan->lock);
 	// spin_lock_irqsave(&chan->vq_lock, flags);
@@ -489,15 +468,10 @@ static void tegra_vi_channel_queue_syncpt(
 		container_of(vdev->v4l2_dev, struct tegra_vi2, v4l2_dev);
 	int err;
 
-	printk("%s: entered.     cond=%d\n", __func__, cond);
-
 	/* Update the sync point value */
-	// FIXME: HOW TO SYNC??
 	if (!(err = nvhost_syncpt_read_ext_check(pdev, chan->syncpt_id, syncpt_val)))
 		*syncpt_val = nvhost_syncpt_incr_max_ext(
 			pdev, chan->syncpt_id, incrs);
-
-	printk("%s: err=%d\n", __func__, err);
 
 	/* Queue a sync point raise on the condition */
 	vi_writel((cond << 8) | chan->syncpt_id, &vi2->vi_regs->vi_incr_syncpt);
@@ -554,8 +528,6 @@ static struct tegra_vi_buffer * tegra_vi_channel_set_next_buffer(struct tegra_vi
 		if (!missed && !buf)
 			missed = true;
 	}
-
-	printk("%s: Got a buffer after waiting %d times\n", __func__, wait_cnt);
 
 	/* Setup the DMA registers */
 	for (i = 0; i < buf->num_planes; i++) {
@@ -653,12 +625,7 @@ static int tegra_vi_channel_capture_thread(void *data)
 	u32 incrs;
 	int err0, err1, i, p;
 
-	printk("%s: entered\n", __func__);
-	printk("%s: endpoint_count=%d\n", __func__, chan->input->endpoint_count);
-	//printk("%s: &chan->lock=0x%x\n", __func__, &chan->lock);
-
 	mutex_lock(&chan->lock);
-	printk("%s: acquired chan lock\n", __func__);
 
 	/* Don't capture in broadcast mode it is broken */
 	for (i = 0; i < chan->input->endpoint_count; i++) {
@@ -669,7 +636,6 @@ static int tegra_vi_channel_capture_thread(void *data)
 	}
 
 	incrs = chan->input->endpoint_count == 2 ? 2 : 1;
-	printk("%s: incrs=%d\n", __func__, incrs);
 
 	tegra_vi_channel_clear_errors(chan);
 
@@ -682,18 +648,13 @@ static int tegra_vi_channel_capture_thread(void *data)
 		goto finish;
 
 	}
-	printk("%s: got an active buffer from DMA\n", __func__);
 /*
 VI_CSI_PPA_FRAME_START Value=0x09 FIFO Depth=2
 Valid SOF has been received by the camera (PPA) input. This
 SOF is detected at the VI2 input.
 */
 	// FIXME: Probably we expect only 1 SOF on PPA, nothing on PPB
-	printk("%s: got syncpt before queueing SOF: %d\n", __func__, syncpt_val[0]);
 	tegra_vi_channel_queue_syncpt(chan, 5, &syncpt_val[0], 1);
-	printk("%s: got syncpt after queueing SOF: %d\n", __func__, syncpt_val[0]);
-
-	printk("%s: queued syncpt for SOF on PPA (chan->pp[0]->id=%d)\n", __func__, chan->pp[0]->id);
 
 	if (show_statistics)
 		start_time = ktime_get();
@@ -704,11 +665,9 @@ SOF is detected at the VI2 input.
 		/* Queue a buffer update on the next shot */
 		vi_writel(1, &chan->pp[p]->vi_regs->single_shot);
 	}
-	printk("%s: started PPs and queued a buffer update each\n", __func__);
 
 	/* Wait for SOF */
 	err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[0]);
-	printk("%s: wait for SOF: err=%d\n", __func__, err0);
 	if (err0) {
 		dev_err(&vdev->dev, "Initial wait for SOF failed!\n");
 		tegra_vi_channel_print_errors(chan);
@@ -728,7 +687,6 @@ SOF is detected at the VI2 input.
 
 		/* Wait for the write ACK */
 		err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[0]);
-		printk("%s: wait for write ACK.0 err=%d\n", __func__, err0);
 		if (err0) {
 			if (!chan->should_stop) {
 				dev_err(&vdev->dev,
@@ -739,7 +697,6 @@ SOF is detected at the VI2 input.
 			break;
 		}
 		err1 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[1]);
-		printk("%s: wait for write ACK.1 err=%d\n", __func__, err1);
 		if (err1) {
 			if (!chan->should_stop) {
 				dev_err(&vdev->dev,
@@ -777,9 +734,7 @@ The VI2 generates this syncpt when all WrAcks for a captured
 frame from the camera (PPA) to memory are received.
 */
 		for (p=0; p < chan->pp_count; p++) {
-			printk("%s: got syncpt before queueing (p=%d): %d\n", __func__, p, syncpt_val[p]);
 			tegra_vi_channel_queue_syncpt(chan, 7 + 8*chan->pp[p]->id, &syncpt_val[p], 1);//incrs);
-			printk("%s: got syncpt after queueing (p=%d): %d\n", __func__, p, syncpt_val[p]);
 		}
 		for (p=0; p < chan->pp_count; p++) {
 			if (chan->pending_buffer) {
