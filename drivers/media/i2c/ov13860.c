@@ -481,6 +481,9 @@ static int ov13860_s_stream(struct v4l2_subdev *sd, int enable)
 	struct v4l2_control control;
 	int err;
 
+	dev_dbg(&client->dev, "%s++ enable %d mode %d\n",
+		__func__, enable, s_data->mode);
+
 	if (!enable)
 		return ov13860_write_table(priv,
 			mode_table[OV13860_MODE_STOP_STREAM]);
@@ -537,6 +540,38 @@ exit:
 	return err;
 }
 
+static int ov13860_get_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+		struct v4l2_subdev_format *format)
+{
+	return camera_common_g_fmt(sd, &format->format);
+}
+
+static int ov13860_set_fmt(struct v4l2_subdev *sd,
+		struct v4l2_subdev_fh *fh,
+	struct v4l2_subdev_format *format)
+{
+	int ret;
+
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		ret = camera_common_try_fmt(sd, &format->format);
+	else
+		ret = camera_common_s_fmt(sd, &format->format);
+
+	return ret;
+}
+
+static int ov13860_g_input_status(struct v4l2_subdev *sd, u32 *status)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct ov13860 *priv = (struct ov13860 *)s_data->priv;
+	struct camera_common_power_rail *pw = &priv->power;
+
+	*status = pw->state == SWITCH_ON;
+	return 0;
+}
+
 static struct v4l2_subdev_video_ops ov13860_subdev_video_ops = {
 	.s_stream	= ov13860_s_stream,
 	.s_mbus_fmt	= camera_common_s_fmt,
@@ -544,6 +579,9 @@ static struct v4l2_subdev_video_ops ov13860_subdev_video_ops = {
 	.try_mbus_fmt	= camera_common_try_fmt,
 	.enum_mbus_fmt	= camera_common_enum_fmt,
 	.g_mbus_config	= camera_common_g_mbus_config,
+	.g_input_status	= ov13860_g_input_status,
+	.enum_framesizes	= camera_common_enum_framesizes,
+	.enum_frameintervals	= camera_common_enum_frameintervals,
 };
 
 static struct v4l2_subdev_core_ops ov13860_subdev_core_ops = {
@@ -552,6 +590,8 @@ static struct v4l2_subdev_core_ops ov13860_subdev_core_ops = {
 
 static struct v4l2_subdev_pad_ops ov13860_subdev_pad_ops = {
 	.enum_mbus_code = camera_common_enum_mbus_code,
+	.set_fmt	= ov13860_set_fmt,
+	.get_fmt	= ov13860_get_fmt,
 };
 
 static struct v4l2_subdev_ops ov13860_subdev_ops = {
@@ -942,9 +982,12 @@ static int ov13860_fuse_id_setup(struct ov13860 *priv)
 		return -EINVAL;
 	}
 
-	for (i = 0; i < OV13860_FUSE_ID_SIZE; i++)
+	for (i = 0; i < OV13860_FUSE_ID_SIZE; i++) {
 		sprintf(&ctrl->string[i*2], "%02x",
 			fuse_id[i]);
+		dev_dbg(&priv->i2c_client->dev, "fuse_id[%d] %02x\n",
+			i, fuse_id[i]);
+	}
 	ctrl->cur.string = ctrl->string;
 
 	err = camera_common_s_power(priv->subdev, false);
