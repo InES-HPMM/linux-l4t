@@ -18,6 +18,11 @@
 #include <dt-bindings/media/camera.h>
 #include <dt-bindings/platform/t210/t210.h>
 
+#define GANG_MODE_L_R 1
+#define GANG_MODE_T_B 2
+#define GANG_MODE_R_L 3
+#define GANG_MODE_B_T 4
+
 / {
 	host1x {
 		vi {
@@ -38,6 +43,7 @@
 					tc358840_vi_in0: endpoint {
 						csi-port = <2>;
 						bus-width = <8>;
+						gang-mode = <GANG_MODE_L_R>;
 						remote-endpoint = <&tc358840_out0>;
 					};
 				};
