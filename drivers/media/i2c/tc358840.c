@@ -1656,7 +1656,7 @@ static int tc358840_get_fmt(struct v4l2_subdev *sd,
 		struct v4l2_subdev_format *format)
 {
 	struct tc358840_state *state = to_state(sd);
-	// u8 vout_csc = i2c_rd8(sd, VOUT_CSC);
+	u8 vout_csc = i2c_rd8(sd, VOUT_CSC);
 	struct v4l2_mbus_framefmt *fmt;
 
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
@@ -1669,35 +1669,35 @@ static int tc358840_get_fmt(struct v4l2_subdev *sd,
 	format->format.height = state->timings.bt.height;
 	format->format.field = V4L2_FIELD_NONE;
 
-	switch (state->mbus_fmt_code) {
-	case V4L2_MBUS_FMT_UYVY8_1X16:
-		format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;	/* 601 YCbCr Limited */
-		break;
-	case V4L2_MBUS_FMT_RGB888_1X24:
-		format->format.colorspace = V4L2_COLORSPACE_SRGB;	/* RGB Full */
-		break;
-	default:
-		v4l2_dbg(2, debug, sd, "%s: Unsupported format code 0x%x\n",
-				__func__, state->mbus_fmt_code);
-		break;
-	}
-	// switch (vout_csc & MASK_COLOR) {
-	// case MASK_COLOR_RGB_FULL:
-	// case MASK_COLOR_RGB_LIMITED:
-	// 	format->format.colorspace = V4L2_COLORSPACE_SRGB;
+	// switch (state->mbus_fmt_code) {
+	// case V4L2_MBUS_FMT_UYVY8_1X16:
+	// 	format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;	/* 601 YCbCr Limited */
 	// 	break;
-	// case MASK_COLOR_601_YCBCR_FULL:
-	// case MASK_COLOR_601_YCBCR_LIMITED:
-	// 	format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;
-	// 	break;
-	// case MASK_COLOR_709_YCBCR_FULL:
-	// case MASK_COLOR_709_YCBCR_LIMITED:
-	// 	format->format.colorspace = V4L2_COLORSPACE_REC709;
+	// case V4L2_MBUS_FMT_RGB888_1X24:
+	// 	format->format.colorspace = V4L2_COLORSPACE_SRGB;	/* RGB Full */
 	// 	break;
 	// default:
-	// 	format->format.colorspace = 0;
+	// 	v4l2_dbg(2, debug, sd, "%s: Unsupported format code 0x%x\n",
+	// 			__func__, state->mbus_fmt_code);
 	// 	break;
 	// }
+	switch (vout_csc & MASK_COLOR) {
+	case MASK_COLOR_RGB_FULL:
+	case MASK_COLOR_RGB_LIMITED:
+		format->format.colorspace = V4L2_COLORSPACE_SRGB;
+		break;
+	case MASK_COLOR_601_YCBCR_FULL:
+	case MASK_COLOR_601_YCBCR_LIMITED:
+		format->format.colorspace = V4L2_COLORSPACE_SMPTE170M;
+		break;
+	case MASK_COLOR_709_YCBCR_FULL:
+	case MASK_COLOR_709_YCBCR_LIMITED:
+		format->format.colorspace = V4L2_COLORSPACE_REC709;
+		break;
+	default:
+		format->format.colorspace = 0;
+		break;
+	}
 
 	fmt = &format->format;
 	v4l2_dbg(3, debug, sd,
