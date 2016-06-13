@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2015-2016, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+#include <tegra210-platforms/tegra210-camera-li-mipi-adpt-a00.dtsi>
+
+#define CAM0_RST	TEGRA_GPIO(S, 4)
+
+/* camera control gpio definitions */
+
+/ {
+	tegra-camera-platform {
+		compatible = "nvidia, tegra-camera-platform";
+		/**
+		* Physical settings to calculate max ISO BW
+		*
+		* num_csi_lanes = <>;
+		* Total number of CSI lanes when all cameras are active
+		*
+		* max_lane_speed = <>;
+		* Max lane speed in Kbit/s
+		*
+		* min_bits_per_pixel = <>;
+		* Min bits per pixel
+		*
+		* vi_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the VI ISO case
+		*
+		* vi_bw_margin_pct = <>;
+		* Vi bandwidth margin in percentage
+		*
+		* isp_peak_byte_per_pixel = <>;
+		* Max byte per pixel for the ISP ISO case
+		*
+		* isp_bw_margin_pct = <>;
+		* Isp bandwidth margin in percentage
+		*/
+		num_csi_lanes = <4>;
+		max_lane_speed = <445500000>;
+		min_bits_per_pixel = <10>;
+		vi_peak_byte_per_pixel = <2>;
+		vi_bw_margin_pct = <25>;
+		isp_peak_byte_per_pixel = <2>;
+		isp_bw_margin_pct = <25>;
+	};
+
+	host1x {
+		i2c@546c0000 {
+			tca9546@70 {
+				compatible = "nxp,pca9546";
+				reg = <0x70>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				vif-supply = <&en_vdd_cam>;
+				vcc_lp = "vif";
+				i2c@0 {
+					reg = <0>;
+					i2c-mux,deselect-on-exit;
+					#address-cells = <1>;
+					#size-cells = <0>;
+					pca9570_a@24 {
+						compatible = "nvidia,pca9570";
+						reg = <0x24>;
+						channel = "a";
+					};
+				};
+			};
+		};
+	};
+};
+
+/{
+	host1x {
+		i2c@546c0000 {
+			tca9546@70 {
+				i2c@0 {
+					imx185_a@1a {
+						mclk = "cam_mclk1";
+						reset-gpios = <&gpio CAM0_RST GPIO_ACTIVE_HIGH>;
+					};
+				};
+			};
+		};
+	};
+
+	gpio: gpio@6000d000 {
+		camera-control {
+			gpio-output-low = <
+				CAM0_RST
+				>;
+		};
+	};
+};
