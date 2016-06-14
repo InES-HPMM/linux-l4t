@@ -1185,6 +1185,8 @@ struct tegra_hdmi_out {
 	int n_tmds_config;
 	bool hdmi2fpd_bridge_enable;
 	struct spd_infoframe *spd_infoframe;
+	void (*set_avi_infoframe)(struct tegra_dc *dc);
+	u8 it_content_type;
 };
 
 enum {

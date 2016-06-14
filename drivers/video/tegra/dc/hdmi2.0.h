@@ -144,11 +144,11 @@ enum {
 };
 
 enum {
-	HDMI_AVI_IT_CONTENT_NONE = 0x0,
 	HDMI_AVI_IT_CONTENT_GRAPHICS = 0x0,
 	HDMI_AVI_IT_CONTENT_PHOTO = 0x1,
 	HDMI_AVI_IT_CONTENT_CINEMA = 0x2,
 	HDMI_AVI_IT_CONTENT_GAME = 0x3,
+	HDMI_AVI_IT_CONTENT_NONE = 0x4,
 };
 
 enum {
@@ -482,5 +482,6 @@ void tegra_hdmi_infoframe_pkt_write(struct tegra_hdmi *hdmi,
 						u32 reg_payload_len,
 						bool sw_checksum);
 u32 tegra_hdmi_get_cea_modedb_size(struct tegra_hdmi *hdmi);
+void tegra_hdmi_set_avi_infoframe(struct tegra_dc *dc);
 
 #endif

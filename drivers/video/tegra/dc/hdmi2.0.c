@@ -916,6 +916,9 @@ static int tegra_dc_hdmi_init(struct tegra_dc *dc)
 	hdmi->mon_spec_valid = false;
 	hdmi->eld_valid = false;
 	hdmi->device_shutdown = false;
+	hdmi->pdata->set_avi_infoframe = tegra_hdmi_set_avi_infoframe;
+	hdmi->pdata->it_content_type = HDMI_AVI_IT_CONTENT_NONE;
+
 	if (0) {
 		/* TODO: seamless boot mode needs initialize the state */
 	} else {
@@ -1326,6 +1329,23 @@ static u32 tegra_hdmi_get_ycc_quant(struct tegra_hdmi *hdmi)
 		return HDMI_AVI_YCC_QUANT_NONE;
 }
 
+static bool tegra_hdmi_get_it_content(struct tegra_hdmi *hdmi)
+{
+	int it_content = hdmi->pdata->it_content_type &
+		HDMI_AVI_IT_CONTENT_NONE;
+
+	if (it_content)
+		return false;
+	else
+		return true;
+}
+
+static int tegra_hdmi_get_it_content_type(struct tegra_hdmi *hdmi)
+{
+	int it_content_type = hdmi->pdata->it_content_type & 0x3;
+	return it_content_type;
+}
+
 static void tegra_hdmi_avi_infoframe_update(struct tegra_hdmi *hdmi)
 {
 	struct hdmi_avi_infoframe *avi = &hdmi->avi;
@@ -1349,13 +1369,13 @@ static void tegra_hdmi_avi_infoframe_update(struct tegra_hdmi *hdmi)
 	avi->scaling = HDMI_AVI_SCALING_UNKNOWN;
 	avi->rgb_quant = tegra_hdmi_get_rgb_quant(hdmi);
 	avi->ext_colorimetry = tegra_hdmi_get_ex_colorimetry(hdmi);
-	avi->it_content = HDMI_AVI_IT_CONTENT_FALSE;
+	avi->it_content = tegra_hdmi_get_it_content(hdmi);
 
 	/* set correct vic if video format is cea defined else set 0 */
 	avi->video_format = tegra_hdmi_find_cea_vic(hdmi);
 
 	avi->pix_rep = HDMI_AVI_NO_PIX_REPEAT;
-	avi->it_content_type = HDMI_AVI_IT_CONTENT_NONE;
+	avi->it_content_type = tegra_hdmi_get_it_content_type(hdmi);
 	avi->ycc_quant = tegra_hdmi_get_ycc_quant(hdmi);
 
 	avi->top_bar_end_line_low_byte = 0;
@@ -1400,6 +1420,12 @@ static void tegra_hdmi_avi_infoframe(struct tegra_hdmi *hdmi)
 		NV_SOR_HDMI_AVI_INFOFRAME_CTRL_OTHER_DISABLE |
 		NV_SOR_HDMI_AVI_INFOFRAME_CTRL_SINGLE_DISABLE |
 		NV_SOR_HDMI_AVI_INFOFRAME_CTRL_CHECKSUM_ENABLE);
+}
+
+void tegra_hdmi_set_avi_infoframe(struct tegra_dc *dc)
+{
+	struct tegra_hdmi *hdmi = tegra_dc_get_outdata(dc);
+	tegra_hdmi_avi_infoframe(hdmi);
 }
 
 static int tegra_hdmi_get_extended_vic(const struct tegra_dc_mode *mode)

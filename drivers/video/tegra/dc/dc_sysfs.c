@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/dc_sysfs.c
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION, All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -704,6 +704,46 @@ static ssize_t dump_config_show(struct device *device,
 
 static DEVICE_ATTR(dump_config, S_IRUGO, dump_config_show, NULL);
 
+static ssize_t it_content_type_show(struct device *device,
+	struct device_attribute *attr, char *buf)
+{
+	struct platform_device *ndev = to_platform_device(device);
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
+	struct tegra_hdmi_out *hdmi_out = dc->out->hdmi_out;
+	ssize_t res = 0;
+
+	res = snprintf(buf, PAGE_SIZE,
+		"%d\n",
+		hdmi_out->it_content_type);
+
+	return res;
+}
+
+static ssize_t it_content_type_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct platform_device *ndev = to_platform_device(dev);
+	struct tegra_dc *dc = platform_get_drvdata(ndev);
+	unsigned long val = 0;
+	struct tegra_hdmi_out *hdmi_out = dc->out->hdmi_out;
+
+	if (kstrtoul(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	if (val < 0 || val > 4)
+		return -EINVAL;
+
+	hdmi_out->it_content_type = val;
+
+	if (hdmi_out && hdmi_out->set_avi_infoframe)
+		hdmi_out->set_avi_infoframe(dc);
+
+	return count;
+}
+
+static DEVICE_ATTR(it_content_type, S_IRUGO|S_IWUSR, it_content_type_show,
+		it_content_type_store);
+
 static struct attribute *hdmi_config_attrs[] = {
 	&dev_attr_pclk.attr,
 	&dev_attr_pll0.attr,
@@ -712,6 +752,7 @@ static struct attribute *hdmi_config_attrs[] = {
 	&dev_attr_drive_current.attr,
 	&dev_attr_peak_current.attr,
 	&dev_attr_dump_config.attr,
+	&dev_attr_it_content_type.attr,
 	NULL
 };
 
