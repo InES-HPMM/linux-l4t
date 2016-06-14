@@ -33,7 +33,7 @@
 
 
 /* Sensor-specific const data */
-const struct imx_sensor_data {
+struct imx_sensor_data {
 	char imx_name[10];
 	/* Mode table array */
 	imx2xx_reg **imx_mode_table;
@@ -102,7 +102,7 @@ const struct imx_sensor_data imx230_sensor_data = {
 #define IMX2XX_EEPROM_BLOCK_SIZE	(priv->eeprom_blk_size)
 #define IMX2XX_EEPROM_STR_SIZE		(IMX2XX_EEPROM_SIZE * 2)
 #define IMX2XX_EEPROM_NUM_BLOCKS \
-	 (IMX2XX_EEPROM_SIZE / IMX2XX_EEPROM_BLOCK_SIZE)
+	(priv->eeprom_size/priv->eeprom_blk_size)
 
 struct imx2xx {
 	struct camera_common_power_rail	power;
@@ -132,6 +132,8 @@ struct imx2xx {
 	u32 eeprom_addr;
 	u32 eeprom_size;
 	u32 eeprom_blk_size;
+	u32 eeprom_regaddr_width;
+	u32 eeprom_regval_width;
 
 	struct v4l2_ctrl		*ctrls[];
 };
@@ -296,7 +298,7 @@ static inline void imx2xx_get_gain_short_reg(imx2xx_reg *regs,
 }
 
 static void imx2xx_get_crop_regs(imx2xx_reg *regs,
-				struct v4l2_rect *rect)
+				const struct v4l2_rect *rect)
 {
 	u32 x_start, y_start;
 	u32 x_end, y_end;
@@ -525,7 +527,7 @@ static int imx2xx_set_gain(struct imx2xx *priv, s32 val);
 static int imx2xx_set_frame_length(struct imx2xx *priv, s32 val);
 static int imx2xx_set_coarse_time(struct imx2xx *priv, s32 val);
 static int imx2xx_set_coarse_time_short(struct imx2xx *priv, s32 val);
-static int imx2xx_set_crop_data(struct imx2xx *priv, struct v4l2_rect *rect);
+static int imx2xx_set_crop_data(struct imx2xx *priv, const struct v4l2_rect *rect);
 static int imx2xx_get_crop_data(struct imx2xx *priv, struct v4l2_rect *rect);
 
 static int imx2xx_s_stream(struct v4l2_subdev *sd, int enable)
@@ -604,7 +606,7 @@ static int imx2xx_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct camera_common_data *s_data = to_camera_common_data(client);
 	struct imx2xx *priv = (struct imx2xx *)s_data->priv;
-	struct v4l2_rect *rect = &crop->c;
+	const struct v4l2_rect *rect = &crop->c;
 	int err;
 
 	u32 width, height;
@@ -932,7 +934,7 @@ fail:
 	return err;
 }
 
-static int imx2xx_set_crop_data(struct imx2xx *priv, struct v4l2_rect *rect)
+static int imx2xx_set_crop_data(struct imx2xx *priv, const struct v4l2_rect *rect)
 {
 	imx2xx_reg reg_list_crop[IMX2XX_NUM_CROP_REGS];
 	int err;
@@ -1005,13 +1007,10 @@ static int imx2xx_get_crop_data(struct imx2xx *priv, struct v4l2_rect *rect)
 
 static int imx2xx_eeprom_device_release(struct imx2xx *priv)
 {
-	int i;
-
-	for (i = 0; i < IMX2XX_EEPROM_NUM_BLOCKS; i++) {
-		if (priv->eeprom[i].i2c_client != NULL) {
-			i2c_unregister_device(priv->eeprom[i].i2c_client);
-			priv->eeprom[i].i2c_client = NULL;
-		}
+	/* Unregister eeprom device */
+	if (priv->eeprom[0].i2c_client != NULL) {
+		i2c_unregister_device(priv->eeprom[0].i2c_client);
+		priv->eeprom[0].i2c_client = NULL;
 	}
 
 	return 0;
@@ -1020,43 +1019,51 @@ static int imx2xx_eeprom_device_release(struct imx2xx *priv)
 static int imx2xx_eeprom_device_init(struct imx2xx *priv)
 {
 	char *dev_name = "eeprom_imx2xx";
-	static struct regmap_config eeprom_regmap_config = {
-		.reg_bits = 8,
-		.val_bits = 8,
-	};
+	static struct regmap_config eeprom_regmap_config;
 	int i;
 	int err;
-	struct v4l2_ctrl *ctrl;
+	struct i2c_client *client;
 
-	ctrl = v4l2_ctrl_find(&priv->ctrl_handler, V4L2_CID_EEPROM_DATA);
-	if (!ctrl) {
-		dev_err(&priv->i2c_client->dev,
-			"could not find device ctrl.\n");
-		return -EINVAL;
-	}
-
-	if (!priv->pdata->has_eeprom) {
-		ctrl->flags = V4L2_CTRL_FLAG_DISABLED;
-		return 0;
-	}
+	/* Init regmap config */
+	eeprom_regmap_config.reg_bits = priv->eeprom_regaddr_width;
+	eeprom_regmap_config.val_bits = priv->eeprom_regval_width;
 
 	for (i = 0; i < IMX2XX_EEPROM_NUM_BLOCKS; i++) {
 		priv->eeprom[i].adap = i2c_get_adapter(
 				priv->i2c_client->adapter->nr);
+
 		memset(&priv->eeprom[i].brd, 0, sizeof(priv->eeprom[i].brd));
+
 		strncpy(priv->eeprom[i].brd.type, dev_name,
 				sizeof(priv->eeprom[i].brd.type));
-		priv->eeprom[i].brd.addr = IMX2XX_EEPROM_ADDRESS + i;
-		priv->eeprom[i].i2c_client = i2c_new_device(
-				priv->eeprom[i].adap, &priv->eeprom[i].brd);
+		priv->eeprom[i].brd.addr = IMX2XX_EEPROM_ADDRESS;
 
-		priv->eeprom[i].regmap = devm_regmap_init_i2c(
-			priv->eeprom[i].i2c_client, &eeprom_regmap_config);
-		if (IS_ERR(priv->eeprom[i].regmap)) {
-			err = PTR_ERR(priv->eeprom[i].regmap);
-			imx2xx_eeprom_device_release(priv);
-			ctrl->flags = V4L2_CTRL_FLAG_DISABLED;
-			return err;
+		/* Create new eeprom device and regmap for first block.
+		 * Other blocks point to same thing */
+		if (i == 0) {
+			client = i2c_new_device(priv->eeprom[i].adap,
+					&priv->eeprom[i].brd);
+			if (client) {
+				priv->eeprom[i].i2c_client = client;
+				priv->eeprom[i].regmap = devm_regmap_init_i2c(
+					priv->eeprom[i].i2c_client,
+					&eeprom_regmap_config);
+				if (IS_ERR(priv->eeprom[i].regmap)) {
+					dev_err(&priv->i2c_client->dev,
+						"eeprom regmap failed\n");
+					err = PTR_ERR(priv->eeprom[i].regmap);
+					imx2xx_eeprom_device_release(priv);
+					return err;
+				}
+			} else {
+				dev_err(&priv->i2c_client->dev,
+					"can't add eeprom i2c device 0x%x\n",
+					IMX2XX_EEPROM_ADDRESS);
+				return -ENODEV;
+			}
+		} else {
+			priv->eeprom[i].i2c_client = priv->eeprom[0].i2c_client;
+			priv->eeprom[i].regmap = priv->eeprom[0].regmap;
 		}
 	}
 
@@ -1069,16 +1076,27 @@ static int imx2xx_read_eeprom(struct imx2xx *priv,
 	int err, i;
 
 	for (i = 0; i < IMX2XX_EEPROM_NUM_BLOCKS; i++) {
-		err = regmap_bulk_read(priv->eeprom[i].regmap, 0,
+		err = regmap_bulk_read(priv->eeprom[i].regmap,
+			(i * IMX2XX_EEPROM_BLOCK_SIZE),
 			&priv->eeprom_buf[i * IMX2XX_EEPROM_BLOCK_SIZE],
 			IMX2XX_EEPROM_BLOCK_SIZE);
 		if (err)
 			return err;
 	}
 
-	for (i = 0; i < IMX2XX_EEPROM_SIZE; i++)
+	for (i = 0; i < IMX2XX_EEPROM_SIZE; i++) {
 		sprintf(&ctrl->string[i*2], "%02x",
 			priv->eeprom_buf[i]);
+
+		/* Print the ASCII string in first block */
+		if (i == 0) {
+			dev_dbg(&priv->i2c_client->dev, "eeprom:%c%c%c%c%c%c\n",
+				priv->eeprom_buf[0], priv->eeprom_buf[1],
+				priv->eeprom_buf[2], priv->eeprom_buf[3],
+				priv->eeprom_buf[4], priv->eeprom_buf[5]);
+		}
+	}
+
 	return 0;
 }
 
@@ -1104,7 +1122,7 @@ static int imx2xx_write_eeprom(struct imx2xx *priv,
 
 		priv->eeprom_buf[i] = (u8)data;
 		err = regmap_write(priv->eeprom[i >> 8].regmap,
-				   i & 0xFF, (u8)data);
+				   i & (IMX2XX_EEPROM_BLOCK_SIZE-1), (u8)data);
 		if (err)
 			return err;
 		msleep(20);
@@ -1472,10 +1490,7 @@ static struct camera_common_pdata *imx2xx_parse_dt(struct i2c_client *client,
 		return NULL;
 	}
 
-	board_priv_pdata->has_eeprom =
-		of_property_read_bool(np, "has-eeprom");
-
-	of_property_read_string(np, "mclk", &board_priv_pdata->mclk_name);
+	sts = of_property_read_string(np, "mclk", &board_priv_pdata->mclk_name);
 	if (sts)
 		dev_err(&client->dev, "mclk not found %d\n", sts);
 
@@ -1537,16 +1552,39 @@ static struct camera_common_pdata *imx2xx_parse_dt(struct i2c_client *client,
 		dev_info(&client->dev, "default-ct not found %d\n", sts);
 
 	/* Read the eeprom info */
-	sts = of_property_read_u32(np, "eeprom-addr", &priv->eeprom_addr);
-	if (sts)
-		dev_info(&client->dev, "eeprom-addr not found %d\n", sts);
-	sts = of_property_read_u32(np, "eeprom-size", &priv->eeprom_size);
-	if (sts)
-		dev_info(&client->dev, "eeprom-size not found %d\n", sts);
-	sts = of_property_read_u32(np, "eeprom-blk-size",
-				   &priv->eeprom_blk_size);
-	if (sts)
-		dev_info(&client->dev, "eeprom-blk-size not found %d\n", sts);
+	board_priv_pdata->has_eeprom = of_property_read_bool(np, "has-eeprom");
+
+	if (board_priv_pdata->has_eeprom) {
+		sts = of_property_read_u32(np, "eeprom-addr",
+						&priv->eeprom_addr);
+		if (sts)
+			dev_err(&client->dev, "eeprom-addr not found %d\n",
+				sts);
+
+		sts = of_property_read_u32(np, "eeprom-size",
+						&priv->eeprom_size);
+		if (sts)
+			dev_err(&client->dev, "eeprom-size not found %d\n",
+				sts);
+
+		sts = of_property_read_u32(np, "eeprom-blk-size",
+						&priv->eeprom_blk_size);
+		if (sts)
+			dev_err(&client->dev, "eeprom-blk-size not found %d\n",
+				sts);
+
+		sts = of_property_read_u32(np, "eeprom-regaddr-width",
+						&priv->eeprom_regaddr_width);
+		if (sts)
+			dev_err(&client->dev,
+				"eeprom-regaddr-width not found %d\n", sts);
+
+		sts = of_property_read_u32(np, "eeprom-regval-width",
+						&priv->eeprom_regval_width);
+		if (sts)
+			dev_err(&client->dev,
+				"eeprom-regval-width not found %d\n", sts);
+	}
 
 	return board_priv_pdata;
 }
