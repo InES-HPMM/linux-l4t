@@ -1473,4 +1473,13 @@ static const struct camera_common_frmfmt imx214_frmfmt[] = {
 	{{1920, 1080},	NULL, 0, 1, IMX214_MODE_1920X1080_HDR},
 	{{1280, 720},	NULL, 0, 1, IMX214_MODE_1280X720_120FPS_HDR},
 };
+
+static const struct camera_common_colorfmt imx214_color_fmts[] = {
+	{
+		V4L2_MBUS_FMT_SRGGB10_1X10,
+		V4L2_COLORSPACE_SRGB,
+		V4L2_PIX_FMT_SRGGB10,
+	},
+};
+
 #endif  /* __IMX214_I2C_TABLES__ */
