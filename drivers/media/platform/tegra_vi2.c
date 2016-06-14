@@ -1382,6 +1382,8 @@ static int tegra_vi_channel_set_format(
 
 			/* Store the effective format (and return settings?) */
 			chan->multifmt = *mf;
+			/* Save pixfmt for vidq: prepare_buf() */
+			chan->pixfmt = mf->composite_pf;
 
 			/* Store framefmt on each input */
 			for (i = 0; i < input->endpoint_count; i++) {
