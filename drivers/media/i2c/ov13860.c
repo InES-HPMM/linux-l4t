@@ -468,7 +468,7 @@ static int ov13860_power_get(struct ov13860 *priv)
 	return err;
 }
 
-static int ov13860_set_gain(struct ov13860 *priv, s32 val);
+static int ov13860_set_gain(struct ov13860 *priv, s32 *val);
 static int ov13860_set_frame_length(struct ov13860 *priv, s32 val);
 static int ov13860_set_coarse_time(struct ov13860 *priv, s32 val);
 static int ov13860_set_coarse_time_short(struct ov13860 *priv, s32 val);
@@ -501,7 +501,7 @@ static int ov13860_s_stream(struct v4l2_subdev *sd, int enable)
 	 * overrides are non-fatal. */
 	control.id = V4L2_CID_GAIN;
 	err = v4l2_g_ctrl(&priv->ctrl_handler, &control);
-	err |= ov13860_set_gain(priv, control.value);
+	err |= ov13860_set_gain(priv, &control.value);
 	if (err)
 		dev_dbg(&client->dev, "%s: error gain override\n", __func__);
 
@@ -656,17 +656,20 @@ fail:
 	return err;
 }
 
-static int ov13860_set_gain(struct ov13860 *priv, s32 val)
+static int ov13860_set_gain(struct ov13860 *priv, s32 *val)
 {
 	ov13860_reg reg_list[3];
 	int err;
 	u16 gain;
+	s32 new_val;
 
 	if (!priv->group_hold_prev)
 		ov13860_set_group_hold(priv);
 
 	/* translate value */
-	gain = ov13860_to_gain((u32)val, OV13860_GAIN_SHIFT);
+	gain = ov13860_to_gain((u32)*val, OV13860_GAIN_SHIFT);
+	new_val = gain;
+	*val = (new_val<<4);
 
 	ov13860_get_gain_reg(reg_list, gain);
 	dev_dbg(&priv->i2c_client->dev,
@@ -1031,7 +1034,7 @@ static int ov13860_s_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_GAIN:
-		err = ov13860_set_gain(priv, ctrl->val);
+		err = ov13860_set_gain(priv, &ctrl->val);
 		break;
 	case V4L2_CID_FRAME_LENGTH:
 		err = ov13860_set_frame_length(priv, ctrl->val);
