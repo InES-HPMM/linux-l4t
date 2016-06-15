@@ -51,6 +51,8 @@ struct imx_sensor_data {
 	int imx_fuse_id_pg_num;
 	u16 imx_fuse_id_reg_start;
 	int imx_fuse_id_size;
+	int imx_sensor_max_width;
+	int imx_sensor_max_height;
 };
 
 const struct imx_sensor_data imx214_sensor_data = {
@@ -64,6 +66,8 @@ const struct imx_sensor_data imx214_sensor_data = {
 	.imx_fuse_id_pg_num = 19,
 	.imx_fuse_id_reg_start = 0x0A36,
 	.imx_fuse_id_size = 11,
+	.imx_sensor_max_width = 4096,
+	.imx_sensor_max_height = 3072,
 };
 
 const struct imx_sensor_data imx230_sensor_data = {
@@ -77,6 +81,8 @@ const struct imx_sensor_data imx230_sensor_data = {
 	.imx_fuse_id_pg_num = 31,
 	.imx_fuse_id_reg_start = 0x0A36,
 	.imx_fuse_id_size = 11,
+	.imx_sensor_max_width = 5344,
+	.imx_sensor_max_height = 4016,
 };
 
 /* Useful macros to dereference sensor-type constants */
@@ -632,8 +638,8 @@ static int imx2xx_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *crop)
 	}
 	right = rect->left + width - 1;
 	bottom = rect->top + height - 1;
-	if ((right > s_data->def_width) ||
-		(bottom > s_data->def_height)) {
+	if ((right > priv->sensor_data->imx_sensor_max_width) ||
+		(bottom > priv->sensor_data->imx_sensor_max_height)) {
 		dev_err(&client->dev,
 			"%s: CROP Bound Error: right:%d, bottom:%d)\n",
 			__func__, right, bottom);
