@@ -50,6 +50,9 @@ int tegra_vi_power_on(struct tegra_mc_vi *vi)
 {
 	int ret;
 
+	if (atomic_add_return(1, &vi->power_on_refcnt) > 1)
+		return 0;
+
 	ret = nvhost_module_busy_ext(vi->ndev);
 	if (ret) {
 		dev_err(vi->dev, "%s:nvhost module is busy\n", __func__);
@@ -101,6 +104,10 @@ error_regulator_fail:
 
 void tegra_vi_power_off(struct tegra_mc_vi *vi)
 {
+	if (!atomic_dec_and_test(&vi->power_on_refcnt))
+		return;
+
+	tegra_channel_ec_close(vi);
 	tegra_camera_emc_clk_disable();
 	clk_disable_unprepare(vi->clk);
 	tegra_powergate_partition(TEGRA_POWERGATE_VENC);

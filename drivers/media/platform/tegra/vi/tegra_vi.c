@@ -67,15 +67,7 @@ int nvhost_vi_finalize_poweron(struct platform_device *dev)
 	if (tegra_vi->master_deinitialized)
 		return 0;
 
-	if (tegra_vi->reg) {
-		ret = regulator_enable(tegra_vi->reg);
-		if (ret) {
-			dev_err(&dev->dev,
-					"%s: enable csi regulator failed.\n",
-					__func__);
-			return ret;
-		}
-	}
+	tegra_vi_power_on(&tegra_vi->mc_vi);
 
 #ifdef CONFIG_ARCH_TEGRA_12x_SOC
 	/* Only do this for vi.0 not for slave device vi.1 */
@@ -111,13 +103,7 @@ int nvhost_vi_prepare_poweroff(struct platform_device *dev)
 		return ret;
 	}
 
-	if (tegra_vi->reg) {
-		ret = regulator_disable(tegra_vi->reg);
-		if (ret)
-			dev_err(&dev->dev,
-				"%s: disable csi regulator failed.\n",
-				__func__);
-	}
+	tegra_vi_power_off(&tegra_vi->mc_vi);
 
 	return ret;
 }

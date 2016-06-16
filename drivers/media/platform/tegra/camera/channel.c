@@ -467,6 +467,18 @@ static void tegra_channel_ring_buffer(struct tegra_channel *chan,
 		free_ring_buffers(chan, 1);
 }
 
+void tegra_channel_ec_close(struct tegra_mc_vi *vi)
+{
+	int i;
+	struct tegra_channel *chan = &vi->chans[0];
+
+	/* clear all channles sync point fifo context */
+	for (i = 0; i < vi->num_channels; i++) {
+		chan = &vi->chans[i];
+		memset(&chan->syncpoint_fifo[0], 0, TEGRA_CSI_BLOCKS);
+	}
+}
+
 static void tegra_channel_ec_init(struct tegra_channel *chan)
 {
 	/*
@@ -1780,8 +1792,8 @@ static int tegra_channel_open(struct file *fp)
 		return -EBUSY;
 
 	/* The first open then turn on power */
-	if (atomic_add_return(1, &vi->power_on_refcnt) == 1) {
-		tegra_vi_power_on(vi);
+	tegra_vi_power_on(vi);
+	if (atomic_add_return(1, &vi->csi_power_on_refcnt) == 1) {
 		tegra_csi_power_on(csi);
 		if (vi->pg_mode)
 			tegra_vi->tpg_opened = true;
@@ -1834,14 +1846,14 @@ static int tegra_channel_close(struct file *fp)
 	}
 
 	/* The last release then turn off power */
-	if (atomic_dec_and_test(&vi->power_on_refcnt)) {
+	if (atomic_dec_and_test(&vi->csi_power_on_refcnt)) {
 		tegra_csi_power_off(csi);
-		tegra_vi_power_off(vi);
 		if (vi->pg_mode)
 			tegra_vi->tpg_opened = false;
 		else
 			tegra_vi->sensor_opened = false;
 	}
+	tegra_vi_power_off(vi);
 
 	mutex_unlock(&chan->video_lock);
 	return ret;

@@ -235,6 +235,7 @@ struct tegra_mc_vi {
 
 	bool has_sensors;
 	atomic_t power_on_refcnt;
+	atomic_t csi_power_on_refcnt;
 	struct mutex bw_update_lock;
 	unsigned long aggregated_kbyteps;
 	unsigned long max_requested_hz;
@@ -259,6 +260,5 @@ int tegra_clean_unlinked_channels(struct tegra_mc_vi *vi);
 int tegra_vi_media_controller_init(struct tegra_mc_vi *mc_vi,
 			struct platform_device *pdev);
 void tegra_vi_media_controller_cleanup(struct tegra_mc_vi *mc_vi);
-void tegra_channel_query_hdmiin_unplug(struct tegra_channel *chan,
-		struct v4l2_event *event);
+void tegra_channel_ec_close(struct tegra_mc_vi *mc_vi);
 #endif
