@@ -140,6 +140,7 @@ static const u32 EDID_DATA[] = {
 // TESTING: Preferred native timing 2160p30 30Hz @262.92MHz PClk
 // Max PClk: 290MHz.
 static const u32 EDID_DATA[] = {
+/* This EDID has no checksum errors but fallback is 720p */
 /*
 	0xffffff00, 0x00ffffff, 0x88886252, 0x88888800,
 	0x0301151c, 0x78000080, 0xa0c90d0a, 0x27984757,
@@ -158,6 +159,7 @@ static const u32 EDID_DATA[] = {
 	0x00001c00, 0x00000000, 0x00000000, 0x00000000,
 	0x00000000, 0x00000000, 0x00000000, 0xdc000000
 */
+/* This EDID has 1 checksum errors in block 1 but works on all tested devices */
 	0xffffff00, 0x00ffffff, 0x0029ce1c, 0x00000000,
 	0x03010000, 0x78000082, 0xa391ee3e, 0x26994c54,
 	0x0054500f, 0x01010000, 0x01010101, 0x01010101,
