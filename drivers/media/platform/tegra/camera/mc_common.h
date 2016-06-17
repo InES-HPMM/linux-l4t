@@ -174,6 +174,8 @@ struct tegra_channel {
 	int requested_kbyteps;
 	unsigned long requested_hz;
 	int grp_id;
+
+	struct tegra_vi_channel_fops *fops;
 };
 
 #define to_tegra_channel(vdev) \
@@ -242,6 +244,8 @@ struct tegra_mc_vi {
 	struct mutex mipical_lock;
 	unsigned int link_status;
 	unsigned int subdevs_bound;
+
+	struct tegra_vi_fops *fops;
 };
 
 int tegra_vi_get_port_info(struct tegra_channel *chan,
