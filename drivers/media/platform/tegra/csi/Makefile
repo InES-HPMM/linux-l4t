@@ -3,4 +3,4 @@ ccflags-y += -Idrivers/video/tegra/host
 ccflags-y += -Idrivers/media/platform/tegra
 ccflags-y += -Werror
 
-obj-y += csi.o
+obj-y += csi.o csi2_fops.o
