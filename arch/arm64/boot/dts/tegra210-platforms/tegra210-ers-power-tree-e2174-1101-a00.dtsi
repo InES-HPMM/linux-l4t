@@ -217,6 +217,7 @@
 		};
 		i2c@546c0000 {
 			bus-pullup-supply = <&en_vdd_cam>;
+			avdd_dsi_csi-supply = <&max77620_gpio7>;
 		};
 	};
 
