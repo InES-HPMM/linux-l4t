@@ -1216,6 +1216,8 @@ static int tegra_vi_pp_set_format(
 	case INPUT_CSI_A:
 	case INPUT_CSI_B:
 	case INPUT_CSI_C:
+		/* Always use CIL A, we never expect a camera config with less
+		than 4 CSI lanes */
 		src = 0;
 		break;
 	case INPUT_PATTERN_GENERATOR:
@@ -1849,11 +1851,13 @@ static void tegra_vi_input_reset(const struct tegra_vi_input *input, bool reset)
 		vi_writel(reset ? 1 : 0, &input->cil_regs[1]->sensor_reset);
 }
 
-static int tegra_vi_pp_init(struct platform_device *pdev, unsigned id,
+static int tegra_vi_pp_init(struct platform_device *pdev, unsigned chan_id,
 			struct tegra_vi_channel *chan)
 {
 	struct tegra_vi2 *vi2 = platform_get_drvdata(pdev);
-	struct tegra_vi_pp *pp = chan->pp[id];
+	struct tegra_vi_pp *pp = chan->pp[chan_id];
+	/* Global id within struct vi2 */
+	unsigned id = pp->id;
 	int err;
 
 	switch (id) {
@@ -1913,8 +1917,7 @@ static int tegra_vi_pp_init(struct platform_device *pdev, unsigned id,
 		goto disable_clk;
 	}
 
-	pp->id = id;
-	pp->input = chan->input->endpoint[id];
+	pp->input = chan->input->endpoint[chan_id];
 	mutex_init(&pp->lock);
 
 	return 0;
@@ -1953,19 +1956,27 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 	struct tegra_vi2 *vi2 = platform_get_drvdata(pdev);
 	struct tegra_vi_channel *chan = &vi2->channel[id];
 	struct vb2_queue *q;
-	int err, i, p;
+	int err, i, p, j = 0;
 
-	for (i = 0; i < ARRAY_SIZE(vi2->pp); i++) {
+	/* Assign one or two PPs to this channel */
+	for (i = id; i < ARRAY_SIZE(vi2->pp); i++) {
 		if (pp_mask & BIT(i)) {
-			chan->pp[i] = &vi2->pp[i];
-			chan->pp_count++;
-		}
+			if (j < ARRAY_SIZE(chan->pp)) {
+				chan->pp[j] = &vi2->pp[i];
+				chan->pp_count++;
+				j++;
+			} else {
+				dev_err(&pdev->dev, 
+					"Insufficient PPs per channel", id);
+				return -ENODEV;
+			}
+		}	
 	}
 
-	if (chan->pp_count == 0) {
+	if (chan->pp_count <= 0) {
 		dev_err(&pdev->dev, "No pixel parser for channel %d\n", id);
 		/* We want to init all channels, therefore this is not an error
-		return -ENODEV;	
+		return -ENODEV;
 		*/
 	}
 
@@ -1975,6 +1986,9 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 		break;
 	case 1:
 		strcpy(chan->vdev.name, "VI B");
+		break;
+	case 2:
+		strcpy(chan->vdev.name, "VI E");
 		break;
 	default:
 		return -EINVAL;
@@ -2006,6 +2020,7 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 
 	/* Finish setting up the channel */
 	chan->input_id = INPUT_NONE;
+	chan->id = id;
 	chan->vdev.fops = &tegra_vi_channel_fops;
 	chan->vdev.ioctl_ops = &tegra_vi_channel_ioctl_ops;
 	chan->vdev.v4l2_dev = &vi2->v4l2_dev;
@@ -2059,7 +2074,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		.end = 0x700E3000 + 0x00000100 - 1,
 	};
 	struct device_node *np = NULL;
-	unsigned chan_pp[2] = {};
+	unsigned chan_pp[3] = {};
 	struct tegra_vi2 *vi2;
 	struct resource *regs;
 	int input, i, p, chan, err, asd_index, ep_counter = 0, chan_count = 0;
@@ -2069,12 +2084,14 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 	vi2 = devm_kzalloc(&pdev->dev, sizeof(*vi2), GFP_KERNEL);
 	if (!vi2)
 		return -ENOMEM;
-	printk("1\n");
 	platform_set_drvdata(pdev, vi2);
-	printk("2\n");
 
 	for (i = 0; i < ARRAY_SIZE(vi2->channel_input); i++) {
 		vi2->channel_input[i].endpoint_count = 0;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(vi2->pp); i++) {
+		vi2->pp[i].id = i;
 	}
 
 	/* Read the config from OF */
@@ -2109,7 +2126,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		channel_input = &vi2->channel_input[port_id];
 		asd = &channel_input->asd;
 
-/* Get remote endpoint of this endpoint */
+		/* Get remote endpoint of this endpoint */
 		ep = of_parse_phandle(np, "remote-endpoint", 0);
 		if (!ep || !of_device_is_available(ep)) {
 			dev_warn(&pdev->dev, "Skip port %d, no endpoint\n", 
@@ -2128,7 +2145,7 @@ static int tegra_vi2_probe(struct platform_device *pdev)
 		}
 
 		/* Per channel: Assign one PP for each endpoint */
-		chan_pp[port_id] |= BIT(ep_id);
+		chan_pp[port_id] |= BIT(port_id + ep_id);
 
 		// -> Link async subdevice to this input. (The *sensor will be set later in .bound)
 		if (!asd->match.of.node) {

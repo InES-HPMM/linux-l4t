@@ -648,13 +648,26 @@ static int tegra_vi_channel_capture_thread(void *data)
 		goto finish;
 
 	}
-/*
-VI_CSI_PPA_FRAME_START Value=0x09 FIFO Depth=2
-Valid SOF has been received by the camera (PPA) input. This
-SOF is detected at the VI2 input.
-*/
-	// FIXME: Probably we expect only 1 SOF on PPA, nothing on PPB
-	tegra_vi_channel_queue_syncpt(chan, 5, &syncpt_val[0], 1);
+
+	/*
+	VI_CSI_PPA_FRAME_START Value=0x10 FIFO Depth=2
+	Valid SOF has been received by the camera (PPA) input. This
+	SOF is detected at the VI3 input.
+	*/
+	switch (chan->id) {
+	case 0: syncpt_cond = 5;	/* VI_CSI_PPA_FRAME_START */
+		break;
+	case 1: syncpt_cond = 13;	/* VI_CSI_PPC_FRAME_START */
+		break;
+	case 2: syncpt_cond = 21;	/* VI_CSI_PPE_FRAME_START */
+		break;
+	default:
+		pr_err("%s(): Error: undefined chan->id (%d)\n", __func__, 
+			chan->id);
+		return -EINVAL;
+	}
+	/* Only wait for a SOF on PPA of the first channel */
+	tegra_vi_channel_queue_syncpt(chan, syncpt_cond, &syncpt_val[0], 1);
 
 	if (show_statistics)
 		start_time = ktime_get();
@@ -690,7 +703,7 @@ SOF is detected at the VI2 input.
 		if (err0) {
 			if (!chan->should_stop) {
 				dev_err(&vdev->dev,
-					"Failed to capture half frame\n");
+					"Failed to capture half frame 0. err=%d\n", err0);
 				tegra_vi_channel_print_errors(chan);
 			}
 			printk("%s: err0\n", __func__);
@@ -700,7 +713,7 @@ SOF is detected at the VI2 input.
 		if (err1) {
 			if (!chan->should_stop) {
 				dev_err(&vdev->dev,
-					"Failed to capture half frame\n");
+					"Failed to capture half frame 1. err=%d\n", err1);
 				tegra_vi_channel_print_errors(chan);
 			}
 			//DBG
@@ -727,14 +740,27 @@ SOF is detected at the VI2 input.
 		if (!chan->pending_buffer)
 			printk("%s: ERROR: Out of buffers! EXITING..\n", __func__);
 
-/* 
-VI_MWA_ACK_DONE Value=0x06 FIFO Depth=2
-Predefined Operation Done for all WrAcks for a Frame condition.
-The VI2 generates this syncpt when all WrAcks for a captured
-frame from the camera (PPA) to memory are received.
-*/
+		/* 
+		VI_MWA_ACK_DONE Value=0x06 FIFO Depth=2
+		Predefined Operation Done for all WrAcks for a Frame condition.
+		The VI2 generates this syncpt when all WrAcks for a captured
+		frame from the camera (PPA) to memory are received.
+		*/
+		switch (chan->id) {	
+		case 0: syncpt_cond = 7;	/* VI_MWA_ACK_DONE */
+			break;
+		case 1: syncpt_cond = 15;	/* VI_MWC_ACK_DONE */
+			break;
+		case 2: syncpt_cond = 23;	/* VI_MWE_ACK_DONE */
+			break;
+		default:
+			pr_err("%s(): Error: undefined chan->id (%d)\n", __func__, 
+				chan->id);
+			return -EINVAL;
+		}
+
 		for (p=0; p < chan->pp_count; p++) {
-			tegra_vi_channel_queue_syncpt(chan, 7 + 8*chan->pp[p]->id, &syncpt_val[p], 1);//incrs);
+			tegra_vi_channel_queue_syncpt(chan, syncpt_cond + p * 8, &syncpt_val[p], 1);//incrs);
 		}
 		for (p=0; p < chan->pp_count; p++) {
 			if (chan->pending_buffer) {
