@@ -151,6 +151,17 @@ NVIDIA TEGRA210 High Definition Multimedia Interface
  - nvidia,cmu-csc: CMU color space conversion matrix. It is 3X3 matrix.
  - nvidia,cmu-lut2: CMU LUT2. Should be 960 u8 arrays.
 
+ 1.A.m) NVIDIA Source Product Description InfoFrame Settings
+ This must be contained in hdmi-display parent node. This is SPD InfoFrame settings.
+
+ Required properties:
+ - name: Should be "spd-infoframe".
+ - vendor-name: A string containing the name of the vendor. It consists of eight 7-bit ASCII
+   characters.
+ - product-description: A string containing the product description. It consists of siteen
+   7-bit ASCII characters.
+ - source-information: A code classifies the source.
+
  1.B) the prod-settings node:
  the prod-settings node holds prod settings for hdmi tmds.
  Optinonal properties:
@@ -192,6 +203,11 @@ Example
 					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
 					nvidia,out-xres = <1920>;
 					nvidia,out-yres = <1080>;
+				};
+				spd-infoframe {
+					vendor-name = "NVIDIA";
+					product-description = "Jetson-CV TX1";
+					source-information = <1>;
 				};
 			};
 			prod-settings {

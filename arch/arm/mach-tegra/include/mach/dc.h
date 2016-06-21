@@ -1174,10 +1174,17 @@ struct tmds_config {
 	u32 pad_ctls0_setting; /* register OR mask */
 };
 
+struct spd_infoframe {
+	u8 vendor_name[8];
+	u8 prod_desc[16];
+	u8 source_information;
+};
+
 struct tegra_hdmi_out {
 	struct tmds_config *tmds_config;
 	int n_tmds_config;
 	bool hdmi2fpd_bridge_enable;
+	struct spd_infoframe *spd_infoframe;
 };
 
 enum {

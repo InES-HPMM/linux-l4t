@@ -566,6 +566,64 @@ static int parse_vrr_settings(struct platform_device *ndev,
 	return 0;
 }
 
+#ifdef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
+static int parse_spd(struct platform_device *ndev,
+		struct device_node *np,
+		struct spd_infoframe *spd)
+{
+	const char *temp_str0;
+	u32 temp;
+
+	if (!of_property_read_string(np, "vendor-name",
+		&temp_str0)) {
+		memcpy(spd->vendor_name, temp_str0,
+				sizeof(spd->vendor_name));
+		OF_DC_LOG("spd vendor-name %s\n", spd->vendor_name);
+	}
+
+	if (!of_property_read_string(np, "product-description",
+		&temp_str0)) {
+		memcpy(spd->prod_desc, temp_str0,
+				sizeof(spd->prod_desc));
+		OF_DC_LOG("spd product-description %s\n", spd->prod_desc);
+	}
+
+	if (!of_property_read_u32(np, "source-information", &temp)) {
+		spd->source_information = (u32)temp;
+		OF_DC_LOG("spd source-information %d\n", temp);
+	}
+
+	return 0;
+}
+
+static int parse_spd_infoframe(struct platform_device *ndev,
+	struct device_node *np, struct tegra_dc_out *default_out)
+{
+	struct device_node *spd_np = NULL;
+	int err = 0;
+
+	spd_np = of_get_child_by_name(np, "spd-infoframe");
+	if (!spd_np) {
+		pr_err("%s: could not find spd-infoframe node\n",
+				__func__);
+		goto fail_parse_spd;
+	} else {
+
+		default_out->hdmi_out->spd_infoframe = devm_kzalloc(&ndev->dev,
+			sizeof(struct spd_infoframe), GFP_KERNEL);
+
+		err = parse_spd(ndev, spd_np,
+				default_out->hdmi_out->spd_infoframe);
+		if (err)
+			goto fail_parse_spd;
+	}
+	return 0;
+
+fail_parse_spd:
+	return err;
+}
+#endif
+
 static int parse_tmds_config(struct platform_device *ndev,
 	struct device_node *np, struct tegra_dc_out *default_out)
 {
@@ -2350,6 +2408,14 @@ struct tegra_dc_platform_data
 				pdata->default_out);
 		if (err)
 			goto fail_parse;
+
+#ifdef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
+		err = parse_spd_infoframe(ndev, np_target_disp,
+				pdata->default_out);
+		if (err)
+			goto fail_parse;
+#endif
+
 		if (!of_property_read_u32(np_target_disp,
 					"nvidia,hdmi-fpd-bridge", &temp)) {
 			pdata->default_out->hdmi_out->

@@ -391,6 +391,16 @@ config TEGRA_HDMIHDCP
 	  option to simply display a GUI on an HDMI TV. An HDMI TV will display
 	  unprotected content just fine.
 
+config TEGRA_HDMI_SPD_INFOFRAME
+	bool "Support SPD InfoFrame"
+	depends on TEGRA_HDMI2_0
+	help
+	  Say Y here to support SPD InfoFrame over a Generic InfoFrame. This will
+	  disable HDR InfoFrame as only one of them can use Generic InfoFrame at
+	  one time. It is only needed if you want to send vendor name, production
+	  description and source information to HDMI device. The content of SPD
+	  InfoFrame can be parsed from device tree.
+
 config TEGRA_DEBUG_HDCP
 	bool "Support Debug mode for HDCP on HDMI2_0"
 	depends on TEGRA_HDMIHDCP

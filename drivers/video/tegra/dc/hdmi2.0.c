@@ -1471,6 +1471,7 @@ static void tegra_hdmi_vendor_infoframe(struct tegra_hdmi *hdmi)
 #undef HDMI_INFOFRAME_LEN_VENDOR_LLC
 }
 
+#ifndef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
 static void tegra_hdmi_hdr_infoframe_update(struct tegra_hdmi *hdmi)
 {
 	struct hdmi_hdr_infoframe *hdr = &hdmi->hdr;
@@ -1552,6 +1553,89 @@ static void tegra_hdmi_hdr_infoframe(struct tegra_hdmi *hdmi)
 
 	return;
 }
+#endif
+
+#ifdef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
+static void tegra_hdmi_spd_infoframe_update(struct tegra_hdmi *hdmi)
+{
+	struct hdmi_spd_infoframe *spd = &hdmi->spd;
+	struct spd_infoframe *spd_infoframe =
+		hdmi->dc->pdata->default_out->hdmi_out->spd_infoframe;
+
+	memset(&hdmi->spd, 0, sizeof(hdmi->spd));
+
+	if (tegra_platform_is_linsim())
+		return;
+
+	/* PB1-8 : Vendor Name */
+	spd->vendor_name_char_1 = spd_infoframe->vendor_name[0];
+	spd->vendor_name_char_2 = spd_infoframe->vendor_name[1];
+	spd->vendor_name_char_3 = spd_infoframe->vendor_name[2];
+	spd->vendor_name_char_4 = spd_infoframe->vendor_name[3];
+	spd->vendor_name_char_5 = spd_infoframe->vendor_name[4];
+	spd->vendor_name_char_6 = spd_infoframe->vendor_name[5];
+	spd->vendor_name_char_7 = spd_infoframe->vendor_name[6];
+	spd->vendor_name_char_8 = spd_infoframe->vendor_name[7];
+
+	/* PB9-24 : Product Description */
+	spd->prod_desc_char_1 = spd_infoframe->prod_desc[0];
+	spd->prod_desc_char_2 = spd_infoframe->prod_desc[1];
+	spd->prod_desc_char_3 = spd_infoframe->prod_desc[2];
+	spd->prod_desc_char_4 = spd_infoframe->prod_desc[3];
+	spd->prod_desc_char_5 = spd_infoframe->prod_desc[4];
+	spd->prod_desc_char_6 = spd_infoframe->prod_desc[5];
+	spd->prod_desc_char_7 = spd_infoframe->prod_desc[6];
+	spd->prod_desc_char_8 = spd_infoframe->prod_desc[7];
+	spd->prod_desc_char_9 = spd_infoframe->prod_desc[8];
+	spd->prod_desc_char_10 = spd_infoframe->prod_desc[9];
+	spd->prod_desc_char_11 = spd_infoframe->prod_desc[10];
+	spd->prod_desc_char_12 = spd_infoframe->prod_desc[11];
+	spd->prod_desc_char_13 = spd_infoframe->prod_desc[12];
+	spd->prod_desc_char_14 = spd_infoframe->prod_desc[13];
+	spd->prod_desc_char_15 = spd_infoframe->prod_desc[14];
+	spd->prod_desc_char_16 = spd_infoframe->prod_desc[15];
+
+	/* PB25 : Source Information */
+	spd->source_information = spd_infoframe->source_information;
+
+	return;
+}
+
+static void tegra_hdmi_spd_infoframe(struct tegra_hdmi *hdmi)
+{
+	struct tegra_dc_sor_data *sor = hdmi->sor;
+	u32 val;
+
+	/* set_bits = contains all the bits to be set
+	 * for NV_SOR_HDMI_GENERIC_CTRL reg */
+	u32 set_bits = (NV_SOR_HDMI_GENERIC_CTRL_ENABLE_YES |
+			NV_SOR_HDMI_GENERIC_CTRL_OTHER_DISABLE |
+			NV_SOR_HDMI_GENERIC_CTRL_SINGLE_DISABLE);
+
+	/* read the current value to restore some bit values */
+	val = (tegra_sor_readl(sor, NV_SOR_HDMI_GENERIC_CTRL)
+				& ~set_bits);
+
+	/* disable generic infoframe before configuring */
+	tegra_sor_writel(sor, NV_SOR_HDMI_GENERIC_CTRL, 0);
+
+	tegra_hdmi_spd_infoframe_update(hdmi);
+
+	tegra_hdmi_infoframe_pkt_write(hdmi, NV_SOR_HDMI_GENERIC_HEADER,
+					HDMI_INFOFRAME_TYPE_SPD,
+					HDMI_INFOFRAME_VS_SPD,
+					HDMI_INFOFRAME_LEN_SPD,
+					&hdmi->spd, sizeof(hdmi->spd),
+					true);
+
+	/* set the required bits in NV_SOR_HDMI_GENERIC_CTRL*/
+	val = val | set_bits;
+
+	tegra_sor_writel(sor, NV_SOR_HDMI_GENERIC_CTRL, val);
+
+	return;
+}
+#endif
 
 __maybe_unused
 static int tegra_hdmi_scdc_read(struct tegra_hdmi *hdmi,
@@ -1856,6 +1940,9 @@ static int tegra_hdmi_controller_enable(struct tegra_hdmi *hdmi)
 	tegra_hdmi_config(hdmi);
 	tegra_hdmi_avi_infoframe(hdmi);
 	tegra_hdmi_vendor_infoframe(hdmi);
+#ifdef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
+	tegra_hdmi_spd_infoframe(hdmi);
+#endif
 
 	tegra_sor_pad_cal_power(sor, true);
 	tegra_hdmi_config_tmds(hdmi);
@@ -2166,7 +2253,9 @@ static int tegra_dc_hdmi_set_hdr(struct tegra_dc *dc)
 	ret = tegra_edid_get_ex_hdr_cap(hdmi->edid);
 	if (!(ret & FB_CAP_HDR))
 		return 0;
+#ifndef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
 	tegra_hdmi_hdr_infoframe(hdmi);
+#endif
 
 	/*
 	 *If hdr is disabled then send HDR infoframe for

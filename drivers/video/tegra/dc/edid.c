@@ -556,8 +556,10 @@ u16 tegra_edid_get_ex_hdr_cap(struct tegra_edid *edid)
 		return -EFAULT;
 	}
 
+#ifndef CONFIG_TEGRA_HDMI_SPD_INFOFRAME
 	if (edid->data->hdr_present)
 		ret |= FB_CAP_HDR;
+#endif
 
 	return ret;
 }
