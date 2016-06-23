@@ -47,7 +47,7 @@
 #define IMX274_DEFAULT_EXPOSURE_COARSE	\
 	(IMX274_DEFAULT_FRAME_LENGTH-IMX274_MAX_COARSE_DIFF)
 
-#define IMX274_DEFAULT_MODE	IMX274_MODE_3840X2160
+#define IMX274_DEFAULT_MODE	IMX274_MODE_3840X2160_60FPS
 
 #define IMX274_DEFAULT_WIDTH	3840
 #define IMX274_DEFAULT_HEIGHT	2160
@@ -440,7 +440,7 @@ static int imx274_s_stream(struct v4l2_subdev *sd, int enable)
 
 	imx274_write_table(priv, mode_table[IMX274_MODE_STOP_STREAM]);
 
-	dev_dbg(&client->dev, "%s mode[%d]\n", __func__, s_data->mode);
+	dev_info(&client->dev, "%s mode[%d]\n", __func__, s_data->mode);
 
 	err = imx274_write_table(priv, mode_table[s_data->mode]);
 	if (err)
@@ -654,7 +654,9 @@ static int imx274_set_frame_length(struct imx274 *priv, s32 val)
 	}
 
 	dev_dbg(&priv->i2c_client->dev,
-		"%s: frame_rate: %d vmax: %u\n", __func__, frame_rate, vmax);
+		"%s: frame_rate: %d vmax: %u svr %d\n",
+		 __func__, frame_rate, vmax, svr);
+
 	return 0;
 
 fail:
