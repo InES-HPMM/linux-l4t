@@ -357,7 +357,9 @@ static void reset_timer(const struct idletimer_tg_info *info,
 			read_lock_bh(&sk->sk_callback_lock);
 			if ((sk->sk_socket) && (sk->sk_socket->file) &&
 		    (sk->sk_socket->file->f_cred))
-				timer->uid = sk->sk_socket->file->f_cred->uid;
+				timer->uid = __kuid_val(
+						sk->sk_socket->file->f_cred->uid
+						);
 			read_unlock_bh(&sk->sk_callback_lock);
 		}
 

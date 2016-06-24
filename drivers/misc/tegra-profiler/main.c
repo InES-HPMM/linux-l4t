@@ -1,7 +1,7 @@
 /*
  * drivers/misc/tegra-profiler/main.c
  *
- * Copyright (c) 2013-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2013-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -209,8 +209,8 @@ set_parameters(struct quadd_parameters *p)
 		return -ESRCH;
 	}
 
-	current_uid = current_fsuid();
-	task_uid = task_uid(task);
+	current_uid = __kuid_val(current_fsuid());
+	task_uid = __kuid_val(task_uid(task));
 	pr_info("owner/task uids: %u/%u\n", current_uid, task_uid);
 
 	if (!capable(CAP_SYS_ADMIN)) {
