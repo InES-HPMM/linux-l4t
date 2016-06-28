@@ -3,7 +3,7 @@
  *
  * Copyright (C) 1995-2009 Russell King
  * Copyright (C) 2012 ARM Ltd.
- * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2014-2016 NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -338,6 +338,7 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 	}
 #endif
 
+#ifdef CONFIG_DEBUG_USER
 	if (show_unhandled_signals && printk_ratelimit()) {
 		pr_info("%s[%d]: syscall %d\n", current->comm,
 			task_pid_nr(current), (int)regs->syscallno);
@@ -345,6 +346,7 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 		if (user_mode(regs))
 			__show_regs(regs);
 	}
+#endif
 
 	return sys_ni_syscall();
 }
