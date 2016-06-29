@@ -49,27 +49,20 @@
 			};
 
 			override@3 {
-				target = <&bmp280_77>;
-				_overlay_ {
-					status = "okay";
-				};
-			};
-
-			override@4 {
 				target = <&cm32180_48>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
 
-			override@5 {
+			override@4 {
 				target = <&i2cmux_70>;
 				_overlay_ {
 					status = "okay";
 				};
 			};
 
-			override@6 {
+			override@5 {
 				target = <&sound_card>;
 				_overlay_ {
 					nvidia,dai-link-1 {
