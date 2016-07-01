@@ -36,9 +36,9 @@
 
 #define IMX185_MAX_COARSE_DIFF 2
 #define IMX185_MAX_COARSE_DIFF_HDR 5
-#define IMX185_GAIN_SHIFT		0
-#define IMX185_MIN_GAIN		(1)
-#define IMX185_MAX_GAIN		(255)
+#define IMX185_GAIN_SHIFT		8
+#define IMX185_MIN_GAIN		(1 << IMX185_GAIN_SHIFT)
+#define IMX185_MAX_GAIN		(255 << IMX185_GAIN_SHIFT)
 #define IMX185_MIN_FRAME_LENGTH	(1125)
 #define IMX185_MAX_FRAME_LENGTH	(0xFFFF)
 #define IMX185_MIN_EXPOSURE_COARSE	(0x0001)
@@ -518,7 +518,9 @@ static int imx185_set_gain(struct imx185 *priv, s32 val)
 	int err;
 	u8 gain;
 
-	gain = val;
+	/* translate value */
+	gain = (u8)(val * 160 / (1 << IMX185_GAIN_SHIFT) / 48);
+
 	dev_dbg(&priv->i2c_client->dev,
 		 "%s:  gain: %d\n", __func__, gain);
 
