@@ -519,6 +519,8 @@ static void print_avi_infoframe(struct v4l2_subdev *sd)
 
 	i2c_rd(sd, PK_AVI_0HEAD, buffer, HDMI_INFOFRAME_SIZE(AVI));
 
+	BUG_ON(buffer[0] != HDMI_INFOFRAME_TYPE_AVI);
+
 	if (hdmi_infoframe_unpack(&frame, buffer) < 0) {
 		v4l2_err(sd, "%s: unpack of AVI infoframe failed\n", __func__);
 		return;
