@@ -234,6 +234,7 @@ static void tegra_channel_fmts_bitmap_init(struct tegra_channel *chan)
 	chan->format.field = mbus_fmt.field;
 	chan->format.width = mbus_fmt.width;
 	chan->format.height = mbus_fmt.height;
+	chan->format.maxframerate = mbus_fmt.maxframerate;
 	chan->format.bytesperline = chan->format.width *
 		chan->fmtinfo->bpp;
 	tegra_channel_fmt_align(chan,
