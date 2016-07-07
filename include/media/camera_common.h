@@ -175,9 +175,9 @@ struct camera_common_data {
 	int	mode;
 	int	numfmts;
 	int	num_color_fmts;
-	int	def_mode, def_width, def_height;
+	int	def_mode, def_width, def_height, def_maxfps;
 	int	def_clk_freq;
-	int	fmt_width, fmt_height;
+	int	fmt_width, fmt_height, fmt_maxfps;
 };
 
 struct camera_common_focuser_data;
