@@ -51,6 +51,7 @@
 
 #define IMX274_DEFAULT_WIDTH	3840
 #define IMX274_DEFAULT_HEIGHT	2160
+#define IMX274_DEFAULT_MAXFPS	30
 #define IMX274_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB10_1X10
 #define IMX274_DEFAULT_CLK_FREQ	24000000
 
@@ -1246,8 +1247,10 @@ static int imx274_probe(struct i2c_client *client,
 	common_data->def_mode		= IMX274_DEFAULT_MODE;
 	common_data->def_width		= IMX274_DEFAULT_WIDTH;
 	common_data->def_height		= IMX274_DEFAULT_HEIGHT;
+	common_data->def_maxfps		= IMX274_DEFAULT_MAXFPS;
 	common_data->fmt_width		= common_data->def_width;
 	common_data->fmt_height		= common_data->def_height;
+	common_data->fmt_maxfps		= common_data->def_maxfps;
 	common_data->def_clk_freq	= IMX274_DEFAULT_CLK_FREQ;
 
 	priv->i2c_client		= client;
