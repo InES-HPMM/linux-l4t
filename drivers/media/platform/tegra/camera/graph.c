@@ -511,6 +511,7 @@ int tegra_vi_graph_init(struct tegra_mc_vi *vi)
 
 	if (!vi->num_subdevs) {
 		dev_info(vi->dev, "warning: no subdev found in graph\n");
+		tegra_clean_unlinked_channels(vi);
 		goto done;
 	}
 
