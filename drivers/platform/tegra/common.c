@@ -1821,7 +1821,17 @@ static struct platform_device ramoops_dev  = {
 static void __init tegra_reserve_ramoops_memory(unsigned long reserve_size)
 {
 	ramoops_data.mem_size = reserve_size;
+#ifndef CONFIG_ANDROID
+	/* Uboot touches non carved out memory during reboot. But for this
+	 * feature to work, memory should not be overwritten by bootloader
+	 * (cboot/u-boot). L4T does not uses NCT carveout region. So, have
+	 * repurposed this carveout memory for pstore
+	 */
+#define RAMOOPS_CARVEOUT_START 0xff03f000
+	ramoops_data.mem_address = RAMOOPS_CARVEOUT_START;
+#else
 	ramoops_data.mem_address = memblock_end_of_4G() - reserve_size;
+#endif
 	ramoops_data.record_size = RECORD_MEM_SIZE;
 #ifdef CONFIG_PSTORE_CONSOLE
 	ramoops_data.console_size = CONSOLE_MEM_SIZE;
