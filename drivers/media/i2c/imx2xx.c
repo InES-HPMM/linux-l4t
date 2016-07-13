@@ -1174,7 +1174,7 @@ static int imx2xx_read_otp_page(struct imx2xx *priv,
 
 static int imx2xx_otp_setup(struct imx2xx *priv)
 {
-	int err;
+	int err = 0;
 	int i;
 	struct v4l2_ctrl *ctrl;
 	u8 otp_buf[IMX2XX_OTP_SIZE];
@@ -1192,6 +1192,7 @@ static int imx2xx_otp_setup(struct imx2xx *priv)
 		if (err) {
 			dev_err(&priv->i2c_client->dev,
 				"otp page read error.\n");
+			goto setup_error;
 		}
 	}
 
@@ -1199,7 +1200,8 @@ static int imx2xx_otp_setup(struct imx2xx *priv)
 	if (!ctrl) {
 		dev_err(&priv->i2c_client->dev,
 			"could not find device ctrl.\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto setup_error;
 	}
 
 	for (i = 0; i < IMX2XX_OTP_SIZE; i++)
@@ -1207,11 +1209,10 @@ static int imx2xx_otp_setup(struct imx2xx *priv)
 			otp_buf[i]);
 	ctrl->cur.string = ctrl->string;
 
-	err = camera_common_s_power(priv->subdev, false);
-	if (err)
-		return -ENODEV;
+setup_error:
+	camera_common_s_power(priv->subdev, false);
 
-	return 0;
+	return err;
 }
 
 static int imx2xx_fuse_id_setup(struct imx2xx *priv)
@@ -1239,13 +1240,15 @@ static int imx2xx_fuse_id_setup(struct imx2xx *priv)
 	if (err) {
 		dev_err(&priv->i2c_client->dev,
 			"fuse id otp page read error.\n");
+		goto setup_error;
 	}
 
 	ctrl = v4l2_ctrl_find(&priv->ctrl_handler, V4L2_CID_FUSE_ID);
 	if (!ctrl) {
 		dev_err(&priv->i2c_client->dev,
 			"could not find device ctrl.\n");
-		return -EINVAL;
+		err = -EINVAL;
+		goto setup_error;
 	}
 
 	for (i = 0; i < IMX2XX_FUSE_ID_SIZE; i++) {
@@ -1256,11 +1259,10 @@ static int imx2xx_fuse_id_setup(struct imx2xx *priv)
 	}
 	ctrl->cur.string = ctrl->string;
 
-	err = camera_common_s_power(priv->subdev, false);
-	if (err)
-		return -ENODEV;
+setup_error:
+	camera_common_s_power(priv->subdev, false);
 
-	return 0;
+	return err;
 }
 
 static int imx2xx_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
