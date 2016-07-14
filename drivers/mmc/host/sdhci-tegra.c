@@ -6159,6 +6159,7 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->dbg_cfg.clk_ungated =
 		plat->disable_clock_gate;
 #endif
+	mmc_of_parse(host->mmc);
 	return 0;
 
 err_cd_irq_req:
