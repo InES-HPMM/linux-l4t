@@ -201,12 +201,12 @@ int vi2_channel_error_status(struct tegra_channel *chan)
 	int index = 0;
 
 	for (index = 0; index < chan->valid_ports; index++) {
+		/* Ignore error based on resolution but reset status */
 		val = vi2_channel_csi_read(chan, index,
 				TEGRA_VI_CSI_ERROR_STATUS);
 		vi2_channel_csi_write(chan, index,
 				TEGRA_VI_CSI_ERROR_STATUS, val);
-		err |= val;
-		err |= tegra_csi_error(chan->vi->csi, chan->port[index]);
+		err = tegra_csi_error(chan->vi->csi, chan->port[index]);
 	}
 
 	if (err)
