@@ -64,6 +64,9 @@
 						/* crop co-ordinates */
 						post_crop_frame_drop = "0";
 
+						/* Convert Gain to unit of dB (decibel) befor passing to kernel driver */
+						use_decibel_gain = "true";
+
 						/**
 						* A modeX node is required to support v4l2 driver
 						* implementation with NVIDIA camera software stack
@@ -86,9 +89,6 @@
 						* cil_settletime = "";
 						* MIPI lane settle time value.
 						* A "0" value attempts to autocalibrate based on mclk_multiplier
-						*
-						* use_decibel_gain = "true";
-						* Used to determine whether convert sensor gain(times) to decibel gain in imager
 						*
 						* active_w = "";
 						* Pixel active region width
@@ -153,7 +153,6 @@
 							discontinuous_clk = "no";
 							dpcm_enable = "false";
 							cil_settletime = "0";
-							use_decibel_gain = "true";
 
 							active_w = "1920";
 							active_h = "1080";
@@ -164,11 +163,11 @@
 							mclk_multiplier = "6";
 							pix_clk_hz = "74250000";
 
-							min_gain_val = "1";
-							max_gain_val = "255";
+							min_gain_val = "0"; /* dB */
+							max_gain_val = "48"; /* dB */
 							min_hdr_ratio = "1";
 							max_hdr_ratio = "1";
-							min_framerate = "30";
+							min_framerate = "1";
 							max_framerate = "30";
 							min_exp_time = "30";
 							max_exp_time = "33000";
@@ -182,7 +181,6 @@
 							discontinuous_clk = "no";
 							dpcm_enable = "false";
 							cil_settletime = "0";
-							use_decibel_gain = "true";
 
 							active_w = "1920";
 							active_h = "1080";
@@ -193,11 +191,11 @@
 							mclk_multiplier = "6";
 							pix_clk_hz = "74250000";
 
-							min_gain_val = "1";
-							max_gain_val = "4";
+							min_gain_val = "0"; /* dB */
+							max_gain_val = "48"; /* dB */
 							min_hdr_ratio = "16";
 							max_hdr_ratio = "16";
-							min_framerate = "30";
+							min_framerate = "1";
 							max_framerate = "30";
 							min_exp_time = "30";
 							max_exp_time = "33000";
@@ -243,6 +241,7 @@
 				badge = "imx185_bottom_liimx185";
 				position = "bottom";
 				orientation = "0";
+				status = "okay";
 				drivernode0 {
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_sensor";
@@ -250,6 +249,7 @@
 					devname = "imx185 6-001a";
 					/* Declare the device-tree hierarchy to driver instance */
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9546@70/i2c@0/imx185_a@1a";
+					status = "okay";
 				};
 			};
 		};
