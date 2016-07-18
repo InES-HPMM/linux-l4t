@@ -59,9 +59,6 @@
 				/* I2C device address */
 				reg = <0x1a>;
 
-				/* V4L2 device node location */
-				devnode = "video0";
-
 				/* Physical dimensions of sensor */
 				physical_w = "3.674";
 				physical_h = "2.738";
@@ -264,7 +261,6 @@
 
 				/* Sensor Model */
 				sensor_model ="tc358840";
-				devnode ="video1";
 				ports {
 					#address-cells = <1>;
 					#size-cells = <0>;
@@ -301,6 +297,8 @@
 				drivernode0 {
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_sensor";
+					/* Driver's v4l2 device name */
+					devname = "imx274 6-001a";
 					/* Declare the device-tree hierarchy to driver instance */
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/imx274_a@1a";
 				};

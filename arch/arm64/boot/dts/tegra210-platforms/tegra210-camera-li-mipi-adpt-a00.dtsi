@@ -50,7 +50,6 @@
 						compatible = "nvidia,imx185";
 
 						reg = <0x1a>;
-						devnode = "video0";
 
 						/* Physical dimensions of sensor */
 						physical_w = "15.0";
@@ -247,6 +246,8 @@
 				drivernode0 {
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_sensor";
+					/* Driver's v4l2 device name */
+					devname = "imx185 6-001a";
 					/* Declare the device-tree hierarchy to driver instance */
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9546@70/i2c@0/imx185_a@1a";
 				};

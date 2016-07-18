@@ -87,7 +87,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video0";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -146,7 +145,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video1";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -205,7 +203,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video2";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -264,7 +261,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video3";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -323,7 +319,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video4";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -382,7 +377,6 @@
 						avdd-reg = "vana";
 						dvdd-reg = "vdig";
 						iovdd-reg = "dovdd";
-						devnode = "video5";
 
 						/* Defines number of frames to be dropped by driver internally after applying */
 						/* sensor crop settings. Some sensors send corrupt frames after applying */
@@ -455,6 +449,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 30-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/imx219_a@10";
 				};
 			};
@@ -464,6 +459,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 31-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/imx219_b@10";
 				};
 			};
@@ -473,6 +469,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 32-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/imx219_c@10";
 				};
 			};
@@ -482,6 +479,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 33-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/imx219_d@10";
 				};
 			};
@@ -491,6 +489,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 34-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/imx219_e@10";
 				};
 			};
@@ -500,6 +499,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 35-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/imx219_f@10";
 				};
 			};

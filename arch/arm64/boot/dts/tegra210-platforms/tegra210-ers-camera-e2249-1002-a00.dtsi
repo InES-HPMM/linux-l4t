@@ -60,9 +60,6 @@
 
 				/* Sensor Model */
 				sensor_model ="imx214";
-
-				/* V4L2 device node location */
-				devnode = "video0";
 				has-eeprom = <1>;
 
 				/* Defines number of frames to be dropped by driver internally after applying */
@@ -403,9 +400,6 @@
 				/* Sensor Model */
 				sensor_model ="ov5693";
 
-				/* V4L2 device node location */
-				devnode = "video1";
-
 				/* Define any required hw resources needed by driver */
 				/* ie. clocks, io pins, power sources */
 				/* mclk-index indicates the index of the */
@@ -609,6 +603,8 @@
 					* Device tree hierarchy to driver
 					*/
 					pcl_id = "v4l2_sensor";
+					/* Driver's v4l2 device name */
+					devname = "imx214 6-001a";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/imx214@1a";
 				};
 				drivernode1 {
@@ -632,6 +628,8 @@
 				orientation = "0";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					/* Driver's v4l2 device name */
+					devname = "ov5693 6-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
 				};
 				drivernode1 {

@@ -89,7 +89,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video0";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -214,7 +213,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video1";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -339,7 +337,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video2";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -464,7 +461,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video3";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -589,7 +585,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video4";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -714,7 +709,6 @@
 						reg = <0x36>;
 						avdd-reg = "vana";
 						iovdd-reg = "vif";
-						devnode = "video5";
 						physical_w = "3.674";
 						physical_h = "2.738";
 						/* Defines number of frames to be dropped by driver internally after applying */
@@ -859,6 +853,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 30-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/ov5693_a@36";
 				};
 			};
@@ -868,6 +863,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 31-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/ov5693_b@36";
 				};
 			};
@@ -877,6 +873,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 32-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/ov5693_c@36";
 				};
 			};
@@ -886,6 +883,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 33-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/ov5693_d@36";
 				};
 			};
@@ -895,6 +893,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 34-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/ov5693_e@36";
 				};
 			};
@@ -904,6 +903,7 @@
 				orientation = "1";
 				drivernode0 {
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 35-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/ov5693_f@36";
 				};
 			};

@@ -37,6 +37,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 6-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
 				};
 			};
@@ -95,6 +96,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov23850 6-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov23850_a@10";
 				};
 			};
@@ -119,6 +121,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov23850 0-0036";
 					proc-device-tree = "/proc/device-tree/i2c@7000c000/ov23850_c@36";
 				};
 			};
@@ -134,6 +137,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_focuser";
+					devname = "lc898212 6-0072";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/lc898212@72";
 				};
 			};
@@ -149,6 +153,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_focuser";
+					devname = "lc898212 0-0072";
 					proc-device-tree = "/proc/device-tree/i2c@7000c000/lc898212@72";
 				};
 			};
@@ -241,6 +246,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 30-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/imx219_a@10";
 				};
 			};
@@ -265,6 +271,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 31-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/imx219_b@10";
 				};
 			};
@@ -289,6 +296,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 32-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/imx219_c@10";
 				};
 			};
@@ -313,6 +321,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 33-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/imx219_d@10";
 				};
 			};
@@ -337,6 +346,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 34-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/imx219_e@10";
 				};
 			};
@@ -361,6 +371,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "imx219 35-0010";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/imx219_f@10";
 				};
 			};
@@ -501,6 +512,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 30-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@0/ov5693_a@36";
 				};
 			};
@@ -525,6 +537,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 31-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@1/ov5693_b@36";
 				};
 			};
@@ -549,6 +562,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 32-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@2/ov5693_c@36";
 				};
 			};
@@ -573,6 +587,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 33-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@3/ov5693_d@36";
 				};
 			};
@@ -597,6 +612,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 34-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@4/ov5693_e@36";
 				};
 			};
@@ -621,6 +637,7 @@
 				_overlay_ {
 					status = "okay";
 					pcl_id = "v4l2_sensor";
+					devname = "ov5693 35-0036";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/tca9548@77/i2c@5/ov5693_f@36";
 				};
 			};

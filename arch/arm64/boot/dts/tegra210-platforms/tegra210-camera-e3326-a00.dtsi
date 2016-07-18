@@ -45,9 +45,6 @@
 				/* I2C device address */
 				reg = <0x36>;
 
-				/* V4L2 device node location */
-				devnode = "video0";
-
 				/* Physical dimensions of sensor */
 				physical_w = "3.674";
 				physical_h = "2.738";
@@ -267,6 +264,8 @@
 				drivernode0 {
 					/* Declare PCL support driver (classically known as guid)  */
 					pcl_id = "v4l2_sensor";
+					/* Driver's v4l2 device name */
+					devname = "ov5693 6-0036";
 					/* Declare the device-tree hierarchy to driver instance */
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
 				};
