@@ -1048,6 +1048,9 @@ tegra_channel_g_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
+	if (!v4l2_subdev_has_op(sd, pad, get_edid))
+		return -ENOTTY;
+
 	return v4l2_subdev_call(sd, pad, get_edid, edid);
 }
 
@@ -1057,6 +1060,9 @@ tegra_channel_s_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_subdev *sd = chan->subdev_on_csi;
+
+	if (!v4l2_subdev_has_op(sd, pad, set_edid))
+		return -ENOTTY;
 
 	return v4l2_subdev_call(sd, pad, set_edid, edid);
 }
@@ -1069,6 +1075,9 @@ tegra_channel_s_dv_timings(struct file *file, void *fh,
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_bt_timings *bt = &timings->bt;
 	int ret;
+
+	if (!v4l2_subdev_has_op(chan->subdev_on_csi, video, s_dv_timings))
+		return -ENOTTY;
 
 	ret = v4l2_device_call_until_err(chan->video.v4l2_dev,
 			chan->grp_id, video, s_dv_timings, timings);
@@ -1099,6 +1108,9 @@ tegra_channel_g_dv_timings(struct file *file, void *fh,
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 
+	if (!v4l2_subdev_has_op(chan->subdev_on_csi, video, g_dv_timings))
+		return -ENOTTY;
+
 	return v4l2_device_call_until_err(chan->video.v4l2_dev,
 			chan->grp_id, video, g_dv_timings, timings);
 }
@@ -1109,6 +1121,9 @@ tegra_channel_query_dv_timings(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
+
+	if (!v4l2_subdev_has_op(chan->subdev_on_csi, video, query_dv_timings))
+		return -ENOTTY;
 
 	return v4l2_device_call_until_err(chan->video.v4l2_dev,
 			chan->grp_id, video, query_dv_timings, timings);
@@ -1122,6 +1137,9 @@ tegra_channel_enum_dv_timings(struct file *file, void *fh,
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_subdev *sd = chan->subdev_on_csi;
 
+	if (!v4l2_subdev_has_op(sd, pad, enum_dv_timings))
+		return -ENOTTY;
+
 	return v4l2_subdev_call(sd, pad, enum_dv_timings, timings);
 }
 
@@ -1132,6 +1150,9 @@ tegra_channel_dv_timings_cap(struct file *file, void *fh,
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
 	struct v4l2_subdev *sd = chan->subdev_on_csi;
+
+	if (!v4l2_subdev_has_op(sd, pad, dv_timings_cap))
+		return -ENOTTY;
 
 	return v4l2_subdev_call(sd, pad, dv_timings_cap, cap);
 }
@@ -1408,18 +1429,16 @@ static int tegra_channel_s_crop(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	struct v4l2_subdev *subdev = NULL;
-	int num_sd = 0;
+	struct v4l2_subdev *subdev = chan->subdev_on_csi;
 	int ret = 0;
 
-	while ((subdev = chan->subdev[num_sd++]) &&
-		(num_sd <= chan->num_subdevs)) {
-		ret = v4l2_subdev_call(subdev, video, s_crop, crop);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
-			return ret;
-	}
+	if (!v4l2_subdev_has_op(subdev, video, s_crop))
+		return -ENOTTY;
 
-	return 0;
+	ret = v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, s_crop, crop);
+
+	return ret;
 }
 
 static int tegra_channel_g_crop(struct file *file, void *fh,
@@ -1427,18 +1446,16 @@ static int tegra_channel_g_crop(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	struct v4l2_subdev *subdev = NULL;
-	int num_sd = 0;
+	struct v4l2_subdev *subdev = chan->subdev_on_csi;
 	int ret = 0;
 
-	while ((subdev = chan->subdev[num_sd++]) &&
-		(num_sd <= chan->num_subdevs)) {
-		ret = v4l2_subdev_call(subdev, video, g_crop, crop);
-		if (ret < 0 && ret != -ENOIOCTLCMD)
-			return ret;
-	}
+	if (!v4l2_subdev_has_op(subdev, video, g_crop))
+		return -ENOTTY;
 
-	return 0;
+	ret = v4l2_device_call_until_err(chan->video.v4l2_dev,
+			chan->grp_id, video, g_crop, crop);
+
+	return ret;
 }
 
 static int tegra_channel_subscribe_event(struct v4l2_fh *fh,
@@ -1503,7 +1520,7 @@ static int tegra_channel_g_parm(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	struct v4l2_subdev *subdev = chan->subdev[0];
+	struct v4l2_subdev *subdev = chan->subdev_on_csi;
 	int ret = 0;
 
 	ret = v4l2_subdev_call(subdev, video, g_parm, parm);
@@ -1518,7 +1535,7 @@ static int tegra_channel_s_parm(struct file *file, void *fh,
 {
 	struct v4l2_fh *vfh = file->private_data;
 	struct tegra_channel *chan = to_tegra_channel(vfh->vdev);
-	struct v4l2_subdev *subdev = chan->subdev[0];
+	struct v4l2_subdev *subdev = chan->subdev_on_csi;
 	int ret = 0;
 
 	ret = v4l2_subdev_call(subdev, video, s_parm, parm);
