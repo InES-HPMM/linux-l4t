@@ -36,7 +36,7 @@
 				target = <&cam_module0_drivernode0>;
 				_overlay_ {
 					status = "okay";
-					pcl_id = "v4l2_soc_sensor";
+					pcl_id = "v4l2_sensor";
 					proc-device-tree = "/proc/device-tree/host1x/i2c@546c0000/ov5693_c@36";
 				};
 			};
@@ -64,7 +64,7 @@
 				target = <&e3326_vi_in0>;
 				_overlay_ {
 					status = "okay";
-					csi-port = <0>;
+					csi-port = <2>;
 					bus-width = <2>;
 					remote-endpoint = <&e3326_ov5693_out0>;
 				};
