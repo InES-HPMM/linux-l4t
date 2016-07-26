@@ -57,6 +57,7 @@
 #define V4L2_CID_GAIN				(V4L2_CID_TEGRA_CAMERA_BASE+10)
 #define V4L2_CID_EXPOSURE			(V4L2_CID_TEGRA_CAMERA_BASE+11)
 #define V4L2_CID_FRAME_RATE			(V4L2_CID_TEGRA_CAMERA_BASE+12)
+#define V4L2_CID_SENSOR_MODE_ID		(V4L2_CID_TEGRA_CAMERA_BASE+13)
 
 #define MAX_BUFFER_SIZE			32
 #define MAX_CID_CONTROLS		16
@@ -202,6 +203,8 @@ struct camera_common_data {
 	int	def_mode, def_width, def_height, def_maxfps;
 	int	def_clk_freq;
 	int	fmt_width, fmt_height, fmt_maxfps;
+	int	sensor_mode_id;
+	bool	use_sensor_mode_id;
 };
 
 struct camera_common_focuser_data;

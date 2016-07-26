@@ -428,28 +428,39 @@ int camera_common_try_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 	s_data->fmt_height = s_data->def_height;
 	s_data->fmt_maxfps = s_data->def_maxfps;
 
-	for (i = 0; i < s_data->numfmts; i++) {
-		if (mf->width == frmfmt[i].size.width &&
-		    mf->height == frmfmt[i].size.height &&
-		    mf->maxframerate == frmfmt[i].framerates[0] &&
-		    hdr_en == frmfmt[i].hdr_en) {
-			s_data->mode = frmfmt[i].mode;
-			s_data->fmt_width = mf->width;
-			s_data->fmt_height = mf->height;
-			s_data->fmt_maxfps = mf->maxframerate;
-			break;
+	if (s_data->use_sensor_mode_id &&
+		s_data->sensor_mode_id >= 0 &&
+		s_data->sensor_mode_id < s_data->numfmts) {
+		dev_dbg(&client->dev, "%s: use_sensor_mode_id %d\n",
+				__func__, s_data->sensor_mode_id);
+		s_data->mode = frmfmt[s_data->sensor_mode_id].mode;
+		s_data->fmt_width = mf->width;
+		s_data->fmt_height = mf->height;
+		s_data->fmt_maxfps = mf->maxframerate;
+	} else {
+		for (i = 0; i < s_data->numfmts; i++) {
+			if (mf->width == frmfmt[i].size.width &&
+				mf->height == frmfmt[i].size.height &&
+				mf->maxframerate == frmfmt[i].framerates[0] &&
+				hdr_en == frmfmt[i].hdr_en) {
+				s_data->mode = frmfmt[i].mode;
+				s_data->fmt_width = mf->width;
+				s_data->fmt_height = mf->height;
+				s_data->fmt_maxfps = mf->maxframerate;
+				break;
+			}
+		}
+
+		if (i == s_data->numfmts) {
+			mf->width = s_data->fmt_width;
+			mf->height = s_data->fmt_height;
+			mf->maxframerate = s_data->fmt_maxfps;
+			dev_dbg(&client->dev,
+				"%s: invalid resolution supplied(set mode) %d %d %d\n",
+				__func__, mf->width,
+				mf->height, mf->maxframerate);
 		}
 	}
-
-	if (i == s_data->numfmts) {
-		mf->width = s_data->fmt_width;
-		mf->height = s_data->fmt_height;
-		mf->maxframerate = s_data->fmt_maxfps;
-		dev_dbg(&client->dev,
-			"%s: invalid resolution supplied(set mode) %d %d %d\n",
-			__func__, mf->width, mf->height, mf->maxframerate);
-	}
-
 	if (mf->code != V4L2_MBUS_FMT_SRGGB8_1X8 &&
 		mf->code != V4L2_MBUS_FMT_SRGGB10_1X10) {
 		mf->code = V4L2_MBUS_FMT_SRGGB10_1X10;
