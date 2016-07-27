@@ -29,7 +29,7 @@
 #include <media/camera_common.h>
 #include "imx185_mode_tbls.h"
 
-#define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP_HDR_30FPS
+#define IMX185_DEFAULT_MODE	IMX185_MODE_1920X1080_CROP_30FPS
 #define IMX185_DEFAULT_DATAFMT	V4L2_MBUS_FMT_SRGGB12_1X12
 
 #define IMX185_MIN_FRAME_LENGTH				1125
@@ -51,6 +51,9 @@
 #define IMX185_GAIN_ADDR			0x3014
 #define IMX185_GROUP_HOLD_ADDR			0x3001
 
+#define IMX185_FUSE_ID_ADDR	0x3382
+#define IMX185_FUSE_ID_SIZE	6
+#define IMX185_FUSE_ID_STR_SIZE	(IMX185_FUSE_ID_SIZE * 2)
 #define IMX185_DEFAULT_WIDTH	1920
 #define IMX185_DEFAULT_HEIGHT	1080
 #define IMX185_DEFAULT_CLK_FREQ	37125000
@@ -120,6 +123,7 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.min = 30 * FIXED_POINT_SCALING_FACTOR,
 		.max = 30 * FIXED_POINT_SCALING_FACTOR,
 		.def = 30 * FIXED_POINT_SCALING_FACTOR,
+		.step = 1,
 	},
 	{
 		.ops = &imx185_ctrl_ops,
@@ -142,6 +146,27 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.menu_skip_mask = 0,
 		.def = 0,
 		.qmenu_int = switch_ctrl_qmenu,
+	},
+	{
+		.ops = &imx185_ctrl_ops,
+		.id = V4L2_CID_FUSE_ID,
+		.name = "Fuse ID",
+		.type = V4L2_CTRL_TYPE_STRING,
+		.flags = V4L2_CTRL_FLAG_READ_ONLY,
+		.min = 0,
+		.max = IMX185_FUSE_ID_STR_SIZE,
+		.step = 2,
+	},
+	{
+		.ops = &imx185_ctrl_ops,
+		.id = V4L2_CID_SENSOR_MODE_ID,
+		.name = "Sensor Mode",
+		.type = V4L2_CTRL_TYPE_INTEGER64,
+		.flags = V4L2_CTRL_FLAG_SLIDER,
+		.min = 0,
+		.max = 0xFFFFFFFFFFFFFFFF,
+		.def = 0,
+		.step = 1,
 	},
 };
 
@@ -558,16 +583,17 @@ static int imx185_set_exposure(struct imx185 *priv, s64 val)
 	coarse_time = mode[s_data->mode].pixel_clock * val /
 		mode[s_data->mode].line_length / FIXED_POINT_SCALING_FACTOR;
 
-	hdr_en = switch_ctrl_qmenu[control.value];
-	if (hdr_en == SWITCH_OFF) {
 		/*no WDR, update SHS1 as ET*/
-		err = imx185_set_coarse_time_shs1(priv, (s32) coarse_time);
-		if (err)
-			dev_dbg(&priv->i2c_client->dev,
-			"%s: error coarse time SHS1 override\n", __func__);
-	} else if (hdr_en == SWITCH_ON) {
-		/*WDR, update SHS2 as long ET*/
-		err = imx185_set_coarse_time_hdr_shs2(priv, (s32) coarse_time);
+	err = imx185_set_coarse_time_shs1(priv, (s32) coarse_time);
+	if (err)
+		dev_dbg(&priv->i2c_client->dev,
+		"%s: error coarse time SHS1 override\n", __func__);
+
+	hdr_en = switch_ctrl_qmenu[control.value];
+	if (hdr_en == SWITCH_ON) {
+		/*WDR, update SHS2 as long ET, 16x of short exactly*/
+		err = imx185_set_coarse_time_hdr_shs2(priv,
+					(s32) coarse_time * 16);
 		if (err)
 			dev_dbg(&priv->i2c_client->dev,
 			"%s: error coarse time SHS2 override\n", __func__);
@@ -666,6 +692,54 @@ fail:
 	return err;
 }
 
+
+static int imx185_fuse_id_setup(struct imx185 *priv)
+{
+	int err;
+	int i;
+	struct i2c_client *client = v4l2_get_subdevdata(priv->subdev);
+	struct camera_common_data *s_data = to_camera_common_data(client);
+	struct camera_common_power_rail *pw = &priv->power;
+
+	struct v4l2_ctrl *ctrl;
+	u8 fuse_id[IMX185_FUSE_ID_SIZE];
+	u8 bak = 0;
+
+	err = camera_common_s_power(priv->subdev, true);
+	if (err)
+		return -ENODEV;
+
+	for (i = 0; i < IMX185_FUSE_ID_SIZE; i++) {
+		err |= imx185_read_reg(s_data,
+			IMX185_FUSE_ID_ADDR + i, (unsigned int *) &bak);
+		if (!err)
+			fuse_id[i] = bak;
+		else {
+			pr_err("%s: can not read fuse id\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	ctrl = v4l2_ctrl_find(&priv->ctrl_handler, V4L2_CID_FUSE_ID);
+	if (!ctrl) {
+		dev_err(&priv->i2c_client->dev,
+			"could not find device ctrl.\n");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < IMX185_FUSE_ID_SIZE; i++)
+		sprintf(&ctrl->string[i*2], "%02x",
+			fuse_id[i]);
+	ctrl->cur.string = ctrl->string;
+	pr_info("%s,  fuse id: %s\n", __func__, ctrl->cur.string);
+
+	err = camera_common_s_power(priv->subdev, false);
+	if (err)
+		return -ENODEV;
+
+	return 0;
+}
+
 static int imx185_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx185 *priv =
@@ -689,6 +763,8 @@ static int imx185_s_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx185 *priv =
 		container_of(ctrl->handler, struct imx185, ctrl_handler);
+	struct camera_common_data	*s_data = priv->s_data;
+
 	int err = 0;
 
 	if (priv->power.state == SWITCH_OFF)
@@ -708,6 +784,9 @@ static int imx185_s_ctrl(struct v4l2_ctrl *ctrl)
 		err = imx185_set_group_hold(priv, ctrl->val);
 		break;
 	case V4L2_CID_HDR_EN:
+		break;
+	case V4L2_CID_SENSOR_MODE_ID:
+		s_data->sensor_mode_id = (int) (ctrl->val64);
 		break;
 	default:
 		pr_err("%s: unknown ctrl id.\n", __func__);
@@ -768,6 +847,13 @@ static int imx185_ctrls_init(struct imx185 *priv)
 		goto error;
 	}
 
+	err = imx185_fuse_id_setup(priv);
+	if (err) {
+		dev_err(&client->dev,
+			"Error %d reading fuse id data\n", err);
+		goto error;
+	}
+
 	return 0;
 
 error:
@@ -778,12 +864,14 @@ error:
 MODULE_DEVICE_TABLE(of, imx185_of_match);
 
 static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
-				struct i2c_client *client)
+				struct i2c_client *client,
+				struct camera_common_data *s_data)
 {
 	struct device_node *np = client->dev.of_node;
 	struct camera_common_pdata *board_priv_pdata;
 	const struct of_device_id *match;
 	int sts;
+	const char *str;
 
 	if (!np)
 		return NULL;
@@ -793,6 +881,12 @@ static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
 		dev_err(&client->dev, "Failed to find matching dt id\n");
 		return NULL;
 	}
+
+	of_property_read_string(np, "use_sensor_mode_id", &str);
+	if (!strcmp(str, "true"))
+		s_data->use_sensor_mode_id = true;
+	else
+		s_data->use_sensor_mode_id = false;
 
 	board_priv_pdata = devm_kzalloc(&client->dev,
 			   sizeof(*board_priv_pdata), GFP_KERNEL);
@@ -876,7 +970,7 @@ static int imx185_probe(struct i2c_client *client,
 	}
 
 	if (client->dev.of_node)
-		priv->pdata = imx185_parse_dt(priv, client);
+		priv->pdata = imx185_parse_dt(priv, client, common_data);
 	if (!priv->pdata) {
 		dev_err(&client->dev, "unable to get platform data\n");
 		return -EFAULT;
