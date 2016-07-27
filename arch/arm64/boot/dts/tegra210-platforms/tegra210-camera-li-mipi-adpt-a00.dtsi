@@ -67,6 +67,8 @@
 						/* Convert Gain to unit of dB (decibel) befor passing to kernel driver */
 						use_decibel_gain = "true";
 
+						/* enable CID_SENSOR_MODE_ID for sensor modes selection */
+						use_sensor_mode_id = "true";
 						/**
 						* A modeX node is required to support v4l2 driver
 						* implementation with NVIDIA camera software stack
@@ -96,11 +98,17 @@
 						* active_h = "";
 						* Pixel active region height
 						*
-						* pixel_t = "";
-						* The sensor readout pixel pattern
-						* For eg - 10 bit bayer having 'bggr' pixel pattern has value "bayer_bggr"
-						*          12 bit bayer having 'bggr' pixel pattern has value "bayer_bggr12"
-						*          14 bit bayer having 'bggr' pixel pattern has value "bayer_bggr14"
+						* dynamic_pixel_bit_depth = "";
+						* sensor dynamic bit depth for sensor mode
+						*
+						* csi_pixel_bit_depth = "";
+						* sensor output bit depth for sensor mode
+						*
+						* mode_type="";
+						* Sensor mode type, For eg: yuv, Rgb, bayer, bayer_wdr_pwl
+						*
+						* pixel_phase="";
+						* Pixel phase for sensor mode, For eg: rggb, vyuy, rgb888
 						*
 						* readout_orientation = "0";
 						* Based on camera module orientation.
@@ -127,6 +135,7 @@
 						* min_gain_val = ""; (floor to 6 decimal places)
 						* max_gain_val = ""; (floor to 6 decimal places)
 						* Gain limits for mode
+						* if use_decibel_gain = "true", please set the gain as decibel
 						*
 						* min_exp_time = ""; (ceil to integer)
 						* max_exp_time = ""; (ceil to integer)
@@ -153,10 +162,14 @@
 							discontinuous_clk = "no";
 							dpcm_enable = "false";
 							cil_settletime = "0";
+							dynamic_pixel_bit_depth = "12";
+							csi_pixel_bit_depth = "12";
+							mode_type = "bayer";
+							pixel_phase = "rggb";
+							pixel_t = "bayer_rggb12";
 
 							active_w = "1920";
 							active_h = "1080";
-							pixel_t = "bayer_rggb12";
 							readout_orientation = "0";
 							line_length = "2200";
 							inherent_gain = "1";
@@ -174,27 +187,31 @@
 							embedded_metadata_height = "0";
 						};
 
-						mode1 {/*mode IMX185_MODE_1920X1080_CROP_HDR_30FPS*/
+						mode1 {/*mode IMX185_MODE_1920X1080_CROP_10BIT_30FPS*/
 							mclk_khz = "37125";
 							num_lanes = "4";
 							tegra_sinterface = "serial_a";
 							discontinuous_clk = "no";
 							dpcm_enable = "false";
 							cil_settletime = "0";
+							dynamic_pixel_bit_depth = "10";
+							csi_pixel_bit_depth = "10";
+							mode_type = "bayer";
+							pixel_phase = "rggb";
+							pixel_t = "bayer_rggb";
 
 							active_w = "1920";
 							active_h = "1080";
-							pixel_t = "bayer_rggb12";
 							readout_orientation = "0";
-							line_length = "2200";
+							line_length = "2640";
 							inherent_gain = "1";
 							mclk_multiplier = "6";
 							pix_clk_hz = "74250000";
 
-							min_gain_val = "0"; /* dB */
-							max_gain_val = "48"; /* dB */
-							min_hdr_ratio = "16";
-							max_hdr_ratio = "16";
+							min_gain_val = "0";
+							max_gain_val = "48";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "1";
 							min_framerate = "1";
 							max_framerate = "30";
 							min_exp_time = "30";
@@ -202,6 +219,69 @@
 							embedded_metadata_height = "0";
 						};
 
+						mode2 {/*mode IMX185_MODE_1920X1080_CROP_60FPS*/
+							mclk_khz = "37125";
+							num_lanes = "4";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							dynamic_pixel_bit_depth = "12";
+							csi_pixel_bit_depth = "12";
+							mode_type = "bayer";
+							pixel_phase = "rggb";
+							pixel_t = "bayer_rggb12";
+
+							active_w = "1920";
+							active_h = "1080";
+							readout_orientation = "0";
+							line_length = "2200";
+							inherent_gain = "1";
+							mclk_multiplier = "12";
+							pix_clk_hz = "148500000";
+
+							min_gain_val = "0";
+							max_gain_val = "48";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "1";
+							min_framerate = "1";
+							max_framerate = "60";
+							min_exp_time = "30";
+							max_exp_time = "16600";
+							embedded_metadata_height = "0";
+						};
+
+						mode3 {/*mode IMX185_MODE_1920X1080_CROP_10BIT_60FPS*/
+							mclk_khz = "37125";
+							num_lanes = "4";
+							tegra_sinterface = "serial_a";
+							discontinuous_clk = "no";
+							dpcm_enable = "false";
+							cil_settletime = "0";
+							dynamic_pixel_bit_depth = "10";
+							csi_pixel_bit_depth = "10";
+							mode_type = "bayer";
+							pixel_phase = "rggb";
+							pixel_t = "bayer_rggb";
+
+							active_w = "1920";
+							active_h = "1080";
+							readout_orientation = "0";
+							line_length = "2640";
+							inherent_gain = "1";
+							mclk_multiplier = "12";
+							pix_clk_hz = "148500000";
+
+							min_gain_val = "0";
+							max_gain_val = "48";
+							min_hdr_ratio = "1";
+							max_hdr_ratio = "1";
+							min_framerate = "1";
+							max_framerate = "60";
+							min_exp_time = "30";
+							max_exp_time = "16600";
+							embedded_metadata_height = "0";
+						};
 						ports {
 							#address-cells = <1>;
 							#size-cells = <0>;
