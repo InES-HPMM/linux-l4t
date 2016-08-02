@@ -819,8 +819,7 @@ static int tegra_channel_set_stream(struct tegra_channel *chan, bool on)
 
 static int tegra_channel_set_power(struct tegra_channel *chan, bool on)
 {
-	return v4l2_device_call_until_err(chan->video.v4l2_dev,
-			chan->grp_id, core, s_power, on);
+	return v4l2_subdev_call(chan->subdev_on_csi, core, s_power, on);
 }
 
 static int update_clk(struct tegra_mc_vi *vi)
