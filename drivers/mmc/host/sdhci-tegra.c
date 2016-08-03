@@ -5369,9 +5369,10 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 						struct platform_device *pdev)
 {
 	int val;
-	int ret;
+	int ret, len;
 	struct tegra_sdhci_platform_data *plat;
 	struct device_node *np = pdev->dev.of_node;
+	struct sdhci_host *host = platform_get_drvdata(pdev);
 	u32 bus_width;
 	int i;
 	char label[12];
@@ -5491,6 +5492,8 @@ static struct tegra_sdhci_platform_data *sdhci_tegra_dt_parse_pdata(
 	plat->bcm_sdio_suppress_kso_dump =
 		of_property_read_bool(np, "nvidia,bcm-sdio-suppress-kso-dump");
 
+	if (of_find_property(np, "broken-cd", &len))
+		host->mmc->caps |= MMC_CAP_NEEDS_POLL;
 	return plat;
 }
 
@@ -6159,7 +6162,6 @@ static int sdhci_tegra_probe(struct platform_device *pdev)
 	tegra_host->dbg_cfg.clk_ungated =
 		plat->disable_clock_gate;
 #endif
-	mmc_of_parse(host->mmc);
 	return 0;
 
 err_cd_irq_req:
