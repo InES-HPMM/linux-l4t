@@ -119,6 +119,7 @@ dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-hawkeye-p2290-2307-a05-00-wifi.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-p4573-2180.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-p2597-2180-a00-imx274.dtb
 dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-camera-li-mipi-adpt-a00.dtb
+dtb-$(CONFIG_ARCH_TEGRA_21x_SOC) += tegra210-jetson-cv-camera-li-mipi-adpt-a01-devkit.dtb
 targets += $(dtb-y)
 
 DTC_FLAGS := -i $(srctree)/arch/arm/boot/dts
