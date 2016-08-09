@@ -1,7 +1,7 @@
 /*
  * GK20A graphics channel
  *
- * Copyright (c) 2011-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -112,7 +112,7 @@ struct channel_gk20a {
 	struct list_head ch_entry; /* channel's entry in TSG */
 
 	struct list_head jobs;
-	struct mutex jobs_lock;
+	spinlock_t jobs_lock;
 
 	struct vm_gk20a *vm;
 
