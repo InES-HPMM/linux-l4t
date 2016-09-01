@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (c) 2012-2015, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -55,7 +55,7 @@
 #elif defined(CONFIG_ARCH_TEGRA_18x_SOC)
 #include "../../../../kernel-t18x/drivers/misc/tegra-fuse/tegra18x_fuse_offsets.h"
 #elif defined(CONFIG_ARCH_TEGRA_21x_SOC)
-#include "tegra21x_fuse_offsets.h"
+#include "tegra210_fuse_offsets.h"
 #endif
 
 static DEVICE_ATTR(device_key, 0440, tegra_fuse_show, tegra_fuse_store);
