@@ -18,7 +18,6 @@
 #include <dt-bindings/media/camera.h>
 #include <dt-bindings/platform/t210/t210.h>
 
-/* camera control gpio definitions */
 / {
 	host1x {
 		vi {
@@ -166,24 +165,23 @@
 							csi_pixel_bit_depth = "12";
 							mode_type = "bayer";
 							pixel_phase = "rggb";
-							pixel_t = "bayer_rggb12";
 
 							active_w = "1920";
 							active_h = "1080";
 							readout_orientation = "0";
 							line_length = "2200";
 							inherent_gain = "1";
-							mclk_multiplier = "6";
+							mclk_multiplier = "2";
 							pix_clk_hz = "74250000";
 
 							min_gain_val = "0"; /* dB */
 							max_gain_val = "48"; /* dB */
 							min_hdr_ratio = "1";
 							max_hdr_ratio = "1";
-							min_framerate = "1";
+							min_framerate = "1.5";
 							max_framerate = "30";
 							min_exp_time = "30";
-							max_exp_time = "33000";
+							max_exp_time = "680000";
 							embedded_metadata_height = "0";
 						};
 
@@ -198,24 +196,23 @@
 							csi_pixel_bit_depth = "10";
 							mode_type = "bayer";
 							pixel_phase = "rggb";
-							pixel_t = "bayer_rggb";
 
 							active_w = "1920";
 							active_h = "1080";
 							readout_orientation = "0";
-							line_length = "2640";
+							line_length = "2200";
 							inherent_gain = "1";
-							mclk_multiplier = "6";
+							mclk_multiplier = "2";
 							pix_clk_hz = "74250000";
 
 							min_gain_val = "0";
 							max_gain_val = "48";
 							min_hdr_ratio = "1";
 							max_hdr_ratio = "1";
-							min_framerate = "1";
+							min_framerate = "1.5";
 							max_framerate = "30";
 							min_exp_time = "30";
-							max_exp_time = "33000";
+							max_exp_time = "680000";
 							embedded_metadata_height = "0";
 						};
 
@@ -230,24 +227,23 @@
 							csi_pixel_bit_depth = "12";
 							mode_type = "bayer";
 							pixel_phase = "rggb";
-							pixel_t = "bayer_rggb12";
 
 							active_w = "1920";
 							active_h = "1080";
 							readout_orientation = "0";
 							line_length = "2200";
 							inherent_gain = "1";
-							mclk_multiplier = "12";
+							mclk_multiplier = "4";
 							pix_clk_hz = "148500000";
 
 							min_gain_val = "0";
 							max_gain_val = "48";
 							min_hdr_ratio = "1";
 							max_hdr_ratio = "1";
-							min_framerate = "1";
+							min_framerate = "1.5";
 							max_framerate = "60";
 							min_exp_time = "30";
-							max_exp_time = "16600";
+							max_exp_time = "680000";
 							embedded_metadata_height = "0";
 						};
 
@@ -262,24 +258,23 @@
 							csi_pixel_bit_depth = "10";
 							mode_type = "bayer";
 							pixel_phase = "rggb";
-							pixel_t = "bayer_rggb";
 
 							active_w = "1920";
 							active_h = "1080";
 							readout_orientation = "0";
-							line_length = "2640";
+							line_length = "2200";
 							inherent_gain = "1";
-							mclk_multiplier = "12";
+							mclk_multiplier = "4";
 							pix_clk_hz = "148500000";
 
 							min_gain_val = "0";
 							max_gain_val = "48";
 							min_hdr_ratio = "1";
 							max_hdr_ratio = "1";
-							min_framerate = "1";
+							min_framerate = "1.5";
 							max_framerate = "60";
 							min_exp_time = "30";
-							max_exp_time = "16600";
+							max_exp_time = "680000";
 							embedded_metadata_height = "0";
 						};
 						ports {
@@ -302,7 +297,6 @@
 	};
 };
 
-/* camera control gpio definitions */
 / {
 
 	tegra-camera-platform {
@@ -312,7 +306,7 @@
 		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
 		 * The first part is the camera_board_id for the module; if the module is in a FFD
 		 * platform, then use the platform name for this part.
-		 * The second part contains the position of the module, ex. ¡°rear¡± or ¡°front¡±.
+		* The second part contains the position of the module, ex. “rear” or “front”.
 		 * The third part contains the last 6 characters of a part number which is found
 		 * in the module's specsheet from the vender.
 		 */

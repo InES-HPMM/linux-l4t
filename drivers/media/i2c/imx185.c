@@ -65,9 +65,9 @@ struct imx185 {
 	struct i2c_client	*i2c_client;
 	struct v4l2_subdev	*subdev;
 	struct media_pad	pad;
+	u32				frame_length;
 	s32	group_hold_prev;
 	bool	group_hold_en;
-	u32	frame_length;
 	struct regmap	*regmap;
 	struct camera_common_data	*s_data;
 	struct camera_common_pdata	*pdata;
@@ -109,9 +109,9 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.name = "Exposure",
 		.type = V4L2_CTRL_TYPE_INTEGER64,
 		.flags = V4L2_CTRL_FLAG_SLIDER,
-		.min = 30 * FIXED_POINT_SCALING_FACTOR,
-		.max = 33000LL * FIXED_POINT_SCALING_FACTOR,
-		.def = 16 * FIXED_POINT_SCALING_FACTOR,
+		.min = 30 * FIXED_POINT_SCALING_FACTOR / 1000000,
+		.max = 1000000LL * FIXED_POINT_SCALING_FACTOR / 1000000,
+		.def = 30 * FIXED_POINT_SCALING_FACTOR / 1000000,
 		.step = 1,
 	},
 	{
@@ -120,8 +120,8 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.name = "Frame Rate",
 		.type = V4L2_CTRL_TYPE_INTEGER64,
 		.flags = V4L2_CTRL_FLAG_SLIDER,
-		.min = 30 * FIXED_POINT_SCALING_FACTOR,
-		.max = 30 * FIXED_POINT_SCALING_FACTOR,
+		.min = 1 * FIXED_POINT_SCALING_FACTOR,
+		.max = 60 * FIXED_POINT_SCALING_FACTOR,
 		.def = 30 * FIXED_POINT_SCALING_FACTOR,
 		.step = 1,
 	},
@@ -164,40 +164,51 @@ static struct v4l2_ctrl_config ctrl_config_list[] = {
 		.type = V4L2_CTRL_TYPE_INTEGER64,
 		.flags = V4L2_CTRL_FLAG_SLIDER,
 		.min = 0,
-		.max = 0xFFFFFFFFFFFFFFFF,
-		.def = 0,
+		.max = 0xFF,
+		.def = 0xFE,
 		.step = 1,
 	},
 };
 
 static inline void imx185_get_frame_length_regs(imx185_reg *regs,
-				u16 frame_length)
+				u32 frame_length)
 {
-	regs->addr = IMX185_FRAME_LENGTH_ADDR_MID;
-	regs->val = (frame_length >> 8) & 0xff;
+	regs->addr = IMX185_FRAME_LENGTH_ADDR_MSB;
+	regs->val = (frame_length >> 16) & 0x01;
 
-	(regs + 1)->addr = IMX185_FRAME_LENGTH_ADDR_LSB;
-	(regs + 1)->val = (frame_length) & 0xff;
+	(regs + 1)->addr = IMX185_FRAME_LENGTH_ADDR_MID;
+	(regs + 1)->val = (frame_length >> 8) & 0xff;
+
+	(regs + 2)->addr = IMX185_FRAME_LENGTH_ADDR_LSB;
+	(regs + 2)->val = (frame_length) & 0xff;
 }
 
 static inline void imx185_get_coarse_time_regs_shs1(imx185_reg *regs,
-				u16 coarse_time)
+				u32 coarse_time)
 {
-	regs->addr = IMX185_COARSE_TIME_SHS1_ADDR_MID;
-	regs->val = (coarse_time >> 8) & 0xff;
+	regs->addr = IMX185_COARSE_TIME_SHS1_ADDR_MSB;
+	regs->val = (coarse_time >> 16) & 0x01;
 
-	(regs + 1)->addr = IMX185_COARSE_TIME_SHS1_ADDR_LSB;
-	(regs + 1)->val = (coarse_time) & 0xff;
+	(regs + 1)->addr = IMX185_COARSE_TIME_SHS1_ADDR_MID;
+	(regs + 1)->val = (coarse_time >> 8) & 0xff;
+
+	(regs + 2)->addr = IMX185_COARSE_TIME_SHS1_ADDR_LSB;
+	(regs + 2)->val = (coarse_time) & 0xff;
+
 }
 
 static inline void imx185_get_coarse_time_regs_shs2(imx185_reg *regs,
-				u16 coarse_time)
+				u32 coarse_time)
 {
-	regs->addr = IMX185_COARSE_TIME_SHS2_ADDR_MID;
-	regs->val = (coarse_time >> 8) & 0xff;
+	regs->addr = IMX185_COARSE_TIME_SHS2_ADDR_MSB;
+	regs->val = (coarse_time >> 16) & 0x01;
 
-	(regs + 1)->addr = IMX185_COARSE_TIME_SHS2_ADDR_LSB;
-	(regs + 1)->val = (coarse_time) & 0xff;
+	(regs + 1)->addr = IMX185_COARSE_TIME_SHS2_ADDR_MID;
+	(regs + 1)->val = (coarse_time >> 8) & 0xff;
+
+	(regs + 2)->addr = IMX185_COARSE_TIME_SHS2_ADDR_LSB;
+	(regs + 2)->val = (coarse_time) & 0xff;
+
 }
 
 static inline void imx185_get_gain_reg(imx185_reg *regs,
@@ -214,6 +225,7 @@ static inline int imx185_read_reg(struct camera_common_data *s_data,
 				u16 addr, u8 *val)
 {
 	struct imx185 *priv = (struct imx185 *)s_data->priv;
+
 	return regmap_read(priv->regmap, addr, (unsigned int *) val);
 }
 
@@ -230,8 +242,6 @@ static int imx185_write_reg(struct camera_common_data *s_data,
 
 	return err;
 }
-
-
 
 static int imx185_write_table(struct imx185 *priv,
 				const imx185_reg table[])
@@ -252,10 +262,11 @@ static int imx185_power_on(struct camera_common_data *s_data)
 	dev_dbg(&priv->i2c_client->dev, "%s: power on\n", __func__);
 	if (priv->pdata && priv->pdata->power_on) {
 		err = priv->pdata->power_on(pw);
-		if (err) {
+		if (err)
 			pr_err("%s failed.\n", __func__);
-			return err;
-		}
+		else
+			pw->state = SWITCH_ON;
+		return err;
 	}
 
 	/*exit reset mode: XCLR */
@@ -280,16 +291,18 @@ static int imx185_power_off(struct camera_common_data *s_data)
 	dev_dbg(&priv->i2c_client->dev, "%s: power off\n", __func__);
 	if (priv->pdata && priv->pdata->power_off) {
 		err = priv->pdata->power_off(pw);
-		if (err) {
+		if (!err)
+			goto power_off_done;
+		else
 			pr_err("%s failed.\n", __func__);
-			return err;
-		}
+		return err;
 	}
 	/* enter reset mode: XCLR */
 	usleep_range(1, 2);
 	if (pw->reset_gpio)
 		gpio_set_value(pw->reset_gpio, 0);
 
+power_off_done:
 	pw->state = SWITCH_OFF;
 
 	return 0;
@@ -298,6 +311,7 @@ static int imx185_power_off(struct camera_common_data *s_data)
 static int imx185_power_put(struct imx185 *priv)
 {
 	struct camera_common_power_rail *pw = &priv->power;
+
 	if (unlikely(!pw))
 		return -EFAULT;
 	return 0;
@@ -337,8 +351,8 @@ static int imx185_power_get(struct imx185 *priv)
 	return err;
 }
 
-static int imx185_set_coarse_time_shs1(struct imx185 *priv, s32 val);
-static int imx185_set_coarse_time_hdr_shs2(struct imx185 *priv, s32 val);
+static int imx185_set_coarse_time_shs1(struct imx185 *priv, u32 val);
+static int imx185_set_coarse_time_hdr_shs2(struct imx185 *priv, u32 val);
 static int imx185_set_gain(struct imx185 *priv, s64 val);
 static int imx185_set_frame_rate(struct imx185 *priv, s64 val);
 static int imx185_set_exposure(struct imx185 *priv, s64 val);
@@ -354,12 +368,22 @@ static int imx185_s_stream(struct v4l2_subdev *sd, int enable)
 
 	dev_dbg(&client->dev, "%s++ enable %d\n", __func__, enable);
 
-	err =  imx185_write_table(priv, mode_table[IMX185_MODE_STOP_STREAM]);
-	if (err)
-		goto exit;
-	if (!enable)
-		return err;
+	if (!enable) {
+		err =  imx185_write_table(priv,
+			mode_table[IMX185_MODE_STOP_STREAM]);
 
+		if (err)
+			return err;
+
+		/* Wait for one frame to make sure sensor is set to
+		 * software standby in V-blank
+		 *
+		 * delay = frame length rows * Tline (10 us)
+		 */
+		usleep_range(priv->frame_length * 10,
+			priv->frame_length * 10 + 1000);
+		return 0;
+	}
 	err = imx185_write_table(priv, mode_table[s_data->mode]);
 	if (err)
 		goto exit;
@@ -374,8 +398,10 @@ static int imx185_s_stream(struct v4l2_subdev *sd, int enable)
 	control[0].id = V4L2_CID_GAIN;
 	control[1].id = V4L2_CID_FRAME_RATE;
 	control[2].id = V4L2_CID_EXPOSURE;
+
 	err = v4l2_g_ext_ctrls(&priv->ctrl_handler, &ctrls);
 	if (err == 0) {
+
 		err |= imx185_set_gain(priv, control[0].value64);
 		if (err)
 			dev_err(&client->dev,
@@ -390,6 +416,7 @@ static int imx185_s_stream(struct v4l2_subdev *sd, int enable)
 		if (err)
 			dev_err(&client->dev,
 				"%s: error exposure override\n", __func__);
+
 	} else {
 		dev_err(&client->dev, "%s: faile to get overrides\n", __func__);
 	}
@@ -509,17 +536,20 @@ static int imx185_set_gain(struct imx185 *priv, s64 val)
 {
 	imx185_reg reg_list[1];
 	int err;
+	s64 gain64;
 	u8 gain;
+	int i = 0;
 
 	/* translate value */
-	gain = (u8)(val * 160 / FIXED_POINT_SCALING_FACTOR / 48);
-
+	gain64 = (s64)(val / FIXED_POINT_SCALING_FACTOR);
+	gain = (u8)(gain64 * 160 / 48);
 	dev_dbg(&priv->i2c_client->dev,
-		 "%s:  gain: %d\n", __func__, gain);
+		"%s:  gain reg: %d, db: %lld\n",  __func__, gain, gain64);
 
 	imx185_get_gain_reg(reg_list, gain);
 
-	err = imx185_write_table(priv, reg_list);
+	err = imx185_write_reg(priv->s_data, reg_list[i].addr,
+		 reg_list[i].val);
 	if (err)
 		goto fail;
 
@@ -533,11 +563,12 @@ fail:
 
 static int imx185_set_frame_rate(struct imx185 *priv, s64 val)
 {
-	imx185_reg reg_list[2];
+	imx185_reg reg_list[3];
 	int err;
 	s64 frame_length;
 	struct camera_common_mode_info *mode = priv->pdata->mode_info;
 	struct camera_common_data *s_data = priv->s_data;
+	int i = 0;
 
 	dev_dbg(&priv->i2c_client->dev,
 		 "%s: val: %lld\n", __func__, val);
@@ -546,11 +577,16 @@ static int imx185_set_frame_rate(struct imx185 *priv, s64 val)
 		FIXED_POINT_SCALING_FACTOR /
 		mode[s_data->mode].line_length / val;
 
-	imx185_get_frame_length_regs(reg_list, (u16) frame_length);
-	err = imx185_write_table(priv, reg_list);
-	if (err)
-		goto fail;
+	priv->frame_length = (u32) frame_length;
 
+	imx185_get_frame_length_regs(reg_list, priv->frame_length);
+
+	for (i = 0; i < 3; i++) {
+		err = imx185_write_reg(priv->s_data, reg_list[i].addr,
+			 reg_list[i].val);
+		if (err)
+			goto fail;
+	}
 	return 0;
 
 fail:
@@ -583,31 +619,33 @@ static int imx185_set_exposure(struct imx185 *priv, s64 val)
 	coarse_time = mode[s_data->mode].pixel_clock * val /
 		mode[s_data->mode].line_length / FIXED_POINT_SCALING_FACTOR;
 
-		/*no WDR, update SHS1 as ET*/
-	err = imx185_set_coarse_time_shs1(priv, (s32) coarse_time);
-	if (err)
-		dev_dbg(&priv->i2c_client->dev,
-		"%s: error coarse time SHS1 override\n", __func__);
 
 	hdr_en = switch_ctrl_qmenu[control.value];
 	if (hdr_en == SWITCH_ON) {
 		/*WDR, update SHS2 as long ET, 16x of short exactly*/
+		coarse_time = coarse_time / 16;
 		err = imx185_set_coarse_time_hdr_shs2(priv,
-					(s32) coarse_time * 16);
+					(u32) coarse_time * 16);
 		if (err)
 			dev_dbg(&priv->i2c_client->dev,
 			"%s: error coarse time SHS2 override\n", __func__);
 	}
+	/*shs1 is short coarse time for wdr*/
+	err = imx185_set_coarse_time_shs1(priv, (u32) coarse_time);
+	if (err)
+		dev_dbg(&priv->i2c_client->dev,
+		"%s: error coarse time SHS1 override\n", __func__);
 	return err;
 }
 
-static int imx185_set_coarse_time_shs1(struct imx185 *priv, s32 val)
+static int imx185_set_coarse_time_shs1(struct imx185 *priv, u32 val)
 {
-	imx185_reg reg_list[2];
+	imx185_reg reg_list[3];
 	int err;
-	u16 coarse_shs1;
+	u32 coarse_shs1;
 	struct v4l2_control control;
 	int hdr_en;
+	int i = 0;
 
 	coarse_shs1 = val;
 
@@ -643,9 +681,12 @@ static int imx185_set_coarse_time_shs1(struct imx185 *priv, s32 val)
 	imx185_get_coarse_time_regs_shs1(reg_list,
 			priv->frame_length - coarse_shs1 - 1);
 
-	err = imx185_write_table(priv, reg_list);
-	if (err)
-		goto fail;
+	for (i = 0; i < 3; i++) {
+		err = imx185_write_reg(priv->s_data, reg_list[i].addr,
+			 reg_list[i].val);
+		if (err)
+			goto fail;
+	}
 
 	return 0;
 
@@ -655,11 +696,12 @@ fail:
 	return err;
 }
 
-static int imx185_set_coarse_time_hdr_shs2(struct imx185 *priv, s32 val)
+static int imx185_set_coarse_time_hdr_shs2(struct imx185 *priv, u32 val)
 {
-	imx185_reg reg_list[2];
+	imx185_reg reg_list[3];
 	int err;
-	u16 coarse_shs2;
+	u32 coarse_shs2;
+	int i = 0;
 
 	coarse_shs2 = val;
 	if (coarse_shs2 < IMX185_MIN_EXPOSURE_COARSE_1080P_HDR_SHS2)
@@ -680,9 +722,12 @@ static int imx185_set_coarse_time_hdr_shs2(struct imx185 *priv, s32 val)
 	imx185_get_coarse_time_regs_shs2(reg_list,
 			priv->frame_length - coarse_shs2 - 1);
 
-	err = imx185_write_table(priv, reg_list);
-	if (err)
-		goto fail;
+	for (i = 0; i < 3; i++) {
+		err = imx185_write_reg(priv->s_data, reg_list[i].addr,
+			 reg_list[i].val);
+		if (err)
+			goto fail;
+	}
 
 	return 0;
 
@@ -691,7 +736,6 @@ fail:
 		 "%s: COARSE_TIME_SHORT control error\n", __func__);
 	return err;
 }
-
 
 static int imx185_fuse_id_setup(struct imx185 *priv)
 {
@@ -822,11 +866,6 @@ static int imx185_ctrls_init(struct imx185 *priv)
 			ctrl_config_list[i].flags & V4L2_CTRL_FLAG_READ_ONLY) {
 			ctrl->string = devm_kzalloc(&client->dev,
 				ctrl_config_list[i].max + 1, GFP_KERNEL);
-			if (!ctrl->string) {
-				dev_err(&client->dev,
-					"Failed to allocate data\n");
-				return -ENOMEM;
-			}
 		}
 		priv->ctrls[i] = ctrl;
 	}
@@ -870,7 +909,7 @@ static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
 	struct device_node *np = client->dev.of_node;
 	struct camera_common_pdata *board_priv_pdata;
 	const struct of_device_id *match;
-	int sts;
+	int err;
 	const char *str;
 
 	if (!np)
@@ -890,29 +929,25 @@ static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
 
 	board_priv_pdata = devm_kzalloc(&client->dev,
 			   sizeof(*board_priv_pdata), GFP_KERNEL);
-	if (!board_priv_pdata) {
-		dev_err(&client->dev, "Failed to allocate pdata\n");
-		return NULL;
-	}
 
-	sts = camera_common_parse_clocks(client, board_priv_pdata);
-	if (sts)
+	err = camera_common_parse_clocks(client, board_priv_pdata);
+	if (err)
 		dev_err(&client->dev, "Failed to find clocks\n");
 
-	sts = of_property_read_string(np, "mclk",
+	err = of_property_read_string(np, "mclk",
 				      &board_priv_pdata->mclk_name);
-	if (sts)
+	if (err)
 		dev_err(&client->dev, "mclk not in DT\n");
 
 	board_priv_pdata->reset_gpio = of_get_named_gpio(np, "reset-gpios", 0);
-	if (sts) {
-		dev_err(&client->dev, "reset-gpios not found %d\n", sts);
+	if (err) {
+		dev_err(&client->dev, "reset-gpios not found %d\n", err);
 		board_priv_pdata->reset_gpio = 0;
 	}
 
-	sts = camera_common_parse_sensor_mode(client, board_priv_pdata);
-	if (sts)
-		dev_err(&client->dev, "Failed to load mode info %d\n", sts);
+	err = camera_common_parse_sensor_mode(client, board_priv_pdata);
+	if (err)
+		dev_err(&client->dev, "Failed to load mode info %d\n", err);
 
 	return board_priv_pdata;
 }
@@ -920,6 +955,7 @@ static struct camera_common_pdata *imx185_parse_dt(struct imx185 *priv,
 static int imx185_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
 	dev_dbg(&client->dev, "%s:\n", __func__);
 
 	return 0;
@@ -941,7 +977,8 @@ static int imx185_probe(struct i2c_client *client,
 	char debugfs_name[10];
 	int err;
 
-	pr_info("[IMX185]: probing v4l2 sensor at addr 0x%0x.\n", client->addr);
+	dev_info(&client->dev, "[IMX185]: probing v4l2 sensor at addr 0x%0x.\n",
+		client->addr);
 
 	if (!IS_ENABLED(CONFIG_OF) || !client->dev.of_node)
 		return -EINVAL;
@@ -1075,6 +1112,7 @@ static struct i2c_driver imx185_i2c_driver = {
 	.driver = {
 		.name = "imx185",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(imx185_of_match),
 	},
 	.probe = imx185_probe,
 	.remove = imx185_remove,
