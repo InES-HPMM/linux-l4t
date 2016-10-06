@@ -1399,11 +1399,13 @@ static const struct camera_common_frmfmt imx185_frmfmt[] = {
 #endif
 	{{1920, 1080}, imx185_30fps, 1, 0,
 			IMX185_MODE_1920X1080_CROP_30FPS},
+#if 0
 	{{1920, 1080}, imx185_30fps, 1, 0,
 			IMX185_MODE_1920X1080_CROP_10BIT_30FPS},
 	{{1920, 1080}, imx185_60fps, 1, 0,
 			IMX185_MODE_1920X1080_CROP_60FPS},
 	{{1920, 1080}, imx185_60fps, 1, 0,
 			IMX185_MODE_1920X1080_CROP_10BIT_60FPS},
+#endif
 };
 #endif /* __IMX185_I2C_TABLES__ */

@@ -185,6 +185,7 @@
 							embedded_metadata_height = "0";
 						};
 
+#if 0
 						mode1 {/*mode IMX185_MODE_1920X1080_CROP_10BIT_30FPS*/
 							mclk_khz = "37125";
 							num_lanes = "4";
@@ -277,6 +278,7 @@
 							max_exp_time = "680000";
 							embedded_metadata_height = "0";
 						};
+#endif
 						ports {
 							#address-cells = <1>;
 							#size-cells = <0>;
@@ -306,7 +308,7 @@
 		 * The general guideline for naming badge_info contains 3 parts, and is as follows,
 		 * The first part is the camera_board_id for the module; if the module is in a FFD
 		 * platform, then use the platform name for this part.
-		* The second part contains the position of the module, ex. “rear” or “front”.
+		 * The second part contains the position of the module, ex. "rear" or "front".
 		 * The third part contains the last 6 characters of a part number which is found
 		 * in the module's specsheet from the vender.
 		 */
