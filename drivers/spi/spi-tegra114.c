@@ -1242,15 +1242,12 @@ static int tegra_spi_setup(struct spi_device *spi)
 	}
 
 	if (tspi->chip_data->intr_mask_reg) {
-		if ((tspi->cur_direction & DATA_DIR_TX) ||
-		    (tspi->cur_direction & DATA_DIR_RX)) {
-			intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
-			if (!tspi->polling_mode)
-				intr_mask &= ~(SPI_INTR_ALL_MASK);
-			else
-				intr_mask |= SPI_INTR_ALL_MASK;
-			tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
-		}
+		intr_mask = tegra_spi_readl(tspi, SPI_INTR_MASK);
+		if (!tspi->polling_mode)
+			intr_mask &= ~(SPI_INTR_ALL_MASK);
+		else
+			intr_mask |= SPI_INTR_ALL_MASK;
+		tegra_spi_writel(tspi, intr_mask, SPI_INTR_MASK);
 	}
 	spin_lock_irqsave(&tspi->lock, flags);
 	val = tspi->def_command1_reg;
