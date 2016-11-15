@@ -1173,6 +1173,42 @@ static void tc358840_set_hdmi_phy(struct v4l2_subdev *sd)
 
 static void tc358840_set_hdmi_audio(struct v4l2_subdev *sd)
 {
+/* TDM */
+#if 0
+	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
+/*
+	i2c_wr8(sd, FORCE_MUTE, 0x00);
+	i2c_wr8(sd, AUTO_CMD0, MASK_AUTO_MUTE7 | MASK_AUTO_MUTE6 |
+			MASK_AUTO_MUTE5 | MASK_AUTO_MUTE4 |
+			MASK_AUTO_MUTE1 | MASK_AUTO_MUTE0);
+	i2c_wr8(sd, AUTO_CMD1, MASK_AUTO_MUTE9);
+	i2c_wr8(sd, AUTO_CMD2, MASK_AUTO_PLAY3 | MASK_AUTO_PLAY2);
+	i2c_wr8(sd, BUFINIT_START, SET_BUFINIT_START_MS(500));
+	i2c_wr8(sd, FS_MUTE, 0x00);
+	i2c_wr8(sd, FS_IMODE, MASK_NLPCM_SMODE | MASK_FS_SMODE);
+	i2c_wr8(sd, ACR_MODE, MASK_CTS_MODE);
+	i2c_wr8(sd, ACR_MDF0, MASK_ACR_L2MDF_1976_PPM | MASK_ACR_L1MDF_976_PPM);
+	i2c_wr8(sd, ACR_MDF1, MASK_ACR_L3MDF_3906_PPM);*/
+	/*
+	 * TODO: Set output data bit length (currently 16 bit, 8 bit discarded)
+	 */
+	/*i2c_wr8(sd, SDO_MODE1, MASK_SDO_FMT_I2S);
+	i2c_wr8(sd, DIV_MODE, SET_DIV_DLY_MS(100));
+	i2c_wr16_and_or(sd, CONFCTL0, 0xFFFF, MASK_AUDCHNUM_2 |
+			MASK_AUDOUTSEL_I2S | MASK_AUTOINDEX);*/
+
+	i2c_wr8(sd, FORCE_MUTE, 0x00);
+	i2c_wr8(sd, AUTO_CMD0, 0xF3);
+	i2c_wr8(sd, AUTO_CMD1, 0x02);
+	i2c_wr8(sd, AUTO_CMD2, 0x0C);
+	i2c_wr8(sd, BUFINIT_START, SET_BUFINIT_START_MS(500));
+	i2c_wr8(sd, FS_MUTE, 0x00);
+	i2c_wr8(sd, FS_SET, MASK_FS); /*new*/
+	i2c_wr8(sd, SDO_MODE1, 0x62);
+	i2c_wr8(sd, HDMIAUDIO_MODE, 0x00);
+	i2c_wr16_and_or(sd, CONFCTL0, ~(MASK_AUDCHNUM | MASK_AUDOUTSEL), MASK_AUDOUTSEL_TDM);
+#else
+/* I2S */
 	v4l2_dbg(3, debug, sd, "%s():\n", __func__);
 
 	i2c_wr8(sd, FORCE_MUTE, 0x00);
@@ -1194,6 +1230,7 @@ static void tc358840_set_hdmi_audio(struct v4l2_subdev *sd)
 	i2c_wr8(sd, DIV_MODE, SET_DIV_DLY_MS(100));
 	i2c_wr16_and_or(sd, CONFCTL0, 0xFFFF, MASK_AUDCHNUM_2 |
 			MASK_AUDOUTSEL_I2S | MASK_AUTOINDEX);
+#endif
 }
 
 static void tc358840_set_hdmi_info_frame_mode(struct v4l2_subdev *sd)
