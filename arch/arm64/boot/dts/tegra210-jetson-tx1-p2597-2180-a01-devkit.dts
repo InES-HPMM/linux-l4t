@@ -328,4 +328,144 @@
 			regulator-always-on;
 		};
 	};
+	
+	tegra_axbar: ahub {
+		status = "okay";
+
+		tegra_i2s4: i2s@702d1300 {
+			status = "okay";
+		};      
+	};
+
+	sound_card: sound {
+		compatible = "nvidia,tegra-audio-t210ref-mobile-rt565x";
+		nvidia,model = "tegra-snd-t210ref-mobile-rt565x";
+
+		nvidia,num-codec-link = <5>;
+
+		nvidia,audio-routing =
+		  "x Headphone Jack", "x HPO L Playback",
+		  "x Headphone Jack", "x HPO R Playback",
+		  "x MICBIAS1",   "x Mic Jack",
+		  "x IN1P",   "x Mic Jack",
+		  "x Mic Det Power",  "x Mic Jack",
+		  "x Int Spk",    "x SPO Playback",
+		  "x DMIC L1",            "x Int Mic",
+		  "x DMIC L2",            "x Int Mic",
+		  "x DMIC R1",            "x Int Mic",
+		  "x DMIC R2",            "x Int Mic",
+		  "x Headphone",    "x OUT",
+		  "x IN",     "x Mic",
+		  "y Headphone",    "y OUT",
+		  "y IN",     "y Mic",
+		  "l IN",     "l OUT",
+		  "s Headphone",    "s OUT",
+		  "s IN",     "s Mic";
+
+		nvidia,xbar = <&tegra_axbar>;
+
+		/* The codec-dai here is initialized to dummy and will be   */
+		/* replaced with rt565x codec-dai on detecting super-module */
+		nvidia,dai-link-1 {
+		  link-name = "rt565x-playback";
+		  cpu-dai = <&tegra_i2s1>;
+		  codec-dai = <&spdif_dit4>;
+		  cpu-dai-name = "I2S1";
+		  codec-dai-name = "dit-hifi";
+		  format = "i2s";
+	//      bitclock-slave;
+		  bitclock-master;
+	//      frame-slave;
+		  frame-master;
+		  bitclock-noninversion;
+		  frame-noninversion;
+	//      bit-format = "s16_le";
+		  bit-format = "s32_le";
+	//      bclk_ratio = <0>;
+		  bclk_ratio = <0>;
+		  srate = <48000>;
+		  num-channel = <2>;
+		  ignore_suspend;
+		  name-prefix = "x";
+		};
+
+		nvidia,dai-link-2 {
+		  link-name = "spdif-dit-1";
+		  cpu-dai = <&tegra_i2s2>;
+		  codec-dai = <&spdif_dit1>;
+		  cpu-dai-name = "I2S2";
+		  codec-dai-name = "dit-hifi";
+		  format = "dsp_a";
+		  bitclock-slave;
+		  frame-slave;
+		  bitclock-inversion;
+		  frame-inversion;
+		  bit-format = "s16_le";
+		  bclk_ratio = <4>;
+		  srate = <8000>;
+		  num-channel = <1>;
+		  ignore_suspend;
+		  name-prefix = "y";
+		};
+
+		nvidia,dai-link-3 {
+		  link-name = "spdif-dit-2";
+		  cpu-dai = <&tegra_dmic3>;
+		  codec-dai = <&spdif_dit2>;
+		  cpu-dai-name = "DMIC3";
+		  codec-dai-name = "dit-hifi";
+		  format = "i2s";
+		  bit-format = "s16_le";
+		  srate = <48000>;
+		  num-channel = <2>;
+		  ignore_suspend;
+		  name-prefix = "z";
+		};
+
+		nvidia,dai-link-4 {
+		  link-name = "spdif-dit-3";
+		  cpu-dai = <&tegra_i2s3>;
+		  codec-dai = <&spdif_dit3>;
+		  cpu-dai-name = "I2S3";
+		  codec-dai-name = "dit-hifi";
+		  format = "i2s";
+		  bitclock-slave;
+		  frame-slave;
+		  bitclock-noninversion;
+		  frame-noninversion;
+		  bit-format = "s16_le";
+		  bclk_ratio = <0>;
+		  srate = <48000>;
+		  num-channel = <2>;
+		  ignore_suspend;
+		  name-prefix = "l";
+		};
+
+		nvidia,dai-link-5 {
+		  link-name = "spdif-dit-0";
+		  cpu-dai = <&tegra_i2s4>;
+		  codec-dai = <&spdif_dit0>;
+		  cpu-dai-name = "I2S4";
+		  codec-dai-name = "dit-hifi";
+		  format = "i2s";
+	//      bitclock-slave;
+		  bitclock-master;
+	//      frame-slave;
+		  frame-master;
+		  bitclock-noninversion;
+		  frame-noninversion;
+	//      bit-format = "s16_le";
+		  bit-format = "s32_le";
+	//      bclk_ratio = <0>;
+		  bclk_ratio = <0>;
+		  srate = <48000>;
+		  num-channel = <2>;
+		  ignore_suspend;
+		  name-prefix = "s";
+		};
+	};
+
+	hda@70030000 {
+		status = "okay";
+	};
 };
