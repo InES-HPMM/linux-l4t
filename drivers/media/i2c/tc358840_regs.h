@@ -2,7 +2,6 @@
  * tc358840_regs.h - Toshiba UH2C/D HDMI-CSI bridge registers
  *
  * Copyright (c) 2015, Armin Weiss <weii@zhaw.ch>
- * Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -16,11 +15,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef __TC358840_TABLES__
-#define __TC358840_TABLES__
-
-#include <media/camera_common.h>
 
 /**************************************************
  * Register Addresses
@@ -236,7 +230,6 @@
 #define MASK_SYCC601_LIMITED			0x13
 #define MASK_ADOBE_YCC601_FULL			0x1A
 #define MASK_ADOBE_YCC601_LIMITED		0x1B
-#define MASK_LIMITED                            0x01
 
 
 /* *** CSI TX (32 bit) *** */
@@ -290,11 +283,35 @@
 #define MASK_INIT_INT_EN			(1 << 22)
 #define MASK_DEBUG_MODE_EN			(1 << 31)
 
+#define CSI_TATO_COUNT				0x0130	/* Not in Ref. v1.5 */
+#define CSI_PRESP_BTA_COUNT			0x0134	/* Not in Ref. v1.5 */
+#define CSI_PRESP_LPR_COUNT			0x0138	/* Not in Ref. v1.5 */
+#define CSI_PRESP_LPW_COUNT			0x013C	/* Not in Ref. v1.5 */
+
+#define HSREADCNT				0x0140	/* Not in Ref. v1.5 */
+#define HSWRITECNT				0x0144	/* Not in Ref. v1.5 */
+#define PERIRSTCNT				0x0148	/* Not in Ref. v1.5 */
+#define LRXHTOCNT				0x014C	/* Not in Ref. v1.5 */
+
 #define FUNCMODE				0x0150
 #define MASK_CONTCLKMODE			(1 << 5)
 #define MASK_FORCESTOP				(1 << 10)
 
-#define CSITX_INTERNAL_STAT			0x01B0
+#define RX_VC_EN				0x0154	/* Not in Ref. v1.5 */
+#define MASK_RX_VC0				(1 << 0)
+#define MASK_RX_VC1				(1 << 1)
+#define MASK_RX_VC2				(1 << 2)
+#define MASK_RX_VC3				(1 << 3)
+
+#define INPUTTOCNT				0x0158	/* Not in Ref. v1.5 */
+
+#define HSYNCSTOPCNT				0x0168	/* Not in Ref. v1.5 */
+#define VHDELAY					0x0170	/* Not in Ref. v1.5 */
+#define RX_STATE_INT_MASK			0x01A4	/* Not in Ref. v1.5 */
+#define LPRX_THRESH_COUNT			0x010C	/* Not in Ref. v1.5 */
+#define APPERRMASK				0x0214	/* Not in Ref. v1.5 */
+#define RX_ERR_INT_MASK				0x021C	/* Not in Ref. v1.5 */
+#define LPTX_INT_MASK				0x0224	/* Not in Ref. v1.5 */
 
 #define LPTXTIMECNT				0x0254
 #define TCLK_HEADERCNT				0x0258
@@ -312,6 +329,9 @@
 #define MASK_D0M_HSTXVREGEN			0x0002
 #define MASK_CLM_HSTXVREGEN			0x0001
 
+#define BTA_COUNT				0x0278	/* Not in Ref. v1.5 */
+#define DPHY_TX_ADJUST				0x027C	/* Not in Ref. v1.5 */
+
 #define MIPICLKEN				0x02A0
 #define MASK_MP_ENABLE				0x00000001
 #define MASK_MP_CKEN				0x00000002
@@ -324,18 +344,15 @@
 #define MASK_MPLBW_50				(2 << 16)
 #define MASK_MPLBW_MAX				(3 << 16)
 #define MASK_PLL_FBD				0x000000FF
-#define SET_PLL_FBD(fbd)			((fbd) & MASK_PLL_FBD)
+#define SET_PLL_FBD(fbd)			(((fbd) - 1) & MASK_PLL_FBD)
 #define MASK_PLL_FRS				0x00000C00
 #define SET_PLL_FRS(frs)			(((frs) << 10) & MASK_PLL_FRS)
 #define MASK_PLL_PRD				0x0000F000
-#define SET_PLL_PRD(prd)			(((prd) << 12) & \
+#define SET_PLL_PRD(prd)			((((prd) - 1) << 12) & \
 						  MASK_PLL_PRD)
 #define MASK_PLL_LBW				0x00030000
 #define SET_PLL_LBW(lbw)			((((lbw) - 1) << 16) & \
 						  MASK_PLL_LBW)
-
-#define CECEN                                 0x0600
-#define MASK_CECEN                            0x0001
 
 /* *** Split Control (16 bit) *** */
 #define SPLITTX0_CTRL				0x5000
@@ -351,11 +368,11 @@
 
 #define SPLITTX0_SPLIT				0x500C
 #define SPLITTX1_SPLIT				0x508C
-#define MASK_FPXV				0x0FFF
+#define MASK_EHW				0x0FFF
 /* NOTE: Only available for TX0 */
 #define MASK_TX1SEL				0x4000
 /* NOTE: Only available for TX0 */
-#define MASK_EHW				0x8000
+#define MASK_FPXV				0x8000
 
 /* *** HDMI PHY (8 bit) *** */
 #define PHY_CTL					0x8410
@@ -363,9 +380,6 @@
 #define MASK_POWERCTL				(1 << 0)
 /* TODO: Check name of mask */
 #define MASK_48_MHZ				(1 << 1)
-
-#define PHY_CTL2				0x8412
-#define MASK_PHY_FREE_RUN			(1 << 5)
 
 #define PHY_ENB					0x8413
 #define MASK_ENABLE_PHY				0x01
@@ -414,30 +428,6 @@
 #define SCLK_CSC0				0x8A0C
 #define SCLK_CSC1				0x8A0D
 
-#define HDCP_MODE                             0x8560
-#define MASK_MODE_RST_TN                      0x20
-#define MASK_LINE_REKEY                       0x10
-#define MASK_AUTO_CLR                         0x04
-
-#define HDCP_REG1                             0x8563 /* Not in REF_01 */
-#define MASK_AUTH_UNAUTH_SEL                  0x70
-#define MASK_AUTH_UNAUTH_SEL_12_FRAMES        0x70
-#define MASK_AUTH_UNAUTH_SEL_8_FRAMES         0x60
-#define MASK_AUTH_UNAUTH_SEL_4_FRAMES         0x50
-#define MASK_AUTH_UNAUTH_SEL_2_FRAMES         0x40
-#define MASK_AUTH_UNAUTH_SEL_64_FRAMES        0x30
-#define MASK_AUTH_UNAUTH_SEL_32_FRAMES        0x20
-#define MASK_AUTH_UNAUTH_SEL_16_FRAMES        0x10
-#define MASK_AUTH_UNAUTH_SEL_ONCE             0x00
-#define MASK_AUTH_UNAUTH                      0x01
-#define MASK_AUTH_UNAUTH_AUTO                 0x01
-
-#define HDCP_REG2                             0x8564 /* Not in REF_01 */
-#define MASK_AUTO_P3_RESET                    0x0F
-#define SET_AUTO_P3_RESET_FRAMES(n)          (n & MASK_AUTO_P3_RESET)
-#define MASK_AUTO_P3_RESET_OFF                0x00
-
-
 /* *** VI *** */
 #define VI_MODE					0x8570
 /* TODO: Probably wrong bit (see p. 292 rev. 0.93) */
@@ -457,9 +447,6 @@
 #define FV_CNT_LO				0x85C1	/* Not in Ref. v1.5 */
 #define FV_CNT_HI				0x85C2	/* Not in Ref. v1.5 */
 
-#define HDCP_REG3                             0x85D1 /* Not in REF_01 */
-#define KEY_RD_CMD                            0x01
-
 /* *** EDID (8 bit) *** */
 #define EDID_MODE				0x85E0
 #define MASK_DIRECT				0x00
@@ -474,19 +461,6 @@
 
 /* *** HDCP *** */
 #define BKSV					0x8800
-
-#define BCAPS                                 0x8840
-#define MASK_HDMI_RSVD                        0x80
-#define MASK_REPEATER                         0x40
-#define MASK_READY                            0x20
-#define MASK_FASTI2C                          0x10
-#define MASK_1_1_FEA                          0x02
-#define MASK_FAST_REAU                        0x01
-
-#define BSTATUS0                              0x8841
-#define BSTATUS1                              0x8842
-#define MASK_HDMI_MODE                        0x10
-#define MASK_MAX_EXCED                        0x08
 
 /* *** Video Output Format (8 bit) *** */
 #define VOUT_FMT				0x8A00
@@ -709,25 +683,3 @@
 #define CB_VACT					0x7012
 #define CB_HSTART				0x7014
 #define CB_VSTART				0x7016
-
-enum {
-	TC358840_MODE_3840X2160,
-	TC358840_MODE_1920X1080,
-	TC358840_MODE_1280X720,
-};
-
-static const int tc358840_30fps[] = {
-	30,
-};
-
-static const int tc358840_30_60fps[] = {
-	30,
-	60,
-};
-
-static const struct camera_common_frmfmt tc358840_frmfmt[] = {
-	{{3840, 2160},	tc358840_30fps, 1, 1, TC358840_MODE_3840X2160},
-	{{1920, 1080},	tc358840_30_60fps, 2, 1, TC358840_MODE_1920X1080},
-	{{1280, 720},	tc358840_30_60fps, 2, 1, TC358840_MODE_1280X720},
-};
-#endif  /* __TC358840_TABLES__ */
