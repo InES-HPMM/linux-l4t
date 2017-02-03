@@ -22,6 +22,9 @@
 #define ROUND_UP(v, a) (DIV_ROUND_UP(v, a) * (a))
 #define ROUND_STRIDE(v) ROUND_UP(v, 64)
 
+#define VI_CSI_PPA_FRAME_START 5
+#define VI_CSI_PPC_FRAME_START 13
+#define VI_CSI_PPE_FRAME_START 21
 #define VI_MWA_ACK_DONE 7
 #define VI_MWC_ACK_DONE 15
 #define VI_MWE_ACK_DONE 23
@@ -643,8 +646,6 @@ static int tegra_vi_channel_capture_thread(void *data)
 
 	tegra_vi_channel_clear_errors(chan);
 
-	// FIXME: HOW TO EXPAND FOR 2 CAPTURES??
-
 	/* Program DMA for first buffer */
 	chan->active_buffer = tegra_vi_channel_set_next_buffer(chan);
 	if (!chan->active_buffer) {
@@ -653,25 +654,22 @@ static int tegra_vi_channel_capture_thread(void *data)
 
 	}
 
-	/*
-	VI_CSI_PPA_FRAME_START Value=0x10 FIFO Depth=2
-	Valid SOF has been received by the camera (PPA) input. This
-	SOF is detected at the VI3 input.
-	*/
+	/* Queue Start Of Frame (SOF) detection on the VI */
 	switch (chan->id) {
-	case 0: syncpt_cond = 5;	/* VI_CSI_PPA_FRAME_START */
+	case 0: syncpt_cond = VI_CSI_PPA_FRAME_START;
 		break;
-	case 1: syncpt_cond = 13;	/* VI_CSI_PPC_FRAME_START */
+	case 1: syncpt_cond = VI_CSI_PPC_FRAME_START;
 		break;
-	case 2: syncpt_cond = 21;	/* VI_CSI_PPE_FRAME_START */
+	case 2: syncpt_cond = VI_CSI_PPE_FRAME_START;
 		break;
 	default:
 		pr_err("%s(): Error: undefined chan->id (%d)\n", __func__, 
 			chan->id);
 		return -EINVAL;
 	}
-	/* Only wait for a SOF on PPA of the first channel */
 	tegra_vi_channel_queue_syncpt(chan, syncpt_cond, &syncpt_val[0], 1);
+	if (chan->pp_count == 2)
+		tegra_vi_channel_queue_syncpt(chan, syncpt_cond+8, &syncpt_val[1], 1);
 
 	if (show_statistics)
 		start_time = ktime_get();
@@ -686,9 +684,17 @@ static int tegra_vi_channel_capture_thread(void *data)
 	/* Wait for SOF */
 	err0 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[0]);
 	if (err0) {
-		dev_err(&vdev->dev, "Initial wait for SOF failed!\n");
+		dev_err(&vdev->dev, "Initial wait 0 for SOF failed! err=%d\n", err0);
 		tegra_vi_channel_print_errors(chan);
 		goto stop_vi;
+	}
+	if (chan->pp_count == 2) {
+		err1 = tegra_vi_channel_wait_for_syncpt(chan, syncpt_val[1]);
+		if (err1) {
+			dev_err(&vdev->dev, "Initial wait 1 for SOF failed! err=%d\n", err0);
+			tegra_vi_channel_print_errors(chan);
+			goto stop_vi;
+		}
 	}
 
 	/* Program DMA for the second buffer (in the shadow registers) */
