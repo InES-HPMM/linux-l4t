@@ -22,6 +22,10 @@
 #define ROUND_UP(v, a) (DIV_ROUND_UP(v, a) * (a))
 #define ROUND_STRIDE(v) ROUND_UP(v, 64)
 
+#define VI_MWA_ACK_DONE 7
+#define VI_MWC_ACK_DONE 15
+#define VI_MWE_ACK_DONE 23
+
 static int tegra_vi_channel_capture_thread(void *data);
 
 static int show_statistics = 1;
@@ -737,31 +741,28 @@ static int tegra_vi_channel_capture_thread(void *data)
 
 		/* Setup the next pending buffer */
 		chan->pending_buffer = tegra_vi_channel_set_next_buffer(chan);
-		if (!chan->pending_buffer)
+		if (!chan->pending_buffer) {
 			printk("%s: ERROR: Out of buffers! EXITING..\n", __func__);
+		} else {
+			/* Queue a WrAck syncpt only if we got a pending buffer */
+			switch (chan->id) {
+			case 0: syncpt_cond = VI_MWA_ACK_DONE;
+				break;
+			case 1: syncpt_cond = VI_MWC_ACK_DONE;
+				break;
+			case 2: syncpt_cond = VI_MWE_ACK_DONE;
+				break;
+			default:
+				pr_err("%s(): Error: undefined chan->id (%d)\n",
+					__func__, chan->id);
+				return -EINVAL;
+			}
 
-		/* 
-		VI_MWA_ACK_DONE Value=0x06 FIFO Depth=2
-		Predefined Operation Done for all WrAcks for a Frame condition.
-		The VI2 generates this syncpt when all WrAcks for a captured
-		frame from the camera (PPA) to memory are received.
-		*/
-		switch (chan->id) {	
-		case 0: syncpt_cond = 7;	/* VI_MWA_ACK_DONE */
-			break;
-		case 1: syncpt_cond = 15;	/* VI_MWC_ACK_DONE */
-			break;
-		case 2: syncpt_cond = 23;	/* VI_MWE_ACK_DONE */
-			break;
-		default:
-			pr_err("%s(): Error: undefined chan->id (%d)\n", __func__, 
-				chan->id);
-			return -EINVAL;
+			for (p=0; p < chan->pp_count; p++) {
+				tegra_vi_channel_queue_syncpt(chan, syncpt_cond + p * 8, &syncpt_val[p], 1);//incrs);
+			}
 		}
 
-		for (p=0; p < chan->pp_count; p++) {
-			tegra_vi_channel_queue_syncpt(chan, syncpt_cond + p * 8, &syncpt_val[p], 1);//incrs);
-		}
 		for (p=0; p < chan->pp_count; p++) {
 			if (chan->pending_buffer) {
 				/* Queue a buffer update on the next shot */
