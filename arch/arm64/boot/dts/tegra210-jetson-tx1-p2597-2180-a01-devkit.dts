@@ -14,6 +14,8 @@
  *
  */
 
+// 25
+
 #include "tegra210-jetson-cv-base-p2597-2180-a00.dts"
 
 / {
@@ -60,8 +62,8 @@
 	pinmux@700008d4 {
 		common {
 			/*
-			 * Pull down the INT pin of the TC358840 (HDMI IN A) while
-			 * in reset in order to set i2c address 0x0F.
+			 * Pull down the INT pin of the TC358840 (HDMI IN 1, J16, up to
+			 * 2160p30) while in reset in order to set i2c address 0x0F.
 			 */
 			cam1_pwdn_ps7 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
@@ -70,8 +72,8 @@
 			};
 
 			/*
-			 * Pull up the INT pin of the TC358840 (HDMI IN B) while
-			 * in reset in order to set i2c address 0x1F.
+			 * Pull up the INT pin of the TC358840 (HDMI IN 2, J17, up to
+			 * 1080p60) while in reset in order to set i2c address 0x1F.
 			 */
 			cam2_pwdn_pt0 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
@@ -116,8 +118,8 @@
 			clock-frequency = <400000>;
 			bus-pullup-supply = <&max77620_sd3>;
 			avdd_dsi_csi-supply = <&max77620_sd3>;
-
-			/* HDMI IN A (4K) */
+			
+			/* HDMI IN 1 (J16) up to 2160p30 */
 			tc358840xbg@0f {
 				compatible = "toshiba,tc358840xbg";
 				reg = <0x0f>;
@@ -128,6 +130,7 @@
 
 				/* Interrupt */
 				interrupt-parent = <&gpio>;
+				/* J130 uses pull down for this pin */
 				interrupts = <CAM0_PWDN IRQ_TYPE_LEVEL_HIGH>;
 
 				refclk_hz = <48000000>; /* 40 - 50 MHz */
@@ -157,13 +160,12 @@
 				pll_fbd = <125>;
 
 				port {
-					hdmi_in_a: endpoint {
-						remote-endpoint = <&csi_a>;
+					hdmi_in_j16: endpoint {
+						remote-endpoint = <&csi_b>;
 					};
 				};
 			};
-
-			/* HDMI IN B (Full HD) */
+			/* HDMI IN 2 (J17) up to 1080p60 */
 			tc358840xbg@1f {
 				compatible = "toshiba,tc358840xbg";
 				reg = <0x1f>;
@@ -174,7 +176,8 @@
 
 				/* Interrupt */
 				interrupt-parent = <&gpio>;
-				interrupts = <CAM1_PWDN IRQ_TYPE_LEVEL_HIGH>;
+				/* J130 uses pull up for this pin*/
+				interrupts = <CAM1_PWDN IRQ_TYPE_LEVEL_LOW>;
 
 				refclk_hz = <48000000>; /* 40 - 50 MHz */
 
@@ -203,19 +206,21 @@
 				pll_fbd = <125>;
 
 				port {
-					hdmi_in_b: endpoint {
-						remote-endpoint = <&csi_b>;
+					hdmi_in_j17: endpoint {
+						remote-endpoint = <&csi_a>;
 					};
 				};
 			};
+
+			
 		};
 	};
 
 	pinmux@700008d4 {
 		common {
 			/*
-			 * Pull down the INT pin of the TC358840 (HDMI IN A) while
-			 * in reset in order to set i2c address 0x0F.
+			 * Pull down the INT pin of the TC358840 (HDMI IN 1, J16, up to
+			 * 2160p30) while in reset in order to set i2c address 0x0F.
 			 */
 			cam1_pwdn_ps7 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
@@ -224,8 +229,8 @@
 			};
 
 			/*
-			 * Pull up the INT pin of the TC358840 (HDMI IN B) while
-			 * in reset in order to set i2c address 0x1F.
+			 * Pull up the INT pin of the TC358840 (HDMI IN 2, J17, up to
+			 * 10800p60) while in reset in order to set i2c address 0x1F.
 			 */
 			cam2_pwdn_pt0 {
 				nvidia,enable-input = <TEGRA_PIN_ENABLE>;
@@ -264,38 +269,36 @@
 
 			#address-cells = <1>;
 			#size-cells = <0>;
-
-			/* HDMI IN A (dual-link) */
+			/* HDMI IN 2 J17 (single lane) */
 			vi_port_0: port@0 {
 				reg = <0>;
 				
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				csi_a: endpoint@0 {
+				csi_a: endpoint {
 					reg = <0>;
-					remote-endpoint = <&hdmi_in_a>;
-					clock-lanes = <0>;
-					data-lanes = <1 2 3 4>;
-				};
-				csi_b: endpoint@1 {
-					reg = <1>;
-					remote-endpoint = <&hdmi_in_a>;
+					remote-endpoint = <&hdmi_in_j17>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
 				};
 			};
-
-			/* HDMI IN B */
-			port@2 {
-				reg = <2>;
+			/* HDMI IN 1 J16 (double lane) */
+			port@1 {
+				reg = <1>;
 				
 				#address-cells = <1>;
 				#size-cells = <0>;
 
-				csi_c: endpoint {
+				csi_b: endpoint@0 {
 					reg = <0>;
-					remote-endpoint = <&hdmi_in_b>;
+					remote-endpoint = <&hdmi_in_j16>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+				};
+				csi_c: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&hdmi_in_j16>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
 				};
