@@ -177,7 +177,7 @@
 				/* Interrupt */
 				interrupt-parent = <&gpio>;
 				/* J130 uses pull up for this pin*/
-				interrupts = <CAM1_PWDN IRQ_TYPE_LEVEL_LOW>;
+				interrupts = <CAM1_PWDN IRQ_TYPE_LEVEL_HIGH>;
 
 				refclk_hz = <48000000>; /* 40 - 50 MHz */
 
