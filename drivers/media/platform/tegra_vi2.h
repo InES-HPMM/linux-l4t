@@ -11,6 +11,7 @@
 #define TEGRA_VI2_H__
 
 #include <media/v4l2-device.h>
+#include <media/v4l2-ctrls.h>
 #include <media/videobuf2-core.h>
 
 struct platform_device;
@@ -348,6 +349,8 @@ struct tegra_vi_channel {
 
 	struct tegra_formats formats[16];
 	unsigned formats_count;
+
+	struct v4l2_ctrl_handler ctrl_handler;
 
 	int syncpt_id;
 };

@@ -623,6 +623,27 @@ static void tegra_vi_channel_input_disable(struct tegra_vi_channel_input *input)
 		tegra_vi_input_disable(input->endpoint[i]);
 }
 
+static int tegra_vi_setup_controls(struct tegra_vi_channel *chan)
+{
+	struct v4l2_subdev *sd = NULL;
+	struct video_device *vdev = &chan->vdev;
+
+	if (chan->input->endpoint[0]->sensor == NULL) {
+		printk("%s: ERROR: This input has no sensor asigned! Abort..\n", __func__);
+		return -EINVAL;
+	}
+
+	/* Initialize the subdev and controls here at first open */
+	sd = chan->input->endpoint[0]->sensor;
+	/* Add control handler for the subdevice */
+	v4l2_ctrl_add_handler(&chan->ctrl_handler, sd->ctrl_handler, NULL);
+	if (chan->ctrl_handler.error)
+		dev_err(&vdev->dev, "Failed to add sub-device controls\n");
+
+	/* setup the controls */
+	return v4l2_ctrl_handler_setup(&chan->ctrl_handler);
+}
+
 static int tegra_vi_channel_set_input(
 	struct tegra_vi_channel *chan, enum tegra_vi_input_id i)
 {
@@ -747,6 +768,13 @@ static int tegra_vi_channel_set_input(
 	if (err) {
 		dev_warn(&vdev->dev, "Failed to set format for input %d\n", i);
 		goto disable_input;
+	}
+
+	err = tegra_vi_setup_controls(chan);
+	if (err < 0) {
+		dev_err(&vdev->dev,	"Unable to setup controls for sensor %s\n",
+			chan->input->endpoint[0]->sensor->name);
+		return err;
 	}
 
 	tegra_vi_channel_input_unlock(input);
@@ -1956,6 +1984,7 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 	struct tegra_vi2 *vi2 = platform_get_drvdata(pdev);
 	struct tegra_vi_channel *chan = &vi2->channel[id];
 	struct vb2_queue *q;
+	struct v4l2_ctrl_handler *hdl;
 	int err, i, p, j = 0;
 
 	/* Assign one or two PPs to this channel */
@@ -2026,6 +2055,7 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 	chan->vdev.v4l2_dev = &vi2->v4l2_dev;
 	chan->vdev.queue = q;
 	chan->vdev.release = video_device_release_empty;
+	chan->vdev.ctrl_handler = &chan->ctrl_handler;
 	INIT_LIST_HEAD(&chan->capture);
 	mutex_init(&chan->lock);
 	spin_lock_init(&chan->vq_lock);
@@ -2056,7 +2086,18 @@ static int tegra_vi_channel_init(struct platform_device *pdev, unsigned id,
 		}
 	}
 
+	hdl = &chan->ctrl_handler;
+	#define MAX_CID_CONTROLS 32
+	v4l2_ctrl_handler_init(hdl, MAX_CID_CONTROLS);
+	if (hdl->error) {
+		err = hdl->error;
+		goto free_hdl;
+	}
+
 	return 0;
+
+free_hdl:
+	v4l2_ctrl_handler_free(&chan->ctrl_handler);
 queue_release:
 	vb2_queue_release(q);
 cleanup_ctx:
