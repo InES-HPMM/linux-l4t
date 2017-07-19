@@ -556,6 +556,15 @@ config VIDEO_TC358840
 	  To compile this driver as a module, choose M here: the
 	  module will be called tc358840.
 
+config VIDEO_TC358746_DUMMY
+	tristate "Toshiba TC358746 dummy bridge"
+	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	---help---
+	  Support for the Toshiba TC358746 Parallel to MIPI CSI-2 bridge.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tc358746_dummy.
+
 config VIDEO_VS6624
 	tristate "ST VS6624 sensor support"
 	depends on VIDEO_V4L2 && I2C
