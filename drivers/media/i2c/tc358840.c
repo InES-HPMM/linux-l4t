@@ -1477,7 +1477,8 @@ static void tc358840_hdmi_sys_int_handler(struct v4l2_subdev *sd, bool *handled)
 		} else {
 			tc358840_enable_interrupts(sd, false);
 			tc358840_disable_edid(sd);
-			memset(&state->timings, 0, sizeof(state->timings));
+			//FIX for plug-out/in bug. Find better solution!
+			//memset(&state->timings, 0, sizeof(state->timings));
 			tc358840_erase_bksv(sd);
 			tc358840_update_controls(sd);
 		}
